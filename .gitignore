@@ -1,0 +1,17 @@
+# Build outputs & caches
+**/bin/
+**/obj/
+**/TestResults/
+*.dmp
+*.old
+*.suo
+*.user
+.vs/
+.vscode/
+
+# Distribuição e pacotes de release (executáveis >100MB e arquivos compactados)
+*-dist/
+lively-*/
+*.zip
+*.7z
+*.rar

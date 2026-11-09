@@ -1,0 +1,143 @@
+<Window x:Class="LuminiTray.MiniTaskManagerWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Lumini Tray - Mini Gerenciador"
+        Width="380" Height="240"
+        WindowStyle="None"
+        AllowsTransparency="True"
+        Background="Transparent"
+        Topmost="True"
+        ShowInTaskbar="False"
+        ShowActivated="False"
+        ResizeMode="CanResize"
+        Focusable="False"
+        MinWidth="280" MinHeight="160"
+        UseLayoutRounding="True"
+        TextOptions.TextFormattingMode="Display"
+        WindowStartupLocation="Manual"
+        KeyDown="Window_KeyDown"
+        PreviewMouseWheel="Window_PreviewMouseWheel"
+        MouseDown="Window_MouseDown">
+
+    <Window.Resources>
+        <ContextMenu x:Key="RowContextMenu">
+            <MenuItem Header="🛑 Finalizar tarefa" Click="MenuEndTask_Click" Foreground="{DynamicResource Fg}" Background="{DynamicResource CardSubtleBg}" />
+            <MenuItem Header="🌳 Finalizar árvore de processos..." Click="MenuEndProcessTree_Click" Foreground="{DynamicResource Fg}" Background="{DynamicResource CardSubtleBg}" />
+            <Separator Background="{DynamicResource Line}" />
+            <MenuItem Header="📁 Abrir local do arquivo" Click="MenuOpenFileLocation_Click" Foreground="{DynamicResource Fg}" Background="{DynamicResource CardSubtleBg}" />
+        </ContextMenu>
+    </Window.Resources>
+
+    <Border x:Name="Box" Background="#E61C1C1E" BorderBrush="{DynamicResource LineStrong}" BorderThickness="1" CornerRadius="10" Padding="12,10" SnapsToDevicePixels="True" ClipToBounds="True">
+        <Border.Effect>
+            <DropShadowEffect BlurRadius="18" ShadowDepth="3" Direction="270" Opacity="0.45" Color="#000000" />
+        </Border.Effect>
+
+        <Grid>
+            <!-- Badge de opacidade transitório (aparece ao girar a roda do mouse) -->
+            <TextBlock x:Name="TxtOpacityBadge" Text="85%" FontSize="10" FontWeight="Bold" Foreground="#99FFFFFF"
+                       HorizontalAlignment="Right" VerticalAlignment="Top" Visibility="Collapsed" Panel.ZIndex="10" Margin="0,0,22,0" />
+
+            <Grid x:Name="ContentRoot" HorizontalAlignment="Stretch" VerticalAlignment="Stretch">
+                <Grid.LayoutTransform>
+                    <ScaleTransform x:Name="Scale" ScaleX="1" ScaleY="1" />
+                </Grid.LayoutTransform>
+
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="*" />
+                    <RowDefinition Height="Auto" />
+                </Grid.RowDefinitions>
+
+                <!-- Cabeçalho Compacto -->
+                <Grid Grid.Row="0" Margin="0,0,0,6">
+                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                        <TextBlock Text="⚡ MINI GERENCIADOR" FontSize="9.5" FontWeight="Bold" Foreground="{DynamicResource Muted}" />
+                        <TextBlock x:Name="TxtLockIndicator" Text="· FIXADO" FontSize="9.5" FontWeight="SemiBold" Foreground="{DynamicResource Accent}" Margin="6,0,0,0" VerticalAlignment="Center" Visibility="Collapsed" />
+                        <TextBlock x:Name="TxtRefreshRateBadge" Text="· 1.0s" FontSize="9.5" Foreground="{DynamicResource Faint}" Margin="6,0,0,0" VerticalAlignment="Center" />
+                    </StackPanel>
+                    <Button x:Name="BtnCloseWindow" Style="{StaticResource GhostButton}" Content="✕" HorizontalAlignment="Right" VerticalAlignment="Center" Padding="4,1" FontSize="11" Foreground="{DynamicResource Muted}" Click="BtnClose_Click" ToolTip="Fechar (Esc ou botão do meio do mouse)" />
+                </Grid>
+
+                <!-- 4 Linhas de Recursos (CPU, GPU, RAM, DISCO) -->
+                <StackPanel Grid.Row="1" VerticalAlignment="Center">
+                    <!-- Linha CPU -->
+                    <Border x:Name="BorderCpu" Background="Transparent" BorderBrush="Transparent" BorderThickness="1" CornerRadius="6" Padding="6,3" Margin="0,1"
+                            Cursor="Hand" MouseLeftButtonDown="RowCpu_Click" ContextMenu="{StaticResource RowContextMenu}">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="52" />
+                                <ColumnDefinition Width="54" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Grid.Column="0" Text="CPU:" FontWeight="SemiBold" FontSize="12.5" Foreground="{DynamicResource Fg}" VerticalAlignment="Center" />
+                            <TextBlock x:Name="TxtCpuTotal" Grid.Column="1" Text="--%" FontWeight="Bold" FontSize="12.5" Foreground="#00C8FF" VerticalAlignment="Center" />
+                            <TextBlock x:Name="TxtCpuTop" Grid.Column="2" Text="Coletando..." FontSize="11.5" Foreground="{DynamicResource Fg}" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
+                        </Grid>
+                    </Border>
+
+                    <!-- Linha GPU -->
+                    <Border x:Name="BorderGpu" Background="Transparent" BorderBrush="Transparent" BorderThickness="1" CornerRadius="6" Padding="6,3" Margin="0,1"
+                            Cursor="Hand" MouseLeftButtonDown="RowGpu_Click" ContextMenu="{StaticResource RowContextMenu}">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="52" />
+                                <ColumnDefinition Width="54" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Grid.Column="0" Text="GPU:" FontWeight="SemiBold" FontSize="12.5" Foreground="{DynamicResource Fg}" VerticalAlignment="Center" />
+                            <TextBlock x:Name="TxtGpuTotal" Grid.Column="1" Text="--%" FontWeight="Bold" FontSize="12.5" Foreground="#00DC64" VerticalAlignment="Center" />
+                            <TextBlock x:Name="TxtGpuTop" Grid.Column="2" Text="Coletando..." FontSize="11.5" Foreground="{DynamicResource Fg}" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
+                        </Grid>
+                    </Border>
+
+                    <!-- Linha RAM -->
+                    <Border x:Name="BorderRam" Background="Transparent" BorderBrush="Transparent" BorderThickness="1" CornerRadius="6" Padding="6,3" Margin="0,1"
+                            Cursor="Hand" MouseLeftButtonDown="RowRam_Click" ContextMenu="{StaticResource RowContextMenu}">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="52" />
+                                <ColumnDefinition Width="54" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Grid.Column="0" Text="RAM:" FontWeight="SemiBold" FontSize="12.5" Foreground="{DynamicResource Fg}" VerticalAlignment="Center" />
+                            <TextBlock x:Name="TxtRamTotal" Grid.Column="1" Text="--%" FontWeight="Bold" FontSize="12.5" Foreground="#FFB446" VerticalAlignment="Center" />
+                            <TextBlock x:Name="TxtRamTop" Grid.Column="2" Text="Coletando..." FontSize="11.5" Foreground="{DynamicResource Fg}" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
+                        </Grid>
+                    </Border>
+
+                    <!-- Linha DISCO -->
+                    <Border x:Name="BorderDisk" Background="Transparent" BorderBrush="Transparent" BorderThickness="1" CornerRadius="6" Padding="6,3" Margin="0,1"
+                            Cursor="Hand" MouseLeftButtonDown="RowDisk_Click" ContextMenu="{StaticResource RowContextMenu}">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="52" />
+                                <ColumnDefinition Width="70" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Grid.Column="0" Text="DISCO:" FontWeight="SemiBold" FontSize="12.5" Foreground="{DynamicResource Fg}" VerticalAlignment="Center" />
+                            <TextBlock x:Name="TxtDiskTotal" Grid.Column="1" Text="0 B/s" FontWeight="Bold" FontSize="12" Foreground="#D946EF" VerticalAlignment="Center" />
+                            <TextBlock x:Name="TxtDiskTop" Grid.Column="2" Text="Coletando..." FontSize="11.5" Foreground="{DynamicResource Fg}" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
+                        </Grid>
+                    </Border>
+                </StackPanel>
+
+                <!-- Gráfico Histórico de Atividade (16 Amostras) -->
+                <Border Grid.Row="2" Background="#161618" BorderBrush="{DynamicResource Line}" BorderThickness="1" CornerRadius="6" Padding="8,6" Margin="0,4,0,0"
+                        Cursor="Hand" MouseLeftButtonDown="Graph_Click" ToolTip="Clique ou use as teclas ↑ / ↓ para alternar entre CPU, GPU, RAM e Disco">
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="105" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+                        <StackPanel Grid.Column="0" VerticalAlignment="Center">
+                            <TextBlock x:Name="TxtGraphLabel" Text="Histórico CPU" FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource Fg}" />
+                            <TextBlock x:Name="TxtGraphValue" Text="0%" FontSize="9.5" Foreground="{DynamicResource Muted}" Margin="0,1,0,0" />
+                        </StackPanel>
+                        <Canvas x:Name="CanvasGraph" Grid.Column="1" Height="36" ClipToBounds="True" Background="#222224" HorizontalAlignment="Stretch" SizeChanged="CanvasGraph_SizeChanged" />
+                    </Grid>
+                </Border>
+            </Grid>
+        </Grid>
+    </Border>
+</Window>

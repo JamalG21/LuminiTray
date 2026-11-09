@@ -1,0 +1,106 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <UseWPF>true</UseWPF>
+    <UseWindowsForms>true</UseWindowsForms>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+    <ApplicationIcon>Assets\app.ico</ApplicationIcon>
+    <AssemblyName>LuminiTray</AssemblyName>
+    <Product>Lumini Tray</Product>
+    <Title>Lumini Tray</Title>
+    <Version>0.24.1</Version>
+    <AssemblyVersion>0.24.1.0</AssemblyVersion>
+    <FileVersion>0.24.1.0</FileVersion>
+    <!-- Sempre otimizado: o LUMINI BENCH e os stress tests precisam do JIT otimizado tambÃ©m em Debug -->
+    <Optimize>true</Optimize>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <!-- OtimizaÃ§Ãµes de Tamanho em Disco e MemÃ³ria RAM -->
+    <EnableCompressionInSingleFile>true</EnableCompressionInSingleFile>
+    <ServerGarbageCollection>false</ServerGarbageCollection>
+    <ConcurrentGarbageCollection>true</ConcurrentGarbageCollection>
+    <GarbageCollectionAdaptationMode>1</GarbageCollectionAdaptationMode>
+    <DebugType Condition="'$(Configuration)' == 'Release'">none</DebugType>
+    <DebugSymbols Condition="'$(Configuration)' == 'Release'">false</DebugSymbols>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Using Remove="System.Windows.Forms" />
+    <Using Remove="System.Drawing" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Resource Include="Assets\logo.png" />
+    <Resource Include="Assets\app.ico" />
+    <Resource Include="Assets\logo-badge.png" />
+    <Resource Include="Assets\logo-dark.png" />
+  </ItemGroup>
+
+  <!-- Drivers seriais oficiais embutidos (LUMINI MAKER): cada pasta Drivers\<chip> vira recurso e Ã© extraÃ­da na hora de instalar.
+       Para incluir outro, basta criar a pasta com o .inf/.cat/.sys e ligÃ¡-la em MakerDrivers.Chips (Bundle). -->
+  <ItemGroup>
+    <EmbeddedResource Include="Drivers\**\*" Exclude="Drivers\*.md;Drivers\*.txt" LogicalName="Drivers/%(RecursiveDir)%(Filename)%(Extension)" />
+    <EmbeddedResource Include="Assets\Debloat\Apps.json" LogicalName="Debloat/Apps.json" />
+    <EmbeddedResource Include="Assets\Debloat\pt-BR\Apps.json" LogicalName="Debloat/pt-BR/Apps.json" />
+    <EmbeddedResource Include="Assets\Drivers\VBCable.zip" LogicalName="Drivers/VBCable.zip" />
+  </ItemGroup>
+
+  <!-- iCUE SDK da Corsair (RESET INTEGRAÃ‡ÃƒO): se a DLL estiver em Native\, ela vai junto do .exe. NÃ£o Ã© versionada no git. -->
+  <ItemGroup>
+    <None Include="Native\iCUESDK.x64_2019.dll" Condition="Exists('Native\iCUESDK.x64_2019.dll')" Link="iCUESDK.x64_2019.dll" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+    <None Include="Native\SDL2.dll" Condition="Exists('Native\SDL2.dll')" Link="SDL2.dll" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+    <None Include="Native\NvAPIWrapper.dll" Condition="Exists('Native\NvAPIWrapper.dll')" Link="NvAPIWrapper.dll" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+    <None Include="Native\rnnoise.dll" Condition="Exists('Native\rnnoise.dll')" Link="rnnoise.dll" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+    <None Include="Assets\**\*" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+    <None Include="Assets\AMD\PawnIO\RyzenSMU.bin" Condition="Exists('Assets\AMD\PawnIO\RyzenSMU.bin')" Link="RyzenSMU.bin" CopyToOutputDirectory="Always" CopyToPublishDirectory="Always" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Reference Include="NvAPIWrapper">
+      <HintPath>Native\NvAPIWrapper.dll</HintPath>
+    </Reference>
+  </ItemGroup>
+
+  <ItemGroup>
+    <Compile Remove="LuminiTray.Tests\**" />
+    <None Remove="LuminiTray.Tests\**" />
+    <Compile Remove="SoundSwitch-7.4.0-beta.2\**" />
+    <None Remove="SoundSwitch-7.4.0-beta.2\**" />
+    <Compile Remove="AHK_MicMute-1.3.4\**" />
+    <None Remove="AHK_MicMute-1.3.4\**" />
+    <Compile Remove="smartmontools-RELEASE_7_5\**" />
+    <None Remove="smartmontools-RELEASE_7_5\**" />
+    <Compile Remove="perifÃ©ricos\**" />
+    <None Remove="perifÃ©ricos\**" />
+    <Page Remove="perifÃ©ricos\**" />
+    <ApplicationDefinition Remove="perifÃ©ricos\**" />
+    <Compile Remove="perifericos\**" />
+    <None Remove="perifericos\**" />
+    <Page Remove="perifericos\**" />
+    <ApplicationDefinition Remove="perifericos\**" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="DnsClient" Version="1.8.0" />
+    <PackageReference Include="LibreHardwareMonitorLib" Version="0.9.6" />
+    <PackageReference Include="Microsoft.Diagnostics.Tracing.TraceEvent" Version="3.2.8" />
+    <PackageReference Include="SpeedTest.Net" Version="1.3.0" />
+    <PackageReference Include="System.Management" Version="10.0.2" />
+    <PackageReference Include="System.Security.Cryptography.ProtectedData" Version="10.0.2" />
+    <PackageReference Include="Vortice.D3DCompiler" Version="3.8.3" />
+    <PackageReference Include="Vortice.Direct3D11" Version="3.8.3" />
+    <PackageReference Include="Vortice.Direct3D12" Version="3.8.3" />
+    <PackageReference Include="Vortice.Dxc" Version="3.8.3" />
+  </ItemGroup>
+
+  <Target Name="CopySubtaskExecutables" AfterTargets="Build">
+    <Copy SourceFiles="@(SubtaskExes)" DestinationFolder="$(TargetDir)" SkipUnchangedFiles="true" />
+  </Target>
+  <ItemGroup>
+    <SubtaskExes Include="Assets\Subtasks\*.exe" />
+  </ItemGroup>
+
+</Project>

@@ -1,0 +1,188 @@
+<Window x:Class="LuminiTray.AppPickerWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Lumini Tray — Selecionar Programas para Blindagem / Exclusão"
+        Width="820" Height="640" MinWidth="640" MinHeight="480"
+        WindowStartupLocation="CenterOwner" ResizeMode="CanResize"
+        Background="{DynamicResource Bg}" Foreground="{DynamicResource Fg}"
+        FontFamily="Segoe UI Variable Text, Segoe UI" FontSize="13"
+        UseLayoutRounding="True" TextOptions.TextFormattingMode="Display"
+        Loaded="Window_Loaded">
+
+    <Grid Margin="20">
+        <Grid.RowDefinitions>
+            <!-- 0: Cabeçalho Superior -->
+            <RowDefinition Height="Auto"/>
+            <!-- 1: Barra de Busca e Filtros -->
+            <RowDefinition Height="Auto"/>
+            <!-- 2: Lista Principal com indicador de carregamento -->
+            <RowDefinition Height="*"/>
+            <!-- 3: Rodapé de Ações -->
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <!-- 0: Cabeçalho -->
+        <Border Grid.Row="0" Margin="0,0,0,16" Padding="0,0,0,12" BorderBrush="{DynamicResource Line}" BorderThickness="0,0,0,1">
+            <DockPanel LastChildFill="True">
+                <Button DockPanel.Dock="Right" Style="{StaticResource GhostButton}" Content="✕" FontSize="14" FontWeight="Bold" Padding="10,4" VerticalAlignment="Top" Click="BtnCancel_Click" ToolTip="Fechar janela" />
+                <StackPanel>
+                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                        <TextBlock Text="🛡️" FontSize="18" Margin="0,0,8,0" VerticalAlignment="Center"/>
+                        <TextBlock Text="SELECIONAR PROGRAMAS PARA BLINDAGEM" Style="{StaticResource H2}" FontSize="16" VerticalAlignment="Center"/>
+                    </StackPanel>
+                    <TextBlock Text="Escolha programas instalados ou processos ativos para que jamais sejam encerrados pela otimização ou afetados pelo controle de som." 
+                               Foreground="{DynamicResource Muted}" FontSize="11.5" Margin="0,3,0,0"/>
+                </StackPanel>
+            </DockPanel>
+        </Border>
+
+        <!-- 1: Busca e Filtros -->
+        <Grid Grid.Row="1" Margin="0,0,0,14">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+            </Grid.RowDefinitions>
+
+            <!-- Campo de Busca em Tempo Real -->
+            <Grid Grid.Row="0" Margin="0,0,0,10">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+
+                <TextBox x:Name="TxtSearch" Height="36" Padding="12,6" FontSize="12.5" VerticalContentAlignment="Center"
+                         Background="{DynamicResource CardSubtleBg}" Foreground="{DynamicResource Fg}"
+                         BorderBrush="{DynamicResource LineStrong}" BorderThickness="1"
+                         CaretBrush="{DynamicResource Fg}"
+                         Tag="Pesquisar programa ou executável (ex: discord, cs2, chrome, spotify)..."
+                         TextChanged="TxtSearch_TextChanged" KeyDown="TxtSearch_KeyDown"/>
+
+                <Button Grid.Column="1" Style="{StaticResource OutlineButton}" Content="📁 PROCURAR .EXE..." 
+                        Padding="14,6" Margin="8,0,0,0" Height="36" FontSize="11" FontWeight="SemiBold"
+                        Click="BtnBrowseCustomExe_Click" ToolTip="Selecionar um arquivo executável arbitrário do computador"/>
+            </Grid>
+
+            <!-- Filtros por Categorias -->
+            <WrapPanel Grid.Row="1" Orientation="Horizontal">
+                <Button x:Name="BtnFilterAll" Style="{StaticResource OutlineButton}" Content="Todos (0)" Padding="12,5" Margin="0,0,6,6" FontSize="11" FontWeight="SemiBold" Click="FilterButton_Click" Tag="All"/>
+                <Button x:Name="BtnFilterRunning" Style="{StaticResource GhostButton}" Content="⚡ Em Execução (0)" Padding="12,5" Margin="0,0,6,6" FontSize="11" Click="FilterButton_Click" Tag="Running"/>
+                <Button x:Name="BtnFilterGames" Style="{StaticResource GhostButton}" Content="🎮 Jogos (0)" Padding="12,5" Margin="0,0,6,6" FontSize="11" Click="FilterButton_Click" Tag="Games"/>
+                <Button x:Name="BtnFilterInstalled" Style="{StaticResource GhostButton}" Content="💻 Programas Instalados (0)" Padding="12,5" Margin="0,0,6,6" FontSize="11" Click="FilterButton_Click" Tag="Installed"/>
+            </WrapPanel>
+        </Grid>
+
+        <!-- 2: Lista Principal com Suporte a Tema e Loading -->
+        <Border Grid.Row="2" Background="{DynamicResource Card}" BorderBrush="{DynamicResource Line}" BorderThickness="1" CornerRadius="8">
+            <Grid>
+                <!-- Indicador de Carregamento Rápido Sob Demanda -->
+                <StackPanel x:Name="PanelLoading" VerticalAlignment="Center" HorizontalAlignment="Center" Visibility="Visible">
+                    <TextBlock Text="" FontFamily="{StaticResource Icons}" FontSize="28" Foreground="{DynamicResource Accent}" HorizontalAlignment="Center" Margin="0,0,0,10"/>
+                    <TextBlock Text="Varrendo programas instalados e processos ativos sob demanda..." FontSize="12" Foreground="{DynamicResource Muted}" HorizontalAlignment="Center"/>
+                </StackPanel>
+
+                <!-- Mensagem de Nenhum Item Encontrado -->
+                <StackPanel x:Name="PanelEmpty" VerticalAlignment="Center" HorizontalAlignment="Center" Visibility="Collapsed">
+                    <TextBlock Text="🔍" FontSize="26" HorizontalAlignment="Center" Margin="0,0,0,8"/>
+                    <TextBlock Text="Nenhum programa ou executável encontrado para a busca informada." FontSize="12.5" Foreground="{DynamicResource Muted}" HorizontalAlignment="Center"/>
+                </StackPanel>
+
+                <!-- ListView com Estilo de Contêiner Stretch (Diretriz GEMINI.md) -->
+                <ListView x:Name="LstApps" Background="Transparent" BorderThickness="0"
+                          ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                          ScrollViewer.VerticalScrollBarVisibility="Auto"
+                          SelectionMode="Single" MouseDoubleClick="LstApps_MouseDoubleClick">
+                    <ListView.ItemContainerStyle>
+                        <Style TargetType="ListViewItem">
+                            <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+                            <Setter Property="Padding" Value="10,6"/>
+                            <Setter Property="Margin" Value="0,1"/>
+                            <Setter Property="Background" Value="Transparent"/>
+                            <Setter Property="BorderThickness" Value="0"/>
+                            <Setter Property="Cursor" Value="Hand"/>
+                            <Style.Triggers>
+                                <Trigger Property="IsMouseOver" Value="True">
+                                    <Setter Property="Background" Value="{DynamicResource Hover}"/>
+                                </Trigger>
+                                <Trigger Property="IsSelected" Value="True">
+                                    <Setter Property="Background" Value="{DynamicResource Hover}"/>
+                                </Trigger>
+                            </Style.Triggers>
+                        </Style>
+                    </ListView.ItemContainerStyle>
+                    <ListView.ItemTemplate>
+                        <DataTemplate>
+                            <Grid Margin="0,2">
+                                <Grid.ColumnDefinitions>
+                                    <!-- Checkbox -->
+                                    <ColumnDefinition Width="Auto"/>
+                                    <!-- Ícone do Aplicativo -->
+                                    <ColumnDefinition Width="Auto"/>
+                                    <!-- Título e Executável -->
+                                    <ColumnDefinition Width="*"/>
+                                    <!-- Badge de Categoria -->
+                                    <ColumnDefinition Width="Auto"/>
+                                    <!-- Badge de Status (Já blindado) -->
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+
+                                <!-- Checkbox de Seleção Múltipla -->
+                                <CheckBox Grid.Column="0" VerticalAlignment="Center" Margin="0,0,10,0"
+                                          IsChecked="{Binding IsSelected, Mode=TwoWay}"
+                                          IsEnabled="{Binding CanSelect}"
+                                          Click="AppCheckbox_Click"/>
+
+                                <!-- Ícone do App -->
+                                <Border Grid.Column="1" Width="30" Height="30" CornerRadius="5" Background="{DynamicResource CardSubtleBg}" Margin="0,0,12,0" VerticalAlignment="Center">
+                                    <Grid>
+                                        <Image Source="{Binding IconSource}" Width="22" Height="22" RenderOptions.BitmapScalingMode="HighQuality"
+                                               Visibility="{Binding IconVisibility}" VerticalAlignment="Center" HorizontalAlignment="Center"/>
+                                        <TextBlock Text="" FontFamily="{StaticResource Icons}" FontSize="14" Foreground="{DynamicResource Muted}"
+                                                   HorizontalAlignment="Center" VerticalAlignment="Center"
+                                                   Visibility="{Binding FallbackIconVisibility}"/>
+                                    </Grid>
+                                </Border>
+
+                                <!-- Informações do Programa -->
+                                <StackPanel Grid.Column="2" VerticalAlignment="Center" Margin="0,0,10,0">
+                                    <TextBlock Text="{Binding DisplayName}" FontWeight="SemiBold" FontSize="12.5" Foreground="{DynamicResource Fg}" TextTrimming="CharacterEllipsis"/>
+                                    <StackPanel Orientation="Horizontal" Margin="0,2,0,0">
+                                        <TextBlock Text="{Binding ExeName}" FontFamily="{StaticResource Mono}" FontSize="11" Foreground="{DynamicResource Accent}" Margin="0,0,8,0"/>
+                                        <TextBlock Text="{Binding Detail}" FontSize="11" Foreground="{DynamicResource Muted}" TextTrimming="CharacterEllipsis"/>
+                                    </StackPanel>
+                                </StackPanel>
+
+                                <!-- Badge da Categoria -->
+                                <Border Grid.Column="3" Background="{DynamicResource CardSubtleBg}" BorderBrush="{DynamicResource LineStrong}" BorderThickness="1" CornerRadius="4" Padding="8,3" Margin="0,0,8,0" VerticalAlignment="Center">
+                                    <TextBlock Text="{Binding CategoryBadge}" FontSize="10" FontWeight="SemiBold" Foreground="{DynamicResource Fg}"/>
+                                </Border>
+
+                                <!-- Badge de Status / Já Blindado -->
+                                <Border Grid.Column="4" Background="#1A10B981" BorderBrush="#3310B981" BorderThickness="1" CornerRadius="4" Padding="8,3" VerticalAlignment="Center"
+                                        Visibility="{Binding AlreadyExcludedVisibility}">
+                                    <TextBlock Text="✔ JÁ BLINDADO" FontSize="10.5" FontWeight="Bold" Foreground="#10B981"/>
+                                </Border>
+                            </Grid>
+                        </DataTemplate>
+                    </ListView.ItemTemplate>
+                </ListView>
+            </Grid>
+        </Border>
+
+        <!-- 3: Rodapé de Ações -->
+        <Border Grid.Row="3" Margin="0,16,0,0" Padding="0,12,0,0" BorderBrush="{DynamicResource Line}" BorderThickness="0,1,0,0">
+            <DockPanel LastChildFill="True">
+                <!-- Botões de Ação à Direita -->
+                <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center">
+                    <Button Style="{StaticResource OutlineButton}" Content="CANCELAR" Padding="16,8" Margin="0,0,10,0" Click="BtnCancel_Click"/>
+                    <Button x:Name="BtnAddSelected" Style="{StaticResource PrimaryButton}" Content="+ ADICIONAR SELECIONADOS" Padding="18,8" FontWeight="Bold" Click="BtnAddSelected_Click"/>
+                </StackPanel>
+
+                <!-- Contador e Ações Rápidas -->
+                <StackPanel VerticalAlignment="Center">
+                    <TextBlock x:Name="TxtSelectionCount" Text="0 aplicativo(s) selecionado(s)" FontSize="12" FontWeight="SemiBold" Foreground="{DynamicResource Fg}"/>
+                    <TextBlock Text="Clique duas vezes em um programa para adicionar e fechar imediatamente." FontSize="11" Foreground="{DynamicResource Muted}" Margin="0,2,0,0"/>
+                </StackPanel>
+            </DockPanel>
+        </Border>
+    </Grid>
+</Window>

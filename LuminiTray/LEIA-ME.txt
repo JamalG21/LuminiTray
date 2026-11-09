@@ -1,0 +1,27 @@
+LUMINI TRAY
+===========
+
+Ferramenta de diagnóstico de hardware e utilitário para a bandeja do Windows:
+informações do sistema, sensores, placa de vídeo, curvas de ventoinhas (fans),
+wallpapers animados e estáticos, overlay de FPS, benchmarks (CPU, GPU, RAM, disco),
+otimização de memória RAM e supressor de ruído com rede neural.
+
+REQUISITOS
+- Windows 10 ou 11, 64 bits. Não precisa instalar o .NET (já vem dentro do .exe).
+- Para temperatura e consumo da CPU, instale o driver PawnIO (uma vez só):
+      winget install namazso.PawnIO
+- Aceite o pedido de administrador ao abrir (necessário para ler os sensores e controlar fans).
+- Se a temperatura/consumo da CPU não aparecerem, o menu lateral mostra o motivo e um
+  botão CORRIGIR, que instala o PawnIO com um clique. Depois feche e abra o programa.
+  Se instalou o PawnIO e mesmo assim não aparecer, reinicie o PC.
+
+COMO USAR
+- Abra o LuminiTray.exe. Na primeira vez ele demora alguns segundos para iniciar.
+- Se o Windows mostrar "O Windows protegeu o computador", clique em "Mais informações"
+  e depois em "Executar assim mesmo" (o programa não tem assinatura digital paga).
+- Overlay: Ctrl + Shift + O liga e desliga.
+
+OBSERVAÇÕES
+- Placas NVIDIA e AMD possuem controle de fans e telemetria de VBIOS/energia.
+- Configurações e histórico ficam em %AppData%\LuminiTray (não vão junto com o .exe).
+- Use os stress tests com o limite de temperatura ligado e boa ventilação.

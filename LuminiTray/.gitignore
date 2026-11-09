@@ -1,0 +1,25 @@
+# Build
+bin/
+obj/
+publish/
+*-dist/
+*.exe
+*.dll
+*.pdb
+
+# IDE
+.vs/
+.vscode/
+*.user
+*.suo
+
+# Local
+*.log
+
+# Test Results & Crash Dumps
+TestResults/
+*.dmp
+*.old
+
+# Drivers seriais embutidos (RESET MAKER): as DLLs fazem parte dos pacotes assinados
+!Drivers/**
