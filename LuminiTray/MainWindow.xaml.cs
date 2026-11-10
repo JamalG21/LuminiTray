@@ -258,7 +258,7 @@ public partial class MainWindow : Window
             if (WindowState == WindowState.Minimized)
             {
                 ReleaseWallpaperGalleryMemory();
-                MiniTaskManagerService.Instance.SetActive(false);
+                if (!MiniTaskManagerWindow.IsWindowVisible) MiniTaskManagerService.Instance.SetActive(false);
                 TrimMemory();
             }
             else if (IsVisible)
@@ -277,7 +277,7 @@ public partial class MainWindow : Window
                 WindowState = WindowState.Minimized;
                 Hide();
                 ReleaseWallpaperGalleryMemory();
-                MiniTaskManagerService.Instance.SetActive(false);
+                if (!MiniTaskManagerWindow.IsWindowVisible) MiniTaskManagerService.Instance.SetActive(false);
                 UpdateSensorPollingState();
                 TrimMemory();
                 Toast("Lumini Tray", "O aplicativo continua rodando na bandeja do sistema.", "\uE718");

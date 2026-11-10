@@ -114,7 +114,10 @@ public sealed class MiniTaskManagerService : IDisposable
             _updateIntervalMs = value;
             lock (_lock)
             {
-                _samplingTimer?.Change(0, _updateIntervalMs);
+                if (_isActive)
+                {
+                    _samplingTimer?.Change(0, _updateIntervalMs);
+                }
             }
         }
     }
@@ -130,10 +133,20 @@ public sealed class MiniTaskManagerService : IDisposable
             _isActive = active;
             if (_isActive)
             {
-                _samplingTimer?.Change(0, _updateIntervalMs);
+                if (!_hasPrevTimes)
+                {
+                    // Duplo tick rápido inicial: leitura imediata da linha de base e segundo tick em 80ms para deltas sem espera perceptível
+                    _samplingTimer?.Change(0, 80);
+                }
+                else
+                {
+                    _samplingTimer?.Change(0, _updateIntervalMs);
+                }
             }
             else
             {
+                _hasPrevTimes = false;
+                _prevProcesses.Clear();
                 _samplingTimer?.Change(Timeout.Infinite, Timeout.Infinite);
             }
         }
@@ -351,6 +364,15 @@ public sealed class MiniTaskManagerService : IDisposable
 
             CurrentSnapshot = snap;
             OnMetricsUpdated?.Invoke(snap);
+
+            // Se completamos a leitura válida inicial com cálculo de deltas, restaura o intervalo de amostragem padrão
+            if (_isActive && totalCpuPct >= 0)
+            {
+                lock (_lock)
+                {
+                    _samplingTimer?.Change(_updateIntervalMs, _updateIntervalMs);
+                }
+            }
         }
         catch (Exception ex)
         {

@@ -24,6 +24,7 @@ public partial class MiniTaskManagerWindow : Window
 {
     private static MiniTaskManagerWindow? _instance;
     public static MiniTaskManagerWindow Instance => _instance ??= new MiniTaskManagerWindow();
+    public static bool IsWindowVisible => _instance != null && _instance.IsVisible;
 
     private readonly MiniTaskManagerService _service = MiniTaskManagerService.Instance;
     private int _activeMetric = 0; // 0: CPU, 1: GPU, 2: RAM, 3: DISK
@@ -90,15 +91,25 @@ public partial class MiniTaskManagerWindow : Window
 
         IsVisibleChanged += (_, _) =>
         {
-            if (IsVisible && _hook == IntPtr.Zero)
+            if (IsVisible)
             {
-                _hook = SetWinEventHook(EVENT_SYSTEM_FOREGROUND, EVENT_SYSTEM_FOREGROUND, IntPtr.Zero, _onForeground, 0, 0, WINEVENT_OUTOFCONTEXT);
-                TrackGame(GetForegroundWindow());
-                KeepOnTop();
+                _service.SetActive(true);
+                if (_hook == IntPtr.Zero)
+                {
+                    _hook = SetWinEventHook(EVENT_SYSTEM_FOREGROUND, EVENT_SYSTEM_FOREGROUND, IntPtr.Zero, _onForeground, 0, 0, WINEVENT_OUTOFCONTEXT);
+                    TrackGame(GetForegroundWindow());
+                    KeepOnTop();
+                }
+
+                if (_service.CurrentSnapshot != null && _service.CurrentSnapshot.TotalCpu >= 0)
+                {
+                    Service_OnMetricsUpdated(_service.CurrentSnapshot);
+                }
             }
-            else if (!IsVisible)
+            else
             {
                 Unhook();
+                _service.SetActive(false);
             }
         };
 
@@ -106,7 +117,9 @@ public partial class MiniTaskManagerWindow : Window
         {
             _badgeTimer?.Stop();
             Unhook();
+            _service.SetActive(false);
             _service.OnMetricsUpdated -= Service_OnMetricsUpdated;
+            _instance = null;
         };
 
         _service.OnMetricsUpdated += Service_OnMetricsUpdated;

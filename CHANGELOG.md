@@ -1,7 +1,25 @@
-﻿# Changelog - Lumini Tray
+# Changelog - Lumini Tray
 
 Todas as alterações notáveis deste projeto serão documentadas neste arquivo.
 O formato é baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/), e este projeto adere ao [Semantic Versioning](https://semver.org/lang/pt-BR/).
+
+## [0.24.2] - 2026-11-09
+
+### 🛠️ Correções
+- **Despertar Automático do Mini Gerenciador de Tarefas:**
+  - Corrigido problema em que o Mini Gerenciador de Tarefas ficava congelado exibindo `--%` e `"Coletando..."` indefinidamente ao ser aberto.
+  - O evento `IsVisibleChanged` da janela flutuante (`MiniTaskManagerWindow`) agora ativa e desativa automaticamente o timer de amostragem em nível de kernel (`MiniTaskManagerService.Instance.SetActive`), despertando a coleta no momento em que a janela fica visível.
+- **Proteção do Monitoramento com MainWindow Minimizada:**
+  - Ao minimizar a janela principal ou ocultá-la para a bandeja do sistema durante partidas ou tarefas em primeiro plano, o serviço agora valida se a janela flutuante está ativa (`MiniTaskManagerWindow.IsWindowVisible`), impedindo o cancelamento indevido da coleta de métricas em tempo real.
+- **Ciclo de Vida Limpo de Janela WPF (`Closed`):**
+  - Implementado reset de instância (`_instance = null`) e desligamento seguro de ganchos WinEvent e assinaturas de métricas no evento `Closed`, garantindo que o widget possa ser reaberto sem exceções.
+
+### ⚡ Performance & Otimização
+- **Inicialização Ultra-Rápida em Duplo Tick (Two-Tick Startup):**
+  - Ao abrir o Mini Gerenciador de Tarefas, uma primeira amostra de baseline é capturada em tempo zero (`dueTime: 0`) seguida de um segundo pulso em apenas 80ms para computação imediata dos deltas de CPU e I/O de disco.
+  - Elimina qualquer atraso perceptível de 1 a 3 segundos de espera visual, preenchendo todos os dados reais quase que instantaneamente ao abrir a HUD flutuante.
+- **Repouso Rigoroso do Timer (0.0% CPU em Ocultação):**
+  - Ao fechar ou ocultar a janela flutuante (`Hide()`), o timer de amostragem entra imediatamente em repouso absoluto (`Timeout.Infinite`), descarregando deltas acumulados e garantindo zero consumo de ciclos de CPU em segundo plano.
 
 ## [0.24.1] - 2026-11-09
 

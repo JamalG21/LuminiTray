@@ -12,9 +12,9 @@
     <AssemblyName>LuminiTray</AssemblyName>
     <Product>Lumini Tray</Product>
     <Title>Lumini Tray</Title>
-    <Version>0.24.1</Version>
-    <AssemblyVersion>0.24.1.0</AssemblyVersion>
-    <FileVersion>0.24.1.0</FileVersion>
+    <Version>0.24.2</Version>
+    <AssemblyVersion>0.24.2.0</AssemblyVersion>
+    <FileVersion>0.24.2.0</FileVersion>
     <!-- Sempre otimizado: o LUMINI BENCH e os stress tests precisam do JIT otimizado tambÃ©m em Debug -->
     <Optimize>true</Optimize>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
