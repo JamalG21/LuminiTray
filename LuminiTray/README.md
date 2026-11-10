@@ -56,23 +56,6 @@
 
 ---
 
-## 🛠️ Como Compilar a Partir do Código-Fonte
-
-### Requisitos:
-- **Windows 10 ou 11 (64 bits)**
-- **.NET 8.0 SDK** (com suporte a Desktop WPF)
-
-### Compilando o Projeto:
-```powershell
-# Restaurar dependências e compilar
-dotnet build LuminiTray/LuminiTray.csproj -c Release
-
-# Publicar executável único distribuível (Single-File)
-dotnet publish LuminiTray/LuminiTray.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -o ./dist
-```
-
----
-
 ## 📄 Licença
 
 Distribuído sob a licença de código aberto. Consulte o arquivo [CHANGELOG.md](CHANGELOG.md) para o histórico completo de versões e melhorias.

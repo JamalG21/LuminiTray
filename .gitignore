@@ -9,7 +9,6 @@ dist/
 *.old
 *.suo
 *.user
-*.bat
 .vs/
 .vscode/
 

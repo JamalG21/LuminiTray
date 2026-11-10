@@ -6,7 +6,6 @@ publish/
 *.exe
 *.dll
 *.pdb
-*.bat
 
 # IDE
 .vs/
