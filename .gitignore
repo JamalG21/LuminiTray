@@ -2,6 +2,9 @@
 **/bin/
 **/obj/
 **/TestResults/
+dist/
+**/dist/
+**/publish/
 *.dmp
 *.old
 *.suo
@@ -15,3 +18,4 @@ lively-*/
 *.zip
 *.7z
 *.rar
+!LuminiTray/Assets/**

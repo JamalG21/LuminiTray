@@ -21,5 +21,7 @@ TestResults/
 *.dmp
 *.old
 
-# Drivers seriais embutidos (RESET MAKER): as DLLs fazem parte dos pacotes assinados
+# Drivers e bibliotecas nativas essenciais para compilação e execução
 !Drivers/**
+!Native/**
+!Assets/**

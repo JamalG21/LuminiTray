@@ -73,17 +73,6 @@ dotnet publish LuminiTray/LuminiTray.csproj -c Release -r win-x64 --self-contain
 
 ---
 
-## 🌟 Créditos e Agradecimentos Open Source
-
-O Lumini Tray utiliza e se inspira em excelentes projetos da comunidade de código aberto:
-- **[LibreHardwareMonitor](https://github.com/LibreHardwareMonitor/LibreHardwareMonitor)** — Monitoramento de hardware e sensores.
-- **[Lively Wallpaper](https://github.com/rocksdanister/lively)** — Conceitos de acoplamento de janelas na Área de Trabalho do Windows.
-- **[mpv](https://github.com/mpv-player/mpv)** — Motor de reprodução e decodificação de vídeo leve.
-- **[RNNoise](https://github.com/xiph/rnnoise)** — Supressão de ruído baseada em aprendizado profundo.
-- **[Windhawk / MicroManager](https://github.com/ramensoftware/windhawk-mods)** — Amostragem de processos em nível de kernel.
-
----
-
 ## 📄 Licença
 
 Distribuído sob a licença de código aberto. Consulte o arquivo [CHANGELOG.md](CHANGELOG.md) para o histórico completo de versões e melhorias.

@@ -21,12 +21,10 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - uses: actions/setup-dotnet@v4
-        with:
-          dotnet-version: '8.0.x'
-
       - name: Publicar (arquivo único, com o .NET embutido)
-        run: dotnet publish LuminiTray/LuminiTray.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -p:DebugType=None -o dist -nologo
+        shell: pwsh
+        run: |
+          dotnet publish LuminiTray/LuminiTray.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -p:DebugType=None -o dist -nologo
 
       - name: Montar pacote
         shell: pwsh
@@ -41,8 +39,7 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          $sha = "$env:GITHUB_SHA".Substring(0, 7)
-          gh release delete latest --cleanup-tag --yes
+          try { gh release delete latest --cleanup-tag --yes } catch { }
           gh release create latest LuminiTray.zip dist/LuminiTray.exe --target $env:GITHUB_SHA --latest --title "Lumini Tray (versão mais recente)" --notes-file CHANGELOG.md
 
       - name: Release da versão (tag)
@@ -51,4 +48,4 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          gh release create $env:GITHUB_REF_NAME LuminiTray.zip dist/LuminiTray.exe --title "Lumini Tray $env:GITHUB_REF_NAME" --generate-notes --latest=false
+          gh release create $env:GITHUB_REF_NAME LuminiTray.zip dist/LuminiTray.exe --title "Lumini Tray $env:GITHUB_REF_NAME" --notes-file CHANGELOG.md --latest=true

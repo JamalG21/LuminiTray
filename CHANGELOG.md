@@ -70,7 +70,7 @@ O formato é baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.
 
 ### 🚀 Adicionado & Aprimorado
 - **Wallpapers Animados e Estáticos Multi-Monitor Independentes:**
-  - Desacoplada a alternância de monitores no dropdown (CmbWallpaperMonitor). Mudar de tela na interface agora atua exclusivamente como seletor da tela em foco para prévia e configuração, sem nunca fechar, reiniciar ou mover o wallpaper que já estiver rodando nos demais monitores.
+  - Desacoplada a altern�ncia de monitores no dropdown (CmbWallpaperMonitor). Mudar de tela na interface agora atua exclusivamente como seletor da tela em foco para pr�via e configura��o, sem nunca fechar, reiniciar ou mover o wallpaper que j� estiver rodando nos demais monitores.
   - Implementado PlayFileOnMonitor(filePath, targetDeviceId) e StopMonitor(targetDeviceId) em LivelyWallpaperService.cs, permitindo atribuir vídeos animados diferentes para cada monitor conectado (ex: Vídeo A no Monitor 1 e Vídeo B no Monitor 2) ou aplicar em todos simultaneamente.
   - Adicionado suporte a persistência por monitor via AppSettings.LivelyWallpaperMonitorPaths e AppSettings.StaticWallpaperMonitorPaths. Ao reiniciar o aplicativo, cada tela retoma seu próprio wallpaper automaticamente.
   - O botão "Desativar" encerra de forma unificada o motor de wallpaper em todos os monitores de uma só vez, restaurando a Área de Trabalho limpa.
@@ -101,7 +101,7 @@ O formato é baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.
 
 ### 🛠️ Correções
 - **Eliminação de Ícones Duplicados de Wallpaper na Bandeja:**
-  - Cache de instâncias Drawing.Icon para estados de reprodução e pausa em SystemTrayManager.cs, evitando a emissão contínua de novos handles e recriação redundante de ícones.
+  - Cache de inst�ncias Drawing.Icon para estados de reprodu��o e pausa em SystemTrayManager.cs, evitando a emiss�o cont�nua de novos handles e recria��o redundante de �cones.
   - No encerramento da aplicação (PerformFullExit e ExecutePreShutdownCleanup), implementado bombeamento síncrono da fila de mensagens via Application.DoEvents(), garantindo que o Windows Explorer receba e processe a remoção de todos os ícones da bandeja (NIM_DELETE) antes da finalização do processo.
 
 ## [0.22.8] - 2026-11-08
@@ -142,7 +142,7 @@ O formato é baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.
 
 ### 🛠️ Correções
 - **Auto-Limpeza de Ícones Fantasmas na Bandeja do Windows:**
-  - Implementado SystemTrayManager.RefreshNotificationArea(), enviando varredura silenciosa de mensagens de mouse na barra de tarefas e na janela de overflow da bandeja do Windows para expurgar instantaneamente ícones zumbis deixados por instâncias finalizadas de forma não graciosa (ex: 	askkill /f).
+  - Implementado SystemTrayManager.RefreshNotificationArea(), enviando varredura silenciosa de mensagens de mouse na barra de tarefas e na janela de overflow da bandeja do Windows para expurgar instantaneamente �cones zumbis deixados por inst�ncias finalizadas de forma n�o graciosa (ex: 	askkill /f).
 - **Sintaxe e Fechamento de Chaves em LivelyWallpaperService.cs:**
   - Corrigido ponto de encerramento redundante no método ResumeAllInstances(), restabelecendo o fechamento íntegro da classe.
 
@@ -151,9 +151,9 @@ O formato é baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.
 ### 🚀 Adicionado & Aprimorado
 - **Pausa Automática Confiável em Tela Cheia e Modo Gamer (Papel de Parede Animado):**
   - Implementada a resolução da janela raiz de nível superior (`GA_ROOT`) em `LivelyWallpaperService.cs`, garantindo a detecção precisa de jogos (Unreal Engine, Unity, CEF/Chromium) mesmo quando o foco de entrada está em controles ou subjanelas filhas internas.
-  - Expandida a margem de tolerância da área de cobertura para `±12px`, acomodando com precisão margens invisíveis do Desktop Window Manager (DWM) e escalonamentos de DPI fracionários em monitores de alta resolução.
+  - Expandida a margem de toler�ncia da �rea de cobertura para `�12px`, acomodando com precis�o margens invis�veis do Desktop Window Manager (DWM) e escalonamentos de DPI fracion�rios em monitores de alta resolu��o.
   - Reduzido o intervalo do timer de detecção de jogos de 1000 ms para **500 ms**, proporcionando resposta ágil e imperceptível na pausa e retomada dos papéis de parede.
-  - O Modo Gamer agora pausa e congela globalmente todas as instâncias de papel de parede ativo através de `PauseAllInstances()`, eliminando 100% da contenção de GPU/VRAM e prevenindo quedas de taxa de quadros e engasgos (stuttering) durante os jogos.
+  - O Modo Gamer agora pausa e congela globalmente todas as inst�ncias de papel de parede ativo atrav�s de `PauseAllInstances()`, eliminando 100% da conten��o de GPU/VRAM e prevenindo quedas de taxa de quadros e engasgos (stuttering) durante os jogos.
 
 ### 🛠️ Correções
 - **Correção de Ícone Duplicado de Wallpaper na Bandeja do Sistema:**
@@ -183,7 +183,7 @@ O formato é baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.
 ### 🚀 Adicionado & Aprimorado
 - **Pausa Inteligente por Monitor em Tela Cheia / Jogos:** A rotina `GameDetectionCheck` agora detecta com precisão geométrica em qual monitor a janela em foco está posicionada (`MonitorFromWindow` e `GetMonitorInfo`). Em configurações com múltiplos monitores, apenas a tela coberta por um jogo ou programa maximizado é pausada, mantendo o wallpaper animado reproduzindo com fluidez nos demais monitores livres.
 - **Navegação de Wallpapers Estáticos (Anterior e Próximo):** Adicionados botões visuais `⏮ ANTERIOR` e `⏭ PRÓXIMO` na barra de controle de papéis de parede estáticos no Lumini Tray, permitindo navegar sequencialmente pelas imagens da pasta e aplicar no monitor individual selecionado ou em todos simultaneamente.
-- **Áudio Dinâmico no Player:** Implementada verificação inteligente de som: quando o slider de volume está em 0%, o MPV é inicializado com `--no-audio` (eliminando buffers e processamento de áudio por completo); se o usuário aumentar o volume, o áudio é restaurado dinamicamente no nível escolhido.
+- **�udio Din�mico no Player:** Implementada verifica��o inteligente de som: quando o slider de volume est� em 0%, o MPV � inicializado com `--no-audio` (eliminando buffers e processamento de �udio por completo); se o usu�rio aumentar o volume, o �udio � restaurado dinamicamente no n�vel escolhido.
 
 ### ⚡ Performance & Otimização
 - **Otimização Avançada de Memória do MPV:**
@@ -205,7 +205,7 @@ O formato é baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.
   Todas as subtarefas contam com vinculação estrita de HWND Owner e podem ser encerradas individualmente pelo usuário diretamente pelo Gerenciador de Tarefas ("Finalizar Tarefa").
 
 ### ⚡ Performance & Otimização
-- **Redução Drástica do Consumo de Memória RAM do MPV (~85% de economia):** Otimização profunda dos parâmetros de execução do player MPV para papéis de parede animados:
+- **Redu��o Dr�stica do Consumo de Mem�ria RAM do MPV (~85% de economia):** Otimiza��o profunda dos par�metros de execu��o do player MPV para pap�is de parede animados:
   - Cache demuxer desativado para arquivos locais (`--cache=no`), limitando buffers de leitura para 8 MB (`--demuxer-max-bytes=8M`, `--demuxer-max-back-bytes=2M`, `--demuxer-readahead-secs=1`).
   - Limitação de threads de decodificação de vídeo (`--vd-lavc-threads=2`) e buffer de áudio ultracurto (`--audio-buffer=0.1`).
   - Desativação de caches redundantes de shader GPU e perfis ICC (`--gpu-shader-cache=no`, `--icc-cache=no`, `--video-latency-hacks=yes`).
@@ -230,7 +230,7 @@ O formato é baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.
 
 ### ⚡ Performance & Otimização
 - **Transição Atômica no Player MPV:** Envio de comandos de carga de vídeo agora utiliza `["loadfile", path, "replace"]` serializado via JSON de forma atômica e segura contra caminhos com caracteres especiais, acentuações e espaços.
-- **Persistência Completa de Playlist:** A lista de papéis de parede animados agora é persistida em `AppSettings.LivelyWallpaperPlaylist`, garantindo restauração instantânea de todos os vídeos e inicialização imediata do timer de rotação após reiniciar o app.
+- **Persist�ncia Completa de Playlist:** A lista de pap�is de parede animados agora � persistida em `AppSettings.LivelyWallpaperPlaylist`, garantindo restaura��o instant�nea de todos os v�deos e inicializa��o imediata do timer de rota��o ap�s reiniciar o app.
 
 ### 🛠️ Correções
 - **Troca Automática de Wallpapers (Slideshow / Intervalo):** Corrigido o problema onde a rotação periódica não disparava devido à playlist conter apenas o vídeo ativo na inicialização. A rotação agora reinicia e sincroniza dinamicamente sempre que novos vídeos são detectados ou adicionados.
@@ -249,7 +249,7 @@ O formato é baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.
   - Substituída a atribuição forçada de tela cheia global (`0, 0, w, h`) pela conversão exata via `MapWindowPoints(IntPtr.Zero, targetParent, ref rc, 2)`.
   - Ao selecionar o **Monitor 1** (1920x1080 horizontal), o vídeo é renderizado **estritamente dentro das coordenadas do Monitor 1**, eliminando o esticamento que cortava o vídeo sobre o monitor secundário vertical (768x1366). O segundo monitor mantém intacto o papel de parede nativo do Windows.
   - Ao selecionar o **Monitor 2** (768x1366), o vídeo é aplicado exclusivamente na tela vertical.
-  - Ao selecionar **Todos os Monitores**, respeita o modo Estender (*Span*) sobre a largura virtual total ou clona/duplica instâncias independentes em cada tela.
+  - Ao selecionar **Todos os Monitores**, respeita o modo Estender (*Span*) sobre a largura virtual total ou clona/duplica inst�ncias independentes em cada tela.
   - Removido o bloqueio que impedia a reconfiguração dos monitores em tempo real, permitindo alternar de monitor ou estilo instantaneamente.
 
 ## [0.21.9] - 2026-11-07
@@ -278,9 +278,9 @@ O formato é baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.
 - **Novo Motor de Vídeo Nativo MPV Player com Aceleração por Hardware (Direct3D 11 / Vulkan):**
   - **Adoção do Motor Nativo Oficial do Lively Wallpaper:** Substituição do player WPF `MediaElement` (incompatível com o compositor DWM DirectComposition no Windows 11 Raised Desktop em processos cruzados) pelo motor nativo de alto desempenho **MPV Player v0.41.0**.
   - **Container Nativo Win32/WinForms (`LivelyWallpaperForm`):** Criação de um container Win32 puro e sem bordas (`WS_EX_TOOLWINDOW`, `WS_EX_NOACTIVATE`) acoplado diretamente sob a hierarquia do Desktop (`Progman` / `WorkerW`). O MPV é embutido diretamente via argumento `--wid=<HWND>`, garantindo 100% de responsividade dos atalhos e ícones da Área de Trabalho.
-  - **Comunicação Ultrarrápida e Bidirecional via IPC Named Pipe:** Controle instantâneo de reprodução, pause/play, carregamento de novos arquivos (`loadfile`), ajuste de volume e encerramento através de canal IPC assíncrono (`--input-ipc-server`).
+  - **Comunica��o Ultrarr�pida e Bidirecional via IPC Named Pipe:** Controle instant�neo de reprodu��o, pause/play, carregamento de novos arquivos (`loadfile`), ajuste de volume e encerramento atrav�s de canal IPC ass�ncrono (`--input-ipc-server`).
   - **Pacote 100% Autônomo e Offline:** Binários nativos do MPV (`mpv.exe` e `vulkan-1.dll`) incluídos diretamente no projeto em `Assets\Plugins\mpv`, com suporte a execução automática a partir do diretório do aplicativo ou `%APPDATA%\LuminiTray\plugins\mpv`.
-  - **Controle Dinâmico de Volume e Modo Gamer na Interface:** Adicionados controles dedicados no card de Wallpapers Animados da janela principal: slider de volume (0 a 100%, mudo por padrão a 0%) e alternador de Modo Gamer com pausa automática durante jogos ou janelas em tela cheia (0% de CPU/GPU).
+  - **Controle Din�mico de Volume e Modo Gamer na Interface:** Adicionados controles dedicados no card de Wallpapers Animados da janela principal: slider de volume (0 a 100%, mudo por padr�o a 0%) e alternador de Modo Gamer com pausa autom�tica durante jogos ou janelas em tela cheia (0% de CPU/GPU).
   - **Detecção Automática de Vídeos em Pastas de Wallpapers:** A galeria agora varre pastas selecionadas pelo usuário procurando por arquivos de vídeo (`.mp4`, `.webm`, `.mkv`, `.avi`, `.wmv`) e os adiciona automaticamente à playlist do motor Lively.
 
 ## [0.21.7] - 2026-11-07
@@ -289,7 +289,7 @@ O formato é baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.
 - **Correção da Renderização de Wallpapers Animados no Desktop (Windows 11 Moderno e Multimonitor):**
   - **Correção do Posicionamento de Coordenadas de Janela Filha:** Resolvido bug crítico em configurações multimonitor onde a passagem de coordenadas virtuais globais (VirtualScreenLeft negativo, ex: -768px) deslocava a janela filha do wallpaper para fora da área visível (-1536px). O posicionamento agora é estritamente baseado no cliente do container (, 0, width, height), preenchendo todos os monitores com alinhamento perfeito.
   - **Garantia de WS_EX_LAYERED no Windows 11 Raised Desktop:** Corrigido problema onde a chamada SetParent(hwnd, progman) resetava os estilos da janela e removia WS_EX_LAYERED. Como o Progman no Windows 11 possui WS_EX_NOREDIRECTIONBITMAP, o compositor DWM ignorava janelas não-camadas. A camada agora é reforçada e mantida após o SetParent, acompanhada de SetLayeredWindowAttributes(alpha=255) e SWP_FRAMECHANGED.
-  - **Persistência de Reprodução no MediaElement:** Configurado UnloadedBehavior="Manual" e ScrubbingEnabled="True" no LivelyWallpaperWindow.xaml, evitando que o reparenting Win32 cause o encerramento prematuro do vídeo e garantindo exibição instantânea do primeiro quadro.
+  - **Persist�ncia de Reprodu��o no MediaElement:** Configurado UnloadedBehavior="Manual" e ScrubbingEnabled="True" no LivelyWallpaperWindow.xaml, evitando que o reparenting Win32 cause o encerramento prematuro do v�deo e garantindo exibi��o instant�nea do primeiro quadro.
   - **Exclusão do Próprio Processo no Detector de Jogos:** Ajustado o GameDetectionCheck para verificar o PID da janela em foco. Janelas pertencentes ao próprio Lumini Tray agora são ignoradas, evitando pausas indevidas enquanto o usuário configura papéis de parede no aplicativo.
   - **Prompt Automático ao Ativar Playlist Vazia:** Ao clicar em ativar papéis de parede animados sem nenhum arquivo configurado, o sistema abre automaticamente o seletor de vídeos (.mp4, .webm, .wmv, .avi) e fornece feedback via Toast em caso de incompatibilidades de codec.
 ## [0.21.6] - 2026-11-07
@@ -301,7 +301,7 @@ O formato é baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.
   - **Compatibilidade Dual:** Suporte automático tanto ao Windows 11 moderno (22H2/23H2/24H2/26H2) quanto ao Windows 10 clássico via injeção segura de 0x052C (0xD, 0x1).
   - **Player Acelerado por GPU (LivelyWallpaperWindow):** Baseado no Lively.Player.Wmf com decodificação por hardware, loop contínuo e áudio mudo por padrão (0% de volume para evitar ruídos indesejados).
   - **Modo Gamer / Detecção de Tela Cheia:** Monitor inteligente de janelas em primeiro plano baseado no WindowClassExclusions do Lively, pausando a reprodução automaticamente durante partidas (0% CPU/GPU) e retomando ao retornar ao Desktop.
-  - **Controle Dinâmico na Bandeja do Sistema:** Ícone exclusivo na bandeja com opções de Play/Pausar, Próximo, Anterior, Intervalo de rotação e Desativação completa.
+  - **Controle Din�mico na Bandeja do Sistema:** �cone exclusivo na bandeja com op��es de Play/Pausar, Pr�ximo, Anterior, Intervalo de rota��o e Desativa��o completa.
   - **Consumo Zero em Repouso:** Recurso desativado por padrão, sem alocação de memória ou CPU até que o usuário decida ativá-lo.
 ## [0.21.5] - 2026-11-07
 
@@ -324,682 +324,682 @@ O formato é baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.
 
 ## [0.21.3] - 2026-11-07
 
-### ðŸš€ Adicionado & Aprimorado
+### 🚀 Adicionado & Aprimorado
 - **Wallpapers Animados Leves Acelerados por GPU (WorkerW):**
-  - Implementado motor de papÃ©is de parede animados (AnimatedWallpaperService / AnimatedWallpaperWindow) com reproduÃ§Ã£o em loop contÃ­nuo de vÃ­deos (.mp4, .webm) acoplados diretamente atrÃ¡s dos Ã­cones da Ã¡rea de trabalho do Windows Explorer.
-  - **PadrÃ£o 100% Desativado para MÃ­nimo Consumo:** O recurso permanece completamente desligado por padrÃ£o, sem iniciar janelas ou timers de vÃ­deo em segundo plano, garantindo zero consumo adicional de memÃ³ria RAM e GPU.
-  - **Modo Gamer / Auto-Pause Inteligente:** DetecÃ§Ã£o contÃ­nua de jogos em tela cheia e aplicativos de alto desempenho 3D, pausando a decodificaÃ§Ã£o do vÃ­deo instantaneamente e garantindo **0% de uso de CPU e GPU** durante partidas.
-  - Suporte para adicionar vÃ­deos locais do computador atravÃ©s do botÃ£o + ADICIONAR VÃDEO (.MP4).
+  - Implementado motor de papéis de parede animados (AnimatedWallpaperService / AnimatedWallpaperWindow) com reprodução em loop contínuo de vídeos (.mp4, .webm) acoplados diretamente atrás dos ícones da área de trabalho do Windows Explorer.
+  - **Padrão 100% Desativado para Mínimo Consumo:** O recurso permanece completamente desligado por padrão, sem iniciar janelas ou timers de vídeo em segundo plano, garantindo zero consumo adicional de memória RAM e GPU.
+  - **Modo Gamer / Auto-Pause Inteligente:** Detecção contínua de jogos em tela cheia e aplicativos de alto desempenho 3D, pausando a decodificação do vídeo instantaneamente e garantindo **0% de uso de CPU e GPU** durante partidas.
+  - Suporte para adicionar vídeos locais do computador através do botão + ADICIONAR VÍDEO (.MP4).
 - **Controle Completo do Wallpaper na Bandeja do Sistema (System Tray):**
-  - **Ãcone Condicional Exclusivo:** O Ã­cone do Wallpaper sÃ³ aparece na bandeja do sistema quando o recurso de wallpapers animados/rotaÃ§Ã£o estiver ativo.
+  - **Ícone Condicional Exclusivo:** O ícone do Wallpaper só aparece na bandeja do sistema quando o recurso de wallpapers animados/rotação estiver ativo.
   - Menu de contexto na bandeja:
-    - â¯ **Play / Pausar AnimaÃ§Ã£o**
-    - â­ **PrÃ³ximo Wallpaper**
-    - â® **Wallpaper Anterior**
-    - â± **Intervalo de Troca AutomÃ¡tica** (Desligado, 5 min, 15 min, 30 min, 1 hora, 2 horas)
-    - âŒ **Desativar Wallpaper (Sair da Bandeja):** Encerra a reproduÃ§Ã£o do vÃ­deo, restaura o papel de parede original do Windows e remove o Ã­cone de wallpaper da bandeja.
-- **Sistema de RotaÃ§Ã£o AutomÃ¡tica PeriÃ³dica (Slideshow):**
-  - Agendador contÃ­nuo em segundo plano para alternar wallpapers automaticamente conforme o intervalo configurado pelo usuÃ¡rio.
-  - NavegaÃ§Ã£o fluida entre os papÃ©is de parede da biblioteca e pasta ativa.
+    - ⏯ **Play / Pausar Animação**
+    - ⏭ **Próximo Wallpaper**
+    - ⏮ **Wallpaper Anterior**
+    - ⏱ **Intervalo de Troca Automática** (Desligado, 5 min, 15 min, 30 min, 1 hora, 2 horas)
+    - ❌ **Desativar Wallpaper (Sair da Bandeja):** Encerra a reprodução do vídeo, restaura o papel de parede original do Windows e remove o ícone de wallpaper da bandeja.
+- **Sistema de Rotação Automática Periódica (Slideshow):**
+  - Agendador contínuo em segundo plano para alternar wallpapers automaticamente conforme o intervalo configurado pelo usuário.
+  - Navegação fluida entre os papéis de parede da biblioteca e pasta ativa.
 
-### âš¡ Performance & Estabilidade
-- **CorreÃ§Ã£o Definitiva do Timer de OtimizaÃ§Ã£o em Segundo Plano (Bandeja):**
-  - Identificada e corrigida a causa da impressÃ£o de que o timer de otimizaÃ§Ã£o parava com o aplicativo minimizado na bandeja:
-    - SubstituiÃ§Ã£o do DispatcherTimer do WPF por System.Threading.Timer executado na ThreadPool nativa do .NET, imune Ã  suspensÃ£o ou despriorizaÃ§Ã£o de filas de janelas ocultas no Windows.
-    - SincronizaÃ§Ã£o imediata do status e resumo (UpdateAutoOptStatusDisplay e UpdateRamStatus) ao restaurar a janela a partir da bandeja do sistema.
-    - NotificaÃ§Ã£o discreta via Toast quando o ciclo de otimizaÃ§Ã£o programado Ã© executado com o programa minimizado.
+### ⚡ Performance & Estabilidade
+- **Correção Definitiva do Timer de Otimização em Segundo Plano (Bandeja):**
+  - Identificada e corrigida a causa da impressão de que o timer de otimização parava com o aplicativo minimizado na bandeja:
+    - Substituição do DispatcherTimer do WPF por System.Threading.Timer executado na ThreadPool nativa do .NET, imune à suspensão ou despriorização de filas de janelas ocultas no Windows.
+    - Sincronização imediata do status e resumo (UpdateAutoOptStatusDisplay e UpdateRamStatus) ao restaurar a janela a partir da bandeja do sistema.
+    - Notificação discreta via Toast quando o ciclo de otimização programado é executado com o programa minimizado.
 ## [0.21.2] - 2026-11-07
 
-### ðŸš€ Adicionado & Aprimorado
-- **Busca Sob Demanda de Programas Instalados e ExecutÃ¡veis do Sistema para Blindagem / ExclusÃ£o:**
+### 🚀 Adicionado & Aprimorado
+- **Busca Sob Demanda de Programas Instalados e Executáveis do Sistema para Blindagem / Exclusão:**
   - **Motor Sob Demanda Eficiente (AppScannerService):**
-    - Executa exclusivamente quando acionado pelo usuÃ¡rio, com zero consumo em segundo plano e sem timers contÃ­nuos.
-    - Varre de forma assÃ­ncrona e ultrarrÃ¡pida processos ativos na sessÃ£o (desconsiderando processos crÃ­ticos do Windows), programas instalados no Registro (Uninstall de 64-bit e 32-bit), softwares registrados em App Paths, atalhos do Menu Iniciar e Desktop (.lnk), e jogos de PC (Steam, Epic Games, GOG, Ubisoft).
-    - DeduplicaÃ§Ã£o inteligente e resoluÃ§Ã£o de Ã­cones oficiais extraÃ­dos diretamente dos executÃ¡veis.
+    - Executa exclusivamente quando acionado pelo usuário, com zero consumo em segundo plano e sem timers contínuos.
+    - Varre de forma assíncrona e ultrarrápida processos ativos na sessão (desconsiderando processos críticos do Windows), programas instalados no Registro (Uninstall de 64-bit e 32-bit), softwares registrados em App Paths, atalhos do Menu Iniciar e Desktop (.lnk), e jogos de PC (Steam, Epic Games, GOG, Ubisoft).
+    - Deduplicação inteligente e resolução de ícones oficiais extraídos diretamente dos executáveis.
   - **Seletor Visual Moderno (AppPickerWindow):**
     - Nova janela modal Lumini Tray com suporte total a tema escuro/claro e carregamento pontual sob demanda.
-    - Barra de busca em tempo real com filtragem instantÃ¢nea por nome amigÃ¡vel ou nome do executÃ¡vel (.exe).
-    - Abas de filtragem rÃ¡pida: *Todos*, *âš¡ Em ExecuÃ§Ã£o*, *ðŸŽ® Jogos* e *ðŸ’» Programas Instalados*.
-    - SeleÃ§Ã£o mÃºltipla com checkboxes para blindar dezenas de jogos e aplicativos simultaneamente em um Ãºnico clique (+ ADICIONAR SELECIONADOS).
-    - Suporte a duplo clique para adiÃ§Ã£o imediata e botÃ£o ðŸ“ PROCURAR .EXE... para seleÃ§Ã£o manual de qualquer arquivo no disco.
-    - SinalizaÃ§Ã£o automÃ¡tica de aplicativos jÃ¡ blindados (âœ” JÃ¡ Blindado) para evitar duplicaÃ§Ãµes.
-  - **IntegraÃ§Ã£o nas Listas de ExclusÃ£o da AplicaÃ§Ã£o:**
-    - **LUMINI OTIMIZA (Lacuna de ExclusÃ£o):** Novo botÃ£o de destaque ðŸ” ESCOLHER DA LISTA DE PROGRAMAS... para blindar processos contra encerramento automÃ¡tico sem precisar digitar manualmente o nome do .exe.
-    - **ConfiguraÃ§Ãµes de Ãudio (Barra de Tarefas):** BotÃ£o ðŸ” Escolher da Lista... na lista de exclusÃ£o do player de Ã¡udio, permitindo proteger jogos e comunicadores do controle de scroll.
+    - Barra de busca em tempo real com filtragem instantânea por nome amigável ou nome do executável (.exe).
+    - Abas de filtragem rápida: *Todos*, *⚡ Em Execução*, *🎮 Jogos* e *💻 Programas Instalados*.
+    - Seleção múltipla com checkboxes para blindar dezenas de jogos e aplicativos simultaneamente em um único clique (+ ADICIONAR SELECIONADOS).
+    - Suporte a duplo clique para adição imediata e botão 📁 PROCURAR .EXE... para seleção manual de qualquer arquivo no disco.
+    - Sinalização automática de aplicativos já blindados (✔ Já Blindado) para evitar duplicações.
+  - **Integração nas Listas de Exclusão da Aplicação:**
+    - **LUMINI OTIMIZA (Lacuna de Exclusão):** Novo botão de destaque 🔍 ESCOLHER DA LISTA DE PROGRAMAS... para blindar processos contra encerramento automático sem precisar digitar manualmente o nome do .exe.
+    - **Configurações de Áudio (Barra de Tarefas):** Botão 🔍 Escolher da Lista... na lista de exclusão do player de áudio, permitindo proteger jogos e comunicadores do controle de scroll.
 ## [0.21.1] - 2026-11-07
 
-### ðŸŽ¨ Identidade Visual & Rebranding Completo (100% Lumini)
-- **SubstituiÃ§Ã£o Integral de Todas as Abas, MÃ³dulos, RelatÃ³rios e Funcionalidades:**
-  - **Menu Lateral e CabeÃ§alhos:** Atualizadas todas as categorias e tÃ­tulos de abas para `LUMINI INFORMAÃ‡Ã•ES`, `LUMINI JOGOS`, `LUMINI DESEMPENHO`, `LUMINI PERIFÃ‰RICOS`, `LUMINI FERRAMENTAS`, `LUMINI MAKER`, `LUMINI BENCH`, `LUMINI OTIMIZA`, `LUMINI OC`, `LUMINI DRIVER & DDU`, `LUMINI WALLPAPERS`, `LUMINI INTEGRAÃ‡ÃƒO` e `INSTALAR BIBLIOTECA OFICIAL LUMINI`.
-  - **RelatÃ³rios HTML e PNG:** O gerador de diagnÃ³sticos (`ReportBuilder.cs`) e o relatÃ³rio visual de stress (`StressReportWindow.xaml.cs`) agora estampam `LUMINI TRAY` e geram arquivos `Lumini-Tray-Relatorio-*.html` e `Lumini-Stress-*.png`.
-  - **Benchmarks 3D, ServiÃ§os e Scripts:** Janelas Direct3D/OpenGL de stress (`GpuBurn`, `GpuGameBench`, `GpuRtBench`), scripts de restauraÃ§Ã£o de backup (`RESTAURAR_BACKUP.bat` e `LEIA-ME.txt`), pontos de restauraÃ§Ã£o do Windows (`Lumini Tray - Antes da OtimizaÃ§Ã£o`), pastas de exportaÃ§Ã£o (`Documentos\LuminiTray-Drivers`, `Imagens\LuminiWallpapers`, `%TEMP%\LuminiTray_*`) e sessÃ£o do Mixer de Volume do Windows atualizados para `Lumini Tray`.
-- **CorreÃ§Ã£o Definitiva do Ãcone da Bandeja do Sistema (System Tray):**
-  - ReconstruÃ­do `Assets/app.ico` com quadros DIB (`BITMAPINFOHEADER` 32-bit BGRA) nas resoluÃ§Ãµes 16x16, 24x24, 32x32, 48x48, 64x64 e 128x128 (alÃ©m de PNG 256x256) para compatibilidade nativa total com `System.Drawing.Icon` e `Shell_NotifyIcon` do Windows.
-  - Adicionado `CreateMainAppIcon()` em `SystemTrayManager.cs` com renderizaÃ§Ã£o direta de alta nitidez a partir do recurso WPF `pack://application:,,,/Assets/logo.png` (e fallback para `app.ico` / Ã­cone associado ao executÃ¡vel), garantindo que o Ã­cone oficial do Lumini Tray apareÃ§a sempre na bandeja do sistema.
-- **MigraÃ§Ã£o Garantida de PreferÃªncias Existentes:**
-  - Adicionada migraÃ§Ã£o automÃ¡tica em `AudioSettings.cs` (`MicOverlayDefaultMigratedV21`) e `AppSettings.cs` (`HotkeyMigratedV21`) para assegurar que mesmo instalaÃ§Ãµes com arquivos de configuraÃ§Ã£o prÃ©-existentes adotem o flutuante de microfone desativado por padrÃ£o (`OverlayEnabled = false`) e o atalho `Ctrl + Shift + P` para o Mini Gerenciador de Tarefas.
+### 🎨 Identidade Visual & Rebranding Completo (100% Lumini)
+- **Substituição Integral de Todas as Abas, Módulos, Relatórios e Funcionalidades:**
+  - **Menu Lateral e Cabeçalhos:** Atualizadas todas as categorias e títulos de abas para `LUMINI INFORMAÇÕES`, `LUMINI JOGOS`, `LUMINI DESEMPENHO`, `LUMINI PERIFÉRICOS`, `LUMINI FERRAMENTAS`, `LUMINI MAKER`, `LUMINI BENCH`, `LUMINI OTIMIZA`, `LUMINI OC`, `LUMINI DRIVER & DDU`, `LUMINI WALLPAPERS`, `LUMINI INTEGRAÇÃO` e `INSTALAR BIBLIOTECA OFICIAL LUMINI`.
+  - **Relatórios HTML e PNG:** O gerador de diagnósticos (`ReportBuilder.cs`) e o relatório visual de stress (`StressReportWindow.xaml.cs`) agora estampam `LUMINI TRAY` e geram arquivos `Lumini-Tray-Relatorio-*.html` e `Lumini-Stress-*.png`.
+  - **Benchmarks 3D, Serviços e Scripts:** Janelas Direct3D/OpenGL de stress (`GpuBurn`, `GpuGameBench`, `GpuRtBench`), scripts de restauração de backup (`RESTAURAR_BACKUP.bat` e `LEIA-ME.txt`), pontos de restauração do Windows (`Lumini Tray - Antes da Otimização`), pastas de exportação (`Documentos\LuminiTray-Drivers`, `Imagens\LuminiWallpapers`, `%TEMP%\LuminiTray_*`) e sessão do Mixer de Volume do Windows atualizados para `Lumini Tray`.
+- **Correção Definitiva do Ícone da Bandeja do Sistema (System Tray):**
+  - Reconstruído `Assets/app.ico` com quadros DIB (`BITMAPINFOHEADER` 32-bit BGRA) nas resoluções 16x16, 24x24, 32x32, 48x48, 64x64 e 128x128 (além de PNG 256x256) para compatibilidade nativa total com `System.Drawing.Icon` e `Shell_NotifyIcon` do Windows.
+  - Adicionado `CreateMainAppIcon()` em `SystemTrayManager.cs` com renderização direta de alta nitidez a partir do recurso WPF `pack://application:,,,/Assets/logo.png` (e fallback para `app.ico` / ícone associado ao executável), garantindo que o ícone oficial do Lumini Tray apareça sempre na bandeja do sistema.
+- **Migração Garantida de Preferências Existentes:**
+  - Adicionada migração automática em `AudioSettings.cs` (`MicOverlayDefaultMigratedV21`) e `AppSettings.cs` (`HotkeyMigratedV21`) para assegurar que mesmo instalações com arquivos de configuração pré-existentes adotem o flutuante de microfone desativado por padrão (`OverlayEnabled = false`) e o atalho `Ctrl + Shift + P` para o Mini Gerenciador de Tarefas.
 
 ## [0.21.0] - 2026-11-07
 
-### ðŸŽ¨ Identidade Visual & Rebranding
+### 🎨 Identidade Visual & Rebranding
 - **Rebranding Oficial do Aplicativo para Lumini Tray:**
-  - SubstituiÃ§Ã£o completa de todas as referÃªncias Ã  antiga marca Lumini Tray em favor de **Lumini Tray**.
-  - **Nova SuÃ­te de Ãcones Oficiais:** GeraÃ§Ã£o a partir da nova identidade visual do Ã­cone de raios solares luminescentes em squircle escuro:
-    - `Assets/app.ico`: Ãcone mestre Windows em multi-resoluÃ§Ãµes (256x256, 128x128, 64x64, 48x48, 32x32, 16x16) com cantos arredondados suavizados e transparÃªncia nos vÃ©rtices.
-    - `Assets/logo.png`: Logotipo oficial de 256x256 para tema escuro e barra de tÃ­tulo.
+  - Substituição completa de todas as referências à antiga marca Lumini Tray em favor de **Lumini Tray**.
+  - **Nova Suíte de Ícones Oficiais:** Geração a partir da nova identidade visual do ícone de raios solares luminescentes em squircle escuro:
+    - `Assets/app.ico`: Ícone mestre Windows em multi-resoluções (256x256, 128x128, 64x64, 48x48, 32x32, 16x16) com cantos arredondados suavizados e transparência nos vértices.
+    - `Assets/logo.png`: Logotipo oficial de 256x256 para tema escuro e barra de título.
     - `Assets/logo-dark.png`: Logotipo de 256x256 para tema claro.
     - `Assets/logo-badge.png`: Badge oficial de 128x128.
-  - **Interface do UsuÃ¡rio (UI):** TÃ­tulo principal atualizado para `Lumini Tray`, novo cabeÃ§alho visual `LUMINI TRAY` e padronizaÃ§Ã£o de todos os diÃ¡logos, menus da bandeja e janelas secundÃ¡rias (Mini Gerenciador, Overlay, Toast, RelatÃ³rio de Stress).
-  - **ExecutÃ¡vel e Sistema:** O projeto agora Ã© compilado oficialmente como `LuminiTray.exe`, utilizando o mutex `Local\LuminiTray.SingleInstance` e registro de inicializaÃ§Ã£o `LuminiTray`.
-  - **MigraÃ§Ã£o Transparente de ConfiguraÃ§Ãµes:** Novo diretÃ³rio de usuÃ¡rio `%AppData%\LuminiTray` com migraÃ§Ã£o automÃ¡tica dos perfis e dados de `%AppData%\LuminiTray`.
+  - **Interface do Usuário (UI):** Título principal atualizado para `Lumini Tray`, novo cabeçalho visual `LUMINI TRAY` e padronização de todos os diálogos, menus da bandeja e janelas secundárias (Mini Gerenciador, Overlay, Toast, Relatório de Stress).
+  - **Executável e Sistema:** O projeto agora é compilado oficialmente como `LuminiTray.exe`, utilizando o mutex `Local\LuminiTray.SingleInstance` e registro de inicialização `LuminiTray`.
+  - **Migração Transparente de Configurações:** Novo diretório de usuário `%AppData%\LuminiTray` com migração automática dos perfis e dados de `%AppData%\LuminiTray`.
 
-### ðŸš€ Aprimoramentos & Ajustes Solicitados
-- **Flutuante de Microfone Desativado por PadrÃ£o:** Configurado `OverlayEnabled = false` em `AudioSettings.cs`, mantendo o overlay flutuante de microfone desligado por padrÃ£o atÃ© que o usuÃ¡rio decida ativÃ¡-lo explicitamente.
-- **Novo Atalho PadrÃ£o do Mini Gerenciador de Tarefas (`Ctrl + Shift + P`):**
-  - O atalho global padrÃ£o para abrir/fechar o Mini Gerenciador de Tarefas foi atualizado de `Ctrl + Shift + M` para `Ctrl + Shift + P` (`VK_P = 0x50`), evitando sobreposiÃ§Ã£o com comandos de microfone.
+### 🚀 Aprimoramentos & Ajustes Solicitados
+- **Flutuante de Microfone Desativado por Padrão:** Configurado `OverlayEnabled = false` em `AudioSettings.cs`, mantendo o overlay flutuante de microfone desligado por padrão até que o usuário decida ativá-lo explicitamente.
+- **Novo Atalho Padrão do Mini Gerenciador de Tarefas (`Ctrl + Shift + P`):**
+  - O atalho global padrão para abrir/fechar o Mini Gerenciador de Tarefas foi atualizado de `Ctrl + Shift + M` para `Ctrl + Shift + P` (`VK_P = 0x50`), evitando sobreposição com comandos de microfone.
 
 ## [0.20.11] - 2026-11-06
 
-### âš¡ Performance & OtimizaÃ§Ã£o
-- **ReduÃ§Ã£o DrÃ¡stica da LatÃªncia (Delay) no Supressor de RuÃ­do do Microfone:**
-  - **WASAPI Event-Driven Streaming:** Implementado o modo de captura acionado diretamente por interrupÃ§Ã£o de hardware (`AUDCLNT_STREAMFLAGS_EVENTCALLBACK`), substituindo o polling anterior com `Thread.Sleep(3)`. Agora o worker de Ã¡udio acorda instantaneamente no microssegundo exato em que o pacote de voz Ã© recebido do microfone.
-  - **Dimensionamento Otimizado de Buffers WASAPI:** Buffers de hardware reduzidos de 50 ms para o perÃ­odo nativo do dispositivo (10 ms a 12 ms na captura e 12 ms na renderizaÃ§Ã£o do microfone virtual CABLE Input e retorno nos fones), eliminando mais de 75 ms de latÃªncia passiva de driver.
-  - **Mecanismo Anti-Lag nos Buffers Circulares (RingBuffer):** Adicionado limitador de backlog com `TrimExcess` no `RingBuffer<T>`, impedindo o acÃºmulo residual de amostras e garantindo que a fila nunca ultrapasse 30 ms a 40 ms de Ã¡udio, mesmo sob transiÃ§Ãµes ou oscilaÃ§Ãµes de carga do sistema.
-  - **Temporizador MultimÃ­dia de Alta ResoluÃ§Ã£o:** AtivaÃ§Ã£o de `timeBeginPeriod(1)` da `winmm.dll` durante a execuÃ§Ã£o da thread de Ã¡udio em tempo real, eliminando o jitter quÃ¢ntico padrÃ£o do escalonador do Windows (~15,6 ms).
-  - **LatÃªncia Total PerceptÃ­vel:** Reduzida de ~160â€“220 ms para **~30â€“35 ms**, tornando o retorno de voz e a transmissÃ£o em chamadas/jogos completamente em tempo real e imperceptÃ­vel ao ouvido humano.
+### ⚡ Performance & Otimização
+- **Redução Drástica da Latência (Delay) no Supressor de Ruído do Microfone:**
+  - **WASAPI Event-Driven Streaming:** Implementado o modo de captura acionado diretamente por interrupção de hardware (`AUDCLNT_STREAMFLAGS_EVENTCALLBACK`), substituindo o polling anterior com `Thread.Sleep(3)`. Agora o worker de áudio acorda instantaneamente no microssegundo exato em que o pacote de voz é recebido do microfone.
+  - **Dimensionamento Otimizado de Buffers WASAPI:** Buffers de hardware reduzidos de 50 ms para o período nativo do dispositivo (10 ms a 12 ms na captura e 12 ms na renderização do microfone virtual CABLE Input e retorno nos fones), eliminando mais de 75 ms de latência passiva de driver.
+  - **Mecanismo Anti-Lag nos Buffers Circulares (RingBuffer):** Adicionado limitador de backlog com `TrimExcess` no `RingBuffer<T>`, impedindo o acúmulo residual de amostras e garantindo que a fila nunca ultrapasse 30 ms a 40 ms de áudio, mesmo sob transições ou oscilações de carga do sistema.
+  - **Temporizador Multimídia de Alta Resolução:** Ativação de `timeBeginPeriod(1)` da `winmm.dll` durante a execução da thread de áudio em tempo real, eliminando o jitter quântico padrão do escalonador do Windows (~15,6 ms).
+  - **Latência Total Perceptível:** Reduzida de ~160–220 ms para **~30–35 ms**, tornando o retorno de voz e a transmissão em chamadas/jogos completamente em tempo real e imperceptível ao ouvido humano.
 
 ## [0.20.10] - 2026-11-06
 
-### ðŸ› ï¸ CorreÃ§Ãµes
-- **CorreÃ§Ã£o Geral de CodificaÃ§Ã£o e Mojibake de Texto em Toda a AplicaÃ§Ã£o:**
-  - Identificada e corrigida a corrupÃ§Ã£o generalizada de codificaÃ§Ã£o de caracteres (mojibake UTF-8/Windows-1252) que exibia textos com caracteres quebrados em toda a interface do programa (exemplo: `"PrÃƒÂ³xima execuÃƒÂ§ÃƒÂ£o em:"` no agendamento de otimizaÃ§Ã£o, `"informaÃƒÂ§ÃƒÂµes"`, `"visÃƒÂ£o geral"`, `"vÃƒÂ­deo"`, `"sÃƒÂ³"`, `"botÃƒÂ£o"`, etc.).
-  - Restaurada a integridade de todas as strings em `MainWindow.xaml.cs` (mais de 230 ocorrÃªncias reparadas com acentuaÃ§Ã£o e pontuaÃ§Ã£o corretas em portuguÃªs, tais como `PrÃ³xima execuÃ§Ã£o em:`, `informaÃ§Ãµes`, `vÃ­deo`, `navegaÃ§Ã£o`, `pÃ¡gina`, etc.).
-  - Corrigidos comentÃ¡rios e metadados com mojibake de mÃºltiplos nÃ­veis no arquivo de projeto `LuminiTray.csproj` (`tambÃ©m`, `OtimizaÃ§Ãµes`, `MemÃ³ria`, etc.).
+### 🛠️ Correções
+- **Correção Geral de Codificação e Mojibake de Texto em Toda a Aplicação:**
+  - Identificada e corrigida a corrupção generalizada de codificação de caracteres (mojibake UTF-8/Windows-1252) que exibia textos com caracteres quebrados em toda a interface do programa (exemplo: `"PrÃ³xima execuÃ§Ã£o em:"` no agendamento de otimização, `"informaÃ§Ãµes"`, `"visÃ£o geral"`, `"vÃ­deo"`, `"sÃ³"`, `"botÃ£o"`, etc.).
+  - Restaurada a integridade de todas as strings em `MainWindow.xaml.cs` (mais de 230 ocorrências reparadas com acentuação e pontuação corretas em português, tais como `Próxima execução em:`, `informações`, `vídeo`, `navegação`, `página`, etc.).
+  - Corrigidos comentários e metadados com mojibake de múltiplos níveis no arquivo de projeto `LuminiTray.csproj` (`também`, `Otimizações`, `Memória`, etc.).
 
 ## [0.20.9] - 2026-11-05
 
-### ðŸ› ï¸ CorreÃ§Ãµes
+### 🛠️ Correções
 - **Encerramento Completo e Definitivo do Processo no Windows:**
-  - Corrigida a persistÃªncia indevida do processo `LuminiTray.exe` em segundo plano no Gerenciador de Tarefas do Windows apÃ³s o usuÃ¡rio fechar o programa atravÃ©s do menu da bandeja (*System Tray*), pelo botÃ£o "ENCERRAR APLICATIVO COMPLETAMENTE" nas configuraÃ§Ãµes ou pela janela principal.
-  - **ShutdownMode OnMainWindowClose:** Configurado `ShutdownMode="OnMainWindowClose"` no `App.xaml`, garantindo que o encerramento da janela principal comande a finalizaÃ§Ã£o formal de toda a aplicaÃ§Ã£o no runtime do WPF, mesmo havendo janelas flutuantes ativas ou ocultas.
-  - **Fechamento ExplÃ­cito de Todas as Janelas SecundÃ¡rias:** O evento `Closed` agora fecha de forma atÃ´mica o `MiniTaskManagerWindow` (Mini Gerenciador de Tarefas), `TaskbarVolumeOsdWindow` (OSD de volume da barra de tarefas), `MicOverlayWindow`, `OverlayWindow`, `ToastWindow` e quaisquer outras janelas abertas em `Application.Current.Windows`.
-  - **Limpeza Rigorosa de Recursos e Ganchos:** Descarte limpo dos 4 Ã­cones da bandeja (`SystemTrayManager`) com ocultaÃ§Ã£o imediata (`Visible = false; Icon = null;`), parada do timer e dos contadores PDH do `MiniTaskManagerService`, e liberaÃ§Ã£o de ganchos nativos de teclado/mouse (`TaskbarVolumeHook`, `AudioHotkeyHook`).
-  - **Encerramento Garantido sem Processos Zumbis (`App.OnExit`):** Adicionado tratamento em `App.OnExit` para liberar e descartar o Mutex global de instÃ¢ncia Ãºnica (`_single`) e garantir o tÃ©rmino limpo e imediato de todas as threads nativas e drivers via `Environment.Exit`, impedindo processos Ã³rfÃ£os.
+  - Corrigida a persistência indevida do processo `LuminiTray.exe` em segundo plano no Gerenciador de Tarefas do Windows após o usuário fechar o programa através do menu da bandeja (*System Tray*), pelo botão "ENCERRAR APLICATIVO COMPLETAMENTE" nas configurações ou pela janela principal.
+  - **ShutdownMode OnMainWindowClose:** Configurado `ShutdownMode="OnMainWindowClose"` no `App.xaml`, garantindo que o encerramento da janela principal comande a finalização formal de toda a aplicação no runtime do WPF, mesmo havendo janelas flutuantes ativas ou ocultas.
+  - **Fechamento Explícito de Todas as Janelas Secundárias:** O evento `Closed` agora fecha de forma atômica o `MiniTaskManagerWindow` (Mini Gerenciador de Tarefas), `TaskbarVolumeOsdWindow` (OSD de volume da barra de tarefas), `MicOverlayWindow`, `OverlayWindow`, `ToastWindow` e quaisquer outras janelas abertas em `Application.Current.Windows`.
+  - **Limpeza Rigorosa de Recursos e Ganchos:** Descarte limpo dos 4 ícones da bandeja (`SystemTrayManager`) com ocultação imediata (`Visible = false; Icon = null;`), parada do timer e dos contadores PDH do `MiniTaskManagerService`, e liberação de ganchos nativos de teclado/mouse (`TaskbarVolumeHook`, `AudioHotkeyHook`).
+  - **Encerramento Garantido sem Processos Zumbis (`App.OnExit`):** Adicionado tratamento em `App.OnExit` para liberar e descartar o Mutex global de instância única (`_single`) e garantir o término limpo e imediato de todas as threads nativas e drivers via `Environment.Exit`, impedindo processos órfãos.
 
 ## [0.20.8] - 2026-11-05
 
-### ðŸš€ Adicionado & Aprimorado
+### 🚀 Adicionado & Aprimorado
 - **Mini Gerenciador de Tarefas com Todas as Funcionalidades do Game Overlay:**
   - O Mini Gerenciador de Tarefas (`MiniTaskManagerWindow`) agora possui paridade total de recursos com a Overlay de Games:
-    - **FixaÃ§Ã£o e Bloqueio (`IsLocked`):** Suporte a modo livre (arrastar pela tela e redimensionar livremente pelas bordas via `WM_NCHITTEST`) e modo fixado com clique transparente (`WS_EX_TRANSPARENT`) para nÃ£o atrapalhar jogos ou tarefas em segundo plano.
-    - **TransparÃªncia Dupla:** Rolagem simples com o scroll do mouse para transparÃªncia dinÃ¢mica da caixa de fundo (mantendo textos e grÃ¡ficos 100% nÃ­tidos) e Ctrl + Scroll para opacidade total da janela (20% a 100%), acompanhado de indicador visual flutuante (`TxtOpacityBadge`).
-    - **Posicionamento e Presets:** Presets nos cantos da tela (Superior esquerdo/direito, Inferior esquerdo/direito) e modo Livre (`CUSTOM`), com retenÃ§Ã£o de coordenadas entre sessÃµes.
-    - **Escala e Tamanho:** Suporte a escala ajustÃ¡vel (Pequeno 0.85x, MÃ©dio 1.0x, Grande 1.3x) e fechamento instantÃ¢neo via botÃ£o do meio do mouse.
-- **UnificaÃ§Ã£o na Mesma Aba ("Overlay & Mini Tarefas"):**
-  - A aba `PageOverlay` foi transformada em um centro unificado com seletor em chips no topo: `[ ðŸŽ® Overlay de Jogos (FPS & Sensores) ]` e `[ âš¡ Mini Gerenciador de Tarefas ]`, organizando todas as configuraÃ§Ãµes de ambos os monitores flutuantes de forma modular e limpa.
-- **InicializaÃ§Ã£o Sob Demanda do Mini Gerenciador de Tarefas:**
-  - O Mini Gerenciador agora inicia desligado por padrÃ£o ao abrir o programa, permitindo ao usuÃ¡rio ativÃ¡-lo sob demanda via atalho de teclado (Ctrl + Shift + M), Ã­cone na bandeja do sistema (Tray) ou botÃ£o na interface.
-- **DefiniÃ§Ã£o de Atalhos Globais no Teclado:**
-  - Adicionado configurador dinÃ¢mico de atalhos globais de teclado no app para ligar e desligar tanto a Overlay de Games (padrÃ£o: `Ctrl + Shift + O`) quanto o Mini Gerenciador de Tarefas (padrÃ£o: `Ctrl + Shift + M`).
-  - Permite clicar no botÃ£o de atalho e pressionar qualquer combinaÃ§Ã£o desejada de teclas (Ctrl, Alt, Shift, Win + tecla), com persistÃªncia instantÃ¢nea e botÃ£o de restauraÃ§Ã£o padrÃ£o (`â†º`).
-  - **Desbloqueio Inteligente por Atalho:** Caso o HUD ou a Overlay estejam visÃ­veis e fixados na tela, o acionamento do atalho desbloqueia a janela permitindo reposicionar e ajustar imediatamente com o mouse.
+    - **Fixação e Bloqueio (`IsLocked`):** Suporte a modo livre (arrastar pela tela e redimensionar livremente pelas bordas via `WM_NCHITTEST`) e modo fixado com clique transparente (`WS_EX_TRANSPARENT`) para não atrapalhar jogos ou tarefas em segundo plano.
+    - **Transparência Dupla:** Rolagem simples com o scroll do mouse para transparência dinâmica da caixa de fundo (mantendo textos e gráficos 100% nítidos) e Ctrl + Scroll para opacidade total da janela (20% a 100%), acompanhado de indicador visual flutuante (`TxtOpacityBadge`).
+    - **Posicionamento e Presets:** Presets nos cantos da tela (Superior esquerdo/direito, Inferior esquerdo/direito) e modo Livre (`CUSTOM`), com retenção de coordenadas entre sessões.
+    - **Escala e Tamanho:** Suporte a escala ajustável (Pequeno 0.85x, Médio 1.0x, Grande 1.3x) e fechamento instantâneo via botão do meio do mouse.
+- **Unificação na Mesma Aba ("Overlay & Mini Tarefas"):**
+  - A aba `PageOverlay` foi transformada em um centro unificado com seletor em chips no topo: `[ 🎮 Overlay de Jogos (FPS & Sensores) ]` e `[ ⚡ Mini Gerenciador de Tarefas ]`, organizando todas as configurações de ambos os monitores flutuantes de forma modular e limpa.
+- **Inicialização Sob Demanda do Mini Gerenciador de Tarefas:**
+  - O Mini Gerenciador agora inicia desligado por padrão ao abrir o programa, permitindo ao usuário ativá-lo sob demanda via atalho de teclado (Ctrl + Shift + M), ícone na bandeja do sistema (Tray) ou botão na interface.
+- **Definição de Atalhos Globais no Teclado:**
+  - Adicionado configurador dinâmico de atalhos globais de teclado no app para ligar e desligar tanto a Overlay de Games (padrão: `Ctrl + Shift + O`) quanto o Mini Gerenciador de Tarefas (padrão: `Ctrl + Shift + M`).
+  - Permite clicar no botão de atalho e pressionar qualquer combinação desejada de teclas (Ctrl, Alt, Shift, Win + tecla), com persistência instantânea e botão de restauração padrão (`↺`).
+  - **Desbloqueio Inteligente por Atalho:** Caso o HUD ou a Overlay estejam visíveis e fixados na tela, o acionamento do atalho desbloqueia a janela permitindo reposicionar e ajustar imediatamente com o mouse.
 
 ## [0.20.7] - 2026-11-05
 
-### ðŸ› ï¸ CorreÃ§Ãµes
-- **CorreÃ§Ã£o de Tipagem AritmÃ©tica no CÃ¡lculo de MemÃ³ria RAM:**
-  - Corrigida a ambiguidade de operador aritmÃ©tico `CS0034` no cÃ¡lculo percentual do top consumer de memÃ³ria RAM em `MiniTaskManagerService.cs`, utilizando coerÃ§Ã£o explÃ­cita de precisÃ£o contÃ­nua com `Math.Round`.
+### 🛠️ Correções
+- **Correção de Tipagem Aritmética no Cálculo de Memória RAM:**
+  - Corrigida a ambiguidade de operador aritmético `CS0034` no cálculo percentual do top consumer de memória RAM em `MiniTaskManagerService.cs`, utilizando coerção explícita de precisão contínua com `Math.Round`.
   - Tratada a checagem defensiva de nulidade no controle de overlay (`ChkOverlay`) em `MainWindow.xaml.cs`.
 
 ## [0.20.6] - 2026-11-05
 
-### ðŸ› ï¸ CorreÃ§Ãµes
-- **CorreÃ§Ã£o de Atributo XAML no Mini Gerenciador de Tarefas:**
-  - Removido o atributo invÃ¡lido `LetterSpacing` no `TextBlock` do cabeÃ§alho de `MiniTaskManagerWindow.xaml`, corrigindo a falha de compilaÃ§Ã£o `error MC3072: a propriedade 'LetterSpacing' nÃ£o existe no namespace XML` reportada durante a publicaÃ§Ã£o.
+### 🛠️ Correções
+- **Correção de Atributo XAML no Mini Gerenciador de Tarefas:**
+  - Removido o atributo inválido `LetterSpacing` no `TextBlock` do cabeçalho de `MiniTaskManagerWindow.xaml`, corrigindo a falha de compilação `error MC3072: a propriedade 'LetterSpacing' não existe no namespace XML` reportada durante a publicação.
 
 ## [0.20.5] - 2026-11-05
 
-### ðŸš€ Adicionado & Aprimorado
-- **Mini Gerenciador de Tarefas Flutuante (AdaptaÃ§Ã£o MicroManager / Windhawk):**
-  - Implementado o novo serviÃ§o de alto desempenho em nÃ­vel de kernel (`MiniTaskManagerService`) baseado no mod open-source MicroManager do Windhawk, com monitoramento contÃ­nuo de **CPU, GPU, RAM e DISCO** e identificaÃ§Ã£o atÃ´mica dos maiores processos consumidores (*top consumers*) de cada recurso via `NtQuerySystemInformation` e contadores de engine PDH (`\GPU Engine(*)\Utilization Percentage`).
-  - Nova janela flutuante Dark HUD (`MiniTaskManagerWindow`) com cantos arredondados, backdrop acrÃ­lico/escuro, cores vivas de alto contraste para cada recurso (CPU: Ciano `#00C8FF`, GPU: Verde Neon `#00DC64`, RAM: Ã‚mbar `#FFB446`, DISCO: Magenta `#D946EF`) e grÃ¡fico de barras histÃ³ricas de 16 amostras em tempo real.
-  - AlternÃ¢ncia interativa da mÃ©trica exibida no grÃ¡fico atravÃ©s de clique nas linhas ou no canvas, ou navegaÃ§Ã£o pelas teclas â†‘ / â†“.
-  - Menu de contexto avanÃ§ado ao clicar com botÃ£o direito sobre qualquer processo:
-    - **Finalizar tarefa:** Encerramento direcionado com confirmaÃ§Ã£o e validaÃ§Ã£o de seguranÃ§a.
-    - **Finalizar Ã¡rvore de processos...:** IdentificaÃ§Ã£o automÃ¡tica da raiz com mesmo nome de executÃ¡vel via timestamp de criaÃ§Ã£o de processo (protegendo contra reuso de PID), detecÃ§Ã£o recursiva de processos descendentes, alerta de proteÃ§Ã£o ao `explorer.exe` e processos crÃ­ticos do Windows, e diÃ¡logo com contagem exata antes do encerramento de baixo para cima.
-    - **Abrir local do arquivo:** Revela e seleciona o executÃ¡vel diretamente no Windows Explorer.
-  - Fechamento intuitivo com tecla `Esc` ou ao clicar fora da janela flutuante (`Deactivated`), e posicionamento inteligente automÃ¡tico prÃ³ximo Ã  bandeja do Windows sem cortes na tela.
-  - IntegraÃ§Ã£o nativa na bandeja do sistema (`SystemTrayManager`) com Ã­cone estilizado de 4 barras de atividade, tooltip em tempo real com resumo instantÃ¢neo dos 4 recursos, e menu de contexto com atalhos de taxa de atualizaÃ§Ã£o (300ms, 500ms, 1.0s, 3.0s) e acesso rÃ¡pido ao Gerenciador de Tarefas do Windows.
-  - BotÃ£o de acesso rÃ¡pido `âš¡ Mini Tarefas` adicionado ao cabeÃ§alho da pÃ¡gina de Sensores (`PageSensors`).
-  - Nova opÃ§Ã£o em ConfiguraÃ§Ãµes > Geral > Ãcones de Status na Bandeja para ativar/desativar a exibiÃ§Ã£o do Mini Gerenciador na bandeja (`ChkSettingsShowMiniTaskTray` / `ShowMiniTaskTrayIcon`).
+### 🚀 Adicionado & Aprimorado
+- **Mini Gerenciador de Tarefas Flutuante (Adaptação MicroManager / Windhawk):**
+  - Implementado o novo serviço de alto desempenho em nível de kernel (`MiniTaskManagerService`) baseado no mod open-source MicroManager do Windhawk, com monitoramento contínuo de **CPU, GPU, RAM e DISCO** e identificação atômica dos maiores processos consumidores (*top consumers*) de cada recurso via `NtQuerySystemInformation` e contadores de engine PDH (`\GPU Engine(*)\Utilization Percentage`).
+  - Nova janela flutuante Dark HUD (`MiniTaskManagerWindow`) com cantos arredondados, backdrop acrílico/escuro, cores vivas de alto contraste para cada recurso (CPU: Ciano `#00C8FF`, GPU: Verde Neon `#00DC64`, RAM: Âmbar `#FFB446`, DISCO: Magenta `#D946EF`) e gráfico de barras históricas de 16 amostras em tempo real.
+  - Alternância interativa da métrica exibida no gráfico através de clique nas linhas ou no canvas, ou navegação pelas teclas ↑ / ↓.
+  - Menu de contexto avançado ao clicar com botão direito sobre qualquer processo:
+    - **Finalizar tarefa:** Encerramento direcionado com confirmação e validação de segurança.
+    - **Finalizar árvore de processos...:** Identificação automática da raiz com mesmo nome de executável via timestamp de criação de processo (protegendo contra reuso de PID), detecção recursiva de processos descendentes, alerta de proteção ao `explorer.exe` e processos críticos do Windows, e diálogo com contagem exata antes do encerramento de baixo para cima.
+    - **Abrir local do arquivo:** Revela e seleciona o executável diretamente no Windows Explorer.
+  - Fechamento intuitivo com tecla `Esc` ou ao clicar fora da janela flutuante (`Deactivated`), e posicionamento inteligente automático próximo à bandeja do Windows sem cortes na tela.
+  - Integração nativa na bandeja do sistema (`SystemTrayManager`) com ícone estilizado de 4 barras de atividade, tooltip em tempo real com resumo instantâneo dos 4 recursos, e menu de contexto com atalhos de taxa de atualização (300ms, 500ms, 1.0s, 3.0s) e acesso rápido ao Gerenciador de Tarefas do Windows.
+  - Botão de acesso rápido `⚡ Mini Tarefas` adicionado ao cabeçalho da página de Sensores (`PageSensors`).
+  - Nova opção em Configurações > Geral > Ícones de Status na Bandeja para ativar/desativar a exibição do Mini Gerenciador na bandeja (`ChkSettingsShowMiniTaskTray` / `ShowMiniTaskTrayIcon`).
 
-### âš¡ Performance & OtimizaÃ§Ã£o
+### ⚡ Performance & Otimização
 - **Layout Responsivo e Limpo na Aba "Windows e Debloat":**
-  - Reorganizado o cabeÃ§alho de aÃ§Ãµes da pÃ¡gina `PageWindowsDebloat` em 2 linhas funcionais e responsivas:
-    - **Linha 1:** Campo de busca (`TxtDebloatSearch`), contador de bloatwares detectados (`TxtBloatwareCount`) e botÃ£o de desinstalaÃ§Ã£o destacado (`BtnUninstallSelectedBloatware`) alinhado Ã  direita.
-    - **Linha 2:** Painel dinÃ¢mico em `WrapPanel` com os 5 botÃµes de filtro e manutenÃ§Ã£o (`Marcar Seguros`, `Marcar Bloatware OEM`, `Desmarcar Todos`, `ðŸ”„ Re-Escanear`, `â†º Reinstalar Apps do Windows`) com espaÃ§amento confortÃ¡vel, eliminando qualquer compressÃ£o ou sobreposiÃ§Ã£o visual em resoluÃ§Ãµes variadas.
+  - Reorganizado o cabeçalho de ações da página `PageWindowsDebloat` em 2 linhas funcionais e responsivas:
+    - **Linha 1:** Campo de busca (`TxtDebloatSearch`), contador de bloatwares detectados (`TxtBloatwareCount`) e botão de desinstalação destacado (`BtnUninstallSelectedBloatware`) alinhado à direita.
+    - **Linha 2:** Painel dinâmico em `WrapPanel` com os 5 botões de filtro e manutenção (`Marcar Seguros`, `Marcar Bloatware OEM`, `Desmarcar Todos`, `🔄 Re-Escanear`, `↺ Reinstalar Apps do Windows`) com espaçamento confortável, eliminando qualquer compressão ou sobreposição visual em resoluções variadas.
 
 ## [0.20.4] - 2026-11-05
 
-### ðŸ› ï¸ CorreÃ§Ãµes & Estabilidade
-- **Blindagem e ResiliÃªncia de NavegaÃ§Ã£o (NullReferenceException em ShowPage e Nav_Checked):**
-  - Implementada proteÃ§Ã£o abrangente contra exceÃ§Ãµes em `ShowPage` e `Nav_Checked`, eliminando erros de desreferÃªncia nula (`NullReferenceException`) disparados em transiÃ§Ãµes e cliques de botÃµes da barra lateral.
-  - O seletor de visibilidade de pÃ¡ginas agora utiliza verificaÃ§Ã£o nula defensiva e comparaÃ§Ã£o de nomes insensÃ­vel a maiÃºsculas/minÃºsculas (`StringComparison.OrdinalIgnoreCase`).
-  - Blindagem do ciclo de vida de captura de FPS/Overlay (`EnsureFramesLifecycle`) com checagens prÃ©vias de nulidade e captura de exceÃ§Ãµes de sessÃ£o ETW.
-  - ProteÃ§Ã£o refinada no Dispatcher do `App.xaml.cs`: o encerramento forÃ§ado do processo (`Shutdown(1)`) nÃ£o Ã© mais disparado indevidamente caso a janela principal jÃ¡ esteja criada e em execuÃ§Ã£o.
+### 🛠️ Correções & Estabilidade
+- **Blindagem e Resiliência de Navegação (NullReferenceException em ShowPage e Nav_Checked):**
+  - Implementada proteção abrangente contra exceções em `ShowPage` e `Nav_Checked`, eliminando erros de desreferência nula (`NullReferenceException`) disparados em transições e cliques de botões da barra lateral.
+  - O seletor de visibilidade de páginas agora utiliza verificação nula defensiva e comparação de nomes insensível a maiúsculas/minúsculas (`StringComparison.OrdinalIgnoreCase`).
+  - Blindagem do ciclo de vida de captura de FPS/Overlay (`EnsureFramesLifecycle`) com checagens prévias de nulidade e captura de exceções de sessão ETW.
+  - Proteção refinada no Dispatcher do `App.xaml.cs`: o encerramento forçado do processo (`Shutdown(1)`) não é mais disparado indevidamente caso a janela principal já esteja criada e em execução.
 
 ## [0.20.3] - 2026-11-05
 
-### ðŸš€ Adicionado & Aprimorado
-- **ReorganizaÃ§Ã£o Estrutural de InicializaÃ§Ã£o e ConfiguraÃ§Ãµes:**
-  - Migradas todas as configuraÃ§Ãµes de inicializaÃ§Ã£o com o Windows (`ChkAutoStartWithWindows`, rotinas automÃ¡ticas de limpeza de RAM, tweaks, fechamento de apps e inicializaÃ§Ã£o minimizada) e a lista de programas de inicializaÃ§Ã£o (`StartupList`) da aba Geral de ConfiguraÃ§Ãµes para a pÃ¡gina **InicializaÃ§Ã£o** da sidebar (`PageStartup`).
-  - Movidos os atalhos rÃ¡pidos e seletores principais (`ChkFastMicMute`, `ChkFastMouseWheelVolume`, `ChkFastNoiseSuppressor`, `CboFastAudioOutput`, `CboFastAudioInput`, `ChkFastOverlay`) da pÃ¡gina de InicializaÃ§Ã£o para a aba **Geral** de ConfiguraÃ§Ãµes (`PanelSettingsGeneral`).
-- **Controle Preciso da FunÃ§Ã£o de Mute de Microfone:**
-  - Ajustado o atalho rÃ¡pido `ChkFastMicMute` para ativar e desativar a funÃ§Ã£o/atalho global de microfone (`_audioSettings.EnableMicMuteFeature`) em vez de disparar o comando de mute instantÃ¢neo.
-  - Quando a funÃ§Ã£o estiver desativada, os atalhos de teclado globais de microfone sÃ£o ignorados e a overlay flutuante de microfone (`_micOverlay`) permanece oculta.
-- **TransparÃªncia Dupla e Desbloqueio Inteligente da Overlay:**
-  - **Scroll Simples no Overlay:** Ajusta dinamicamente a transparÃªncia apenas da caixa de fundo (`Box.Background`), mantendo informaÃ§Ãµes, textos, grÃ¡ficos e mÃ©tricas com 100% de visibilidade e nitidez. Salvo em `_settings.OverlayBackgroundOpacity`.
-  - **Ctrl + Scroll no Overlay:** Preservado o controle da opacidade total da janela (`this.Opacity`, entre 20% e 100%), permitindo transparÃªncia completa da overlay quando desejado.
-  - **Desbloqueio Inteligente por Atalho:** Ao acionar o atalho global de visualizaÃ§Ã£o da overlay (`Ctrl + Shift + O`), se a overlay estiver na tela e bloqueada (`OverlayLocked`), o atalho desbloqueia a janela para permitir arrastar e reposicionar com o mouse em vez de fechar a janela.
-- **RestauraÃ§Ã£o Seletiva na PÃ³s-FormataÃ§Ã£o:**
-  - Adicionado suporte a restauraÃ§Ã£o granular por categoria: checkboxes e botÃµes de aÃ§Ã£o rÃ¡pida para Drivers, Redes Wi-Fi e Programas (Winget) em seus respectivos cards de descoberta.
-  - Adicionadas caixas de seleÃ§Ã£o individuais (`IsSelected`) para cada item da fila de pÃ³s-formataÃ§Ã£o (`LstPostFormatQueue`).
-  - O motor de execuÃ§Ã£o `ExecuteQueueAsync` agora respeita estritamente a seleÃ§Ã£o do usuÃ¡rio, mantendo itens nÃ£o selecionados disponÃ­veis para execuÃ§Ãµes seguintes sem travÃ¡-los no estado `Skipped`.
-  - SincronizaÃ§Ã£o dinÃ¢mica entre caixas de seleÃ§Ã£o de categorias e os itens individuais da lista.
-  - Resumo e botÃ£o principal atualizados dinamicamente para exibir a quantidade de itens selecionados e pendentes.
-- **SincronizaÃ§Ã£o e Reatividade:**
-  - A alternÃ¢ncia do recurso de mute em ConfiguraÃ§Ãµes > Geral atualiza instantaneamente a tabela de teclas ativas do hook global STA (`RebuildActiveKeys`), garantindo latÃªncia zero.
-  - Desbloqueio e alternÃ¢ncia da overlay sincronizados com o checkbox rÃ¡pido da aba Geral.
-  - Opacidade padrÃ£o da janela do overlay definida em 100% para nitidez total das informaÃ§Ãµes, governando o fundo por `OverlayBackgroundOpacity`.
+### 🚀 Adicionado & Aprimorado
+- **Reorganização Estrutural de Inicialização e Configurações:**
+  - Migradas todas as configurações de inicialização com o Windows (`ChkAutoStartWithWindows`, rotinas automáticas de limpeza de RAM, tweaks, fechamento de apps e inicialização minimizada) e a lista de programas de inicialização (`StartupList`) da aba Geral de Configurações para a página **Inicialização** da sidebar (`PageStartup`).
+  - Movidos os atalhos rápidos e seletores principais (`ChkFastMicMute`, `ChkFastMouseWheelVolume`, `ChkFastNoiseSuppressor`, `CboFastAudioOutput`, `CboFastAudioInput`, `ChkFastOverlay`) da página de Inicialização para a aba **Geral** de Configurações (`PanelSettingsGeneral`).
+- **Controle Preciso da Função de Mute de Microfone:**
+  - Ajustado o atalho rápido `ChkFastMicMute` para ativar e desativar a função/atalho global de microfone (`_audioSettings.EnableMicMuteFeature`) em vez de disparar o comando de mute instantâneo.
+  - Quando a função estiver desativada, os atalhos de teclado globais de microfone são ignorados e a overlay flutuante de microfone (`_micOverlay`) permanece oculta.
+- **Transparência Dupla e Desbloqueio Inteligente da Overlay:**
+  - **Scroll Simples no Overlay:** Ajusta dinamicamente a transparência apenas da caixa de fundo (`Box.Background`), mantendo informações, textos, gráficos e métricas com 100% de visibilidade e nitidez. Salvo em `_settings.OverlayBackgroundOpacity`.
+  - **Ctrl + Scroll no Overlay:** Preservado o controle da opacidade total da janela (`this.Opacity`, entre 20% e 100%), permitindo transparência completa da overlay quando desejado.
+  - **Desbloqueio Inteligente por Atalho:** Ao acionar o atalho global de visualização da overlay (`Ctrl + Shift + O`), se a overlay estiver na tela e bloqueada (`OverlayLocked`), o atalho desbloqueia a janela para permitir arrastar e reposicionar com o mouse em vez de fechar a janela.
+- **Restauração Seletiva na Pós-Formatação:**
+  - Adicionado suporte a restauração granular por categoria: checkboxes e botões de ação rápida para Drivers, Redes Wi-Fi e Programas (Winget) em seus respectivos cards de descoberta.
+  - Adicionadas caixas de seleção individuais (`IsSelected`) para cada item da fila de pós-formatação (`LstPostFormatQueue`).
+  - O motor de execução `ExecuteQueueAsync` agora respeita estritamente a seleção do usuário, mantendo itens não selecionados disponíveis para execuções seguintes sem travá-los no estado `Skipped`.
+  - Sincronização dinâmica entre caixas de seleção de categorias e os itens individuais da lista.
+  - Resumo e botão principal atualizados dinamicamente para exibir a quantidade de itens selecionados e pendentes.
+- **Sincronização e Reatividade:**
+  - A alternância do recurso de mute em Configurações > Geral atualiza instantaneamente a tabela de teclas ativas do hook global STA (`RebuildActiveKeys`), garantindo latência zero.
+  - Desbloqueio e alternância da overlay sincronizados com o checkbox rápido da aba Geral.
+  - Opacidade padrão da janela do overlay definida em 100% para nitidez total das informações, governando o fundo por `OverlayBackgroundOpacity`.
 
-### âš¡ Performance & OtimizaÃ§Ã£o
-- **Design Compacto nos BotÃµes de DesinstalaÃ§Ã£o:**
-  - Reduzidas as proporÃ§Ãµes dos botÃµes vermelhos de desinstalaÃ§Ã£o em lote (`BtnUninstallBatch` no Desinstalador AvanÃ§ado e `BtnUninstallSelectedBloatware` em Debloat) para padding e tipografia compactos (`Padding="10,5"`, `FontSize="11"`), evitando que empurrem ou obstruam as caixas de seleÃ§Ã£o e controles vizinhos.
+### ⚡ Performance & Otimização
+- **Design Compacto nos Botões de Desinstalação:**
+  - Reduzidas as proporções dos botões vermelhos de desinstalação em lote (`BtnUninstallBatch` no Desinstalador Avançado e `BtnUninstallSelectedBloatware` em Debloat) para padding e tipografia compactos (`Padding="10,5"`, `FontSize="11"`), evitando que empurrem ou obstruam as caixas de seleção e controles vizinhos.
 
 ## [0.20.2] - 2026-11-05
 
-### ðŸ› ï¸ CorreÃ§Ãµes
-- **Auditoria Completa â€” Fase 1 (NavegaÃ§Ã£o e Blindagem de ExceÃ§Ãµes):**
-  - Corrigido o `System.NullReferenceException` em `MainWindow.ShowPage` / `Nav_Checked` ao clicar em **RESET MAKER**: o cabeÃ§alho de grupo `GrpMaker` recebia indevidamente `Checked="Nav_Checked"` (sem `Tag`), enquanto o item `NavMakerPorts` estava sem o evento. O evento foi removido do grupo e restaurado no item.
-  - `Nav_Checked` agora ignora remetentes sem `Tag` de pÃ¡gina vÃ¡lida e `ShowPage` ignora nomes nulos/vazios e pÃ¡ginas ausentes.
-  - Abas **PÃ³s-FormataÃ§Ã£o** e **Reparar Windows** adicionadas ao histÃ³rico de navegaÃ§Ã£o (botÃµes Voltar/AvanÃ§ar).
-  - `App.xaml.cs`: `DispatcherUnhandledException` agora marca a exceÃ§Ã£o como tratada (`ev.Handled = true`), eliminando a janela dupla de erro e o fechamento abrupto do programa em erros nÃ£o-fatais. Falhas antes da janela principal carregar exibem os detalhes e encerram de forma limpa. O `crash.log` passou a acumular as entradas com data/hora em vez de sobrescrever.
-- **Auditoria Completa â€” Fase 2 (Bindings `Mode=OneWay`):**
-  - Corrigida a `XamlParseException` *"Uma associaÃ§Ã£o TwoWay ou OneWayToSource nÃ£o pode funcionar na propriedade somente leitura 'ProgressPercentage'"* ao abrir o **Mapa do Disco**: a `ProgressBar` (cujo `Value` Ã© TwoWay por padrÃ£o no WPF) agora usa `{Binding ProgressPercentage, Mode=OneWay}`.
-  - Barra de velocidade do **Benchmark de DNS** (`SpeedBarRatio`) e textos `Run` da galeria de **Wallpapers** (`DimensionsText`, `FileSizeText`) passaram a usar `Mode=OneWay`, jÃ¡ que sÃ£o apenas exibiÃ§Ã£o.
-  - Auditados todos os bindings TwoWay por padrÃ£o (`ProgressBar`/`Slider.Value`, `CheckBox.IsChecked`, `TextBox`/`Run.Text`, `SelectedItem`) em todos os arquivos XAML e no code-behind: os demais apontam para propriedades com `set` pÃºblico.
-- **Auditoria Completa â€” Fase 3 (RestauraÃ§Ã£o Total dos Event Handlers nas 32 Abas):**
-  - Resolvido o deslocamento em cascata (off-by-one / event shifting) de 505 elementos interativos em `MainWindow.xaml`, restaurando as conexÃµes exatas com os mÃ©todos correspondentes no code-behind (`MainWindow.*.cs`).
-  - Reconectados todos os botÃµes, checkboxes, radio buttons, sliders e combos afetados em todas as telas principais:
-    - **Instalar Apps (`PageApps`):** BotÃµes "Marcar Todos" (`BtnAppsAll_Click`), "Desmarcar" (`BtnAppsNone_Click`), filtro de categorias (`BtnAppsCat_Click`), atualizaÃ§Ã£o da Store (`BtnAppsStore_Click`) e instalaÃ§Ã£o de selecionados (`BtnAppsInstall_Click`).
-    - **Backup (`PageBackup`):** BotÃµes de seleÃ§Ã£o em lote (`BtnSelectAllBackupApps_Click`, `BtnDeselectAllBackupApps_Click`), checkboxes de apps e pastas (`ChkBackupApp_Click`, `ChkBackupFolder_Click`), gerador de drivers e instalador Winget (`BtnGenerateDriverBackup_Click`, `BtnGenerateAppInstaller_Click`), seleÃ§Ã£o de destino (`BtnBrowseBackupDest_Click`), e inÃ­cio/cancelamento do backup de pastas (`BtnStartFoldersBackup_Click`, `BtnCancelFoldersBackup_Click`).
-    - **Ferramentas de Disco & S.M.A.R.T. (`PageDiskTools`):** NavegaÃ§Ã£o e seleÃ§Ã£o de pasta no analisador (`BtnDiskChooseFolder_Click`, `BtnDiskSpaceUp_Click`, `BtnDiskOpenExplorer_Click`), redimensionamento do Treemap (`CnvTreemap_SizeChanged`), dicas rÃ¡pidas (`BtnTipLimpeza_Click`, `BtnTipDesinstalador_Click`, `BtnTipDuplicados_Click`), abas de maiores arquivos/pastas (`TopItemsTab_Checked`), limpeza rÃ¡pida (`BtnQuickCleanScan_Click`, `BtnQuickCleanNow_Click`), e diagnÃ³stico profundo S.M.A.R.T. / auto-testes ATA / reparo Chkdsk (`BtnRefreshSmartBadBlocks_Click`, `BtnStartBadBlockScan_Click`, `BtnStopBadBlockScan_Click`, `BtnSelfTestShort_Click`, `BtnSelfTestExt_Click`, `BtnSelfTestAbort_Click`, `BtnLocateBadLbaFiles_Click`, `BtnRunSelectiveTest_Click`, `BtnRepairChkdsk_Click`).
-    - **Desinstalador AvanÃ§ado (`PageUninstaller`):** Filtros por categoria (`BtnFilterCategory_Click`), busca dinÃ¢mica (`TxtUninstallSearch_TextChanged`), seleÃ§Ã£o em massa (`ChkSelectAllApps_Checked`, `ChkSelectAllApps_Unchecked`, `BtnClearSelection_Click`), exibiÃ§Ã£o de ocultos (`ChkShowHiddenApps_Changed`), desinstalaÃ§Ã£o em lote (`BtnUninstallBatch_Click`), e aÃ§Ãµes por item de software (`ChkAppItem_Changed`, `BtnOpenInstallLocation_Click`, `BtnUninstallNormal_Click`, `BtnUninstallDeep_Click`), alÃ©m da revisÃ£o de resÃ­duos (`BtnSelectAllLeftovers_Click`, `BtnDeselectAllLeftovers_Click`, `BtnCleanLeftoversNow_Click`, `BtnCloseLeftovers_Click`).
-    - **Central Desfazer / RestauraÃ§Ã£o (`PageSettings`):** AlternÃ¢ncia de sub-abas de configuraÃ§Ãµes (`SettingsTab_Checked`), atualizaÃ§Ã£o da inicializaÃ§Ã£o (`BtnStartupScan_Click`), restauraÃ§Ã£o total ao padrÃ£o (`BtnUndoRestoreAll_Click`), abertura do RSTRUI (`BtnOpenSystemRestore_Click`), criaÃ§Ã£o de ponto de restauraÃ§Ã£o (`BtnUndoCreateRestorePoint_Click`), atualizaÃ§Ã£o de lista (`BtnUndoRefresh_Click`) e reversÃ£o pontual de tweaks (`BtnUndoSingleTweak_Click`).
-    - **Debloat & OtimizaÃ§Ãµes do Windows (`PageWindowsDebloat`):** AplicaÃ§Ã£o de perfil adaptativo (`BtnApplyAdaptiveProfile_Click`), reversÃ£o de debloat (`BtnRevertDebloatTweaks_Click`), alternÃ¢ncia de sub-abas (`BtnSubTabTweaks_Click`, `BtnSubTabDebloat_Click`), checkboxes de tweaks de CPU/GPU/Input/Sistema (`TweakDebloat_Click`), busca de bloatwares (`TxtDebloatSearch_TextChanged`), marcaÃ§Ã£o segura/OEM/desmarcar (`BtnSelectSafeBloatware_Click`, `BtnSelectOemBloatware_Click`, `BtnDeselectAllBloatware_Click`), re-escanear (`BtnScanBloatware_Click`), desinstalaÃ§Ã£o de bloatwares selecionados (`BtnUninstallSelectedBloatware_Click`), e seleÃ§Ã£o individual (`DebloatItemCheckbox_Click`).
-    - **Supressor de RuÃ­do Neural (`PageSuppressor`):** Interruptor master (`BtnToggleMaster_Click`), instalaÃ§Ã£o e abertura de drivers de cabo virtual (`BtnInstallVirtualCable_Click`, `BtnOpenDriverFolder_Click`), seleÃ§Ã£o de dispositivos e atualizaÃ§Ã£o (`CmbVirtualCableDev_SelectionChanged`, `CmbInputMic_SelectionChanged`, `CmbOutputDev_SelectionChanged`, `BtnRefreshDevices_Click`), monitoramento/retorno de voz (`ChkListenSelf_Checked`, `ChkListenSelf_Unchecked`, `RadioMonitorMode_Checked`), teste rÃ¡pido de microfone (`BtnQuickTest_Click`), e ajuste de sliders de intensidade, ganho, noise gate e equalizador grÃ¡fico de 3 bandas (`SliderIntensity_ValueChanged`, `SliderGain_ValueChanged`, `SliderGateThreshold_ValueChanged`, `SliderGateRelease_ValueChanged`, `SliderLowEq_ValueChanged`, `SliderMidEq_ValueChanged`, `SliderHighEq_ValueChanged`, `BtnResetEq_Click`).
-    - **Curvas de Ventoinha (`PageFanControl`):** Interruptor geral e abas CPU/GPU (`BtnToggleFanMaster_Click`, `BtnTabFanCpu_Click`, `BtnTabFanGpu_Click`), presets de curva (`FanPresetQuiet_Click`, `FanPresetBalanced_Click`, `FanPresetPerf_Click`, `FanPresetCpuLock100_Click`, `FanPresetGpuQuiet_Click`, `FanPresetGpuBalanced_Click`, `FanPresetGpuPerf_Click`, `FanPresetGpuLock100_Click`), interaÃ§Ãµes com os grÃ¡ficos de curva (`FanCurveCanvasCpu_*`, `FanCurveCanvasGpu_*`), sliders de pontos de temperatura/PWM e histerese (`FanPoint_Changed`, `FanHysteresis_Changed`, `FanGpuPoint_Changed`, `FanGpuHysteresis_Changed`), e gerenciamento de perfis (`CmbFanCpuPresets_SelectionChanged`, `BtnSaveFanCpuPreset_Click`, `BtnDeleteFanCpuPreset_Click`, `CmbFanGpuPresets_SelectionChanged`, `BtnSaveFanGpuPreset_Click`, `BtnDeleteFanGpuPreset_Click`).
+### 🛠️ Correções
+- **Auditoria Completa — Fase 1 (Navegação e Blindagem de Exceções):**
+  - Corrigido o `System.NullReferenceException` em `MainWindow.ShowPage` / `Nav_Checked` ao clicar em **RESET MAKER**: o cabeçalho de grupo `GrpMaker` recebia indevidamente `Checked="Nav_Checked"` (sem `Tag`), enquanto o item `NavMakerPorts` estava sem o evento. O evento foi removido do grupo e restaurado no item.
+  - `Nav_Checked` agora ignora remetentes sem `Tag` de página válida e `ShowPage` ignora nomes nulos/vazios e páginas ausentes.
+  - Abas **Pós-Formatação** e **Reparar Windows** adicionadas ao histórico de navegação (botões Voltar/Avançar).
+  - `App.xaml.cs`: `DispatcherUnhandledException` agora marca a exceção como tratada (`ev.Handled = true`), eliminando a janela dupla de erro e o fechamento abrupto do programa em erros não-fatais. Falhas antes da janela principal carregar exibem os detalhes e encerram de forma limpa. O `crash.log` passou a acumular as entradas com data/hora em vez de sobrescrever.
+- **Auditoria Completa — Fase 2 (Bindings `Mode=OneWay`):**
+  - Corrigida a `XamlParseException` *"Uma associação TwoWay ou OneWayToSource não pode funcionar na propriedade somente leitura 'ProgressPercentage'"* ao abrir o **Mapa do Disco**: a `ProgressBar` (cujo `Value` é TwoWay por padrão no WPF) agora usa `{Binding ProgressPercentage, Mode=OneWay}`.
+  - Barra de velocidade do **Benchmark de DNS** (`SpeedBarRatio`) e textos `Run` da galeria de **Wallpapers** (`DimensionsText`, `FileSizeText`) passaram a usar `Mode=OneWay`, já que são apenas exibição.
+  - Auditados todos os bindings TwoWay por padrão (`ProgressBar`/`Slider.Value`, `CheckBox.IsChecked`, `TextBox`/`Run.Text`, `SelectedItem`) em todos os arquivos XAML e no code-behind: os demais apontam para propriedades com `set` público.
+- **Auditoria Completa — Fase 3 (Restauração Total dos Event Handlers nas 32 Abas):**
+  - Resolvido o deslocamento em cascata (off-by-one / event shifting) de 505 elementos interativos em `MainWindow.xaml`, restaurando as conexões exatas com os métodos correspondentes no code-behind (`MainWindow.*.cs`).
+  - Reconectados todos os botões, checkboxes, radio buttons, sliders e combos afetados em todas as telas principais:
+    - **Instalar Apps (`PageApps`):** Botões "Marcar Todos" (`BtnAppsAll_Click`), "Desmarcar" (`BtnAppsNone_Click`), filtro de categorias (`BtnAppsCat_Click`), atualização da Store (`BtnAppsStore_Click`) e instalação de selecionados (`BtnAppsInstall_Click`).
+    - **Backup (`PageBackup`):** Botões de seleção em lote (`BtnSelectAllBackupApps_Click`, `BtnDeselectAllBackupApps_Click`), checkboxes de apps e pastas (`ChkBackupApp_Click`, `ChkBackupFolder_Click`), gerador de drivers e instalador Winget (`BtnGenerateDriverBackup_Click`, `BtnGenerateAppInstaller_Click`), seleção de destino (`BtnBrowseBackupDest_Click`), e início/cancelamento do backup de pastas (`BtnStartFoldersBackup_Click`, `BtnCancelFoldersBackup_Click`).
+    - **Ferramentas de Disco & S.M.A.R.T. (`PageDiskTools`):** Navegação e seleção de pasta no analisador (`BtnDiskChooseFolder_Click`, `BtnDiskSpaceUp_Click`, `BtnDiskOpenExplorer_Click`), redimensionamento do Treemap (`CnvTreemap_SizeChanged`), dicas rápidas (`BtnTipLimpeza_Click`, `BtnTipDesinstalador_Click`, `BtnTipDuplicados_Click`), abas de maiores arquivos/pastas (`TopItemsTab_Checked`), limpeza rápida (`BtnQuickCleanScan_Click`, `BtnQuickCleanNow_Click`), e diagnóstico profundo S.M.A.R.T. / auto-testes ATA / reparo Chkdsk (`BtnRefreshSmartBadBlocks_Click`, `BtnStartBadBlockScan_Click`, `BtnStopBadBlockScan_Click`, `BtnSelfTestShort_Click`, `BtnSelfTestExt_Click`, `BtnSelfTestAbort_Click`, `BtnLocateBadLbaFiles_Click`, `BtnRunSelectiveTest_Click`, `BtnRepairChkdsk_Click`).
+    - **Desinstalador Avançado (`PageUninstaller`):** Filtros por categoria (`BtnFilterCategory_Click`), busca dinâmica (`TxtUninstallSearch_TextChanged`), seleção em massa (`ChkSelectAllApps_Checked`, `ChkSelectAllApps_Unchecked`, `BtnClearSelection_Click`), exibição de ocultos (`ChkShowHiddenApps_Changed`), desinstalação em lote (`BtnUninstallBatch_Click`), e ações por item de software (`ChkAppItem_Changed`, `BtnOpenInstallLocation_Click`, `BtnUninstallNormal_Click`, `BtnUninstallDeep_Click`), além da revisão de resíduos (`BtnSelectAllLeftovers_Click`, `BtnDeselectAllLeftovers_Click`, `BtnCleanLeftoversNow_Click`, `BtnCloseLeftovers_Click`).
+    - **Central Desfazer / Restauração (`PageSettings`):** Alternância de sub-abas de configurações (`SettingsTab_Checked`), atualização da inicialização (`BtnStartupScan_Click`), restauração total ao padrão (`BtnUndoRestoreAll_Click`), abertura do RSTRUI (`BtnOpenSystemRestore_Click`), criação de ponto de restauração (`BtnUndoCreateRestorePoint_Click`), atualização de lista (`BtnUndoRefresh_Click`) e reversão pontual de tweaks (`BtnUndoSingleTweak_Click`).
+    - **Debloat & Otimizações do Windows (`PageWindowsDebloat`):** Aplicação de perfil adaptativo (`BtnApplyAdaptiveProfile_Click`), reversão de debloat (`BtnRevertDebloatTweaks_Click`), alternância de sub-abas (`BtnSubTabTweaks_Click`, `BtnSubTabDebloat_Click`), checkboxes de tweaks de CPU/GPU/Input/Sistema (`TweakDebloat_Click`), busca de bloatwares (`TxtDebloatSearch_TextChanged`), marcação segura/OEM/desmarcar (`BtnSelectSafeBloatware_Click`, `BtnSelectOemBloatware_Click`, `BtnDeselectAllBloatware_Click`), re-escanear (`BtnScanBloatware_Click`), desinstalação de bloatwares selecionados (`BtnUninstallSelectedBloatware_Click`), e seleção individual (`DebloatItemCheckbox_Click`).
+    - **Supressor de Ruído Neural (`PageSuppressor`):** Interruptor master (`BtnToggleMaster_Click`), instalação e abertura de drivers de cabo virtual (`BtnInstallVirtualCable_Click`, `BtnOpenDriverFolder_Click`), seleção de dispositivos e atualização (`CmbVirtualCableDev_SelectionChanged`, `CmbInputMic_SelectionChanged`, `CmbOutputDev_SelectionChanged`, `BtnRefreshDevices_Click`), monitoramento/retorno de voz (`ChkListenSelf_Checked`, `ChkListenSelf_Unchecked`, `RadioMonitorMode_Checked`), teste rápido de microfone (`BtnQuickTest_Click`), e ajuste de sliders de intensidade, ganho, noise gate e equalizador gráfico de 3 bandas (`SliderIntensity_ValueChanged`, `SliderGain_ValueChanged`, `SliderGateThreshold_ValueChanged`, `SliderGateRelease_ValueChanged`, `SliderLowEq_ValueChanged`, `SliderMidEq_ValueChanged`, `SliderHighEq_ValueChanged`, `BtnResetEq_Click`).
+    - **Curvas de Ventoinha (`PageFanControl`):** Interruptor geral e abas CPU/GPU (`BtnToggleFanMaster_Click`, `BtnTabFanCpu_Click`, `BtnTabFanGpu_Click`), presets de curva (`FanPresetQuiet_Click`, `FanPresetBalanced_Click`, `FanPresetPerf_Click`, `FanPresetCpuLock100_Click`, `FanPresetGpuQuiet_Click`, `FanPresetGpuBalanced_Click`, `FanPresetGpuPerf_Click`, `FanPresetGpuLock100_Click`), interações com os gráficos de curva (`FanCurveCanvasCpu_*`, `FanCurveCanvasGpu_*`), sliders de pontos de temperatura/PWM e histerese (`FanPoint_Changed`, `FanHysteresis_Changed`, `FanGpuPoint_Changed`, `FanGpuHysteresis_Changed`), e gerenciamento de perfis (`CmbFanCpuPresets_SelectionChanged`, `BtnSaveFanCpuPreset_Click`, `BtnDeleteFanCpuPreset_Click`, `CmbFanGpuPresets_SelectionChanged`, `BtnSaveFanGpuPreset_Click`, `BtnDeleteFanGpuPreset_Click`).
   - Total de 619 controles com eventos totalmente restaurados e validados, com 0 handlers faltantes, 0 handlers inexistentes e conformidade estrita com o esquema XML.
-- **Auditoria Completa â€” Fase 4 (Testes Automatizados de RegressÃ£o XAML e Handlers):**
-  - Implementada suÃ­te de testes de auditoria de arquitetura XAML em `PostFormatAndHealthTests.cs` para blindar o projeto contra regressÃµes visuais e estruturais:
-    - `XamlNavigation_AllNavItemsAndGroups_HaveValidCheckedAndTags`: assegura que cabeÃ§alhos colapsÃ¡veis (`ToggleButton.NavGroup`) nunca recebam evento `Checked="Nav_Checked"`, e que todos os 36 botÃµes de navegaÃ§Ã£o (`RadioButton.NavItem`) possuam o manipulador `Checked="Nav_Checked"` e `Tag` apontando para pÃ¡ginas vÃ¡lidas existentes.
-    - `XamlBindings_ProgressBarsAndReadOnlyProperties_UseOneWayMode`: valida que bindings em `ProgressBar.Value` e propriedades somente leitura (`ProgressPercentage`, `SpeedBarRatio`, `DimensionsText`, `FileSizeText`) utilizam estritamente `Mode=OneWay`, evitando exceÃ§Ãµes `XamlParseException` de two-way binding.
-    - `XamlEventHandlers_AllCodeBehindHandlers_AreCorrectlyWiredInXaml`: audita a integridade total entre XAML e code-behind, garantindo 0 manipuladores ausentes no code-behind e que todos os mÃ©todos de evento interativos de UI em `MainWindow.*.cs` estejam devidamente conectados aos controles nas 32 abas do aplicativo.
+- **Auditoria Completa — Fase 4 (Testes Automatizados de Regressão XAML e Handlers):**
+  - Implementada suíte de testes de auditoria de arquitetura XAML em `PostFormatAndHealthTests.cs` para blindar o projeto contra regressões visuais e estruturais:
+    - `XamlNavigation_AllNavItemsAndGroups_HaveValidCheckedAndTags`: assegura que cabeçalhos colapsáveis (`ToggleButton.NavGroup`) nunca recebam evento `Checked="Nav_Checked"`, e que todos os 36 botões de navegação (`RadioButton.NavItem`) possuam o manipulador `Checked="Nav_Checked"` e `Tag` apontando para páginas válidas existentes.
+    - `XamlBindings_ProgressBarsAndReadOnlyProperties_UseOneWayMode`: valida que bindings em `ProgressBar.Value` e propriedades somente leitura (`ProgressPercentage`, `SpeedBarRatio`, `DimensionsText`, `FileSizeText`) utilizam estritamente `Mode=OneWay`, evitando exceções `XamlParseException` de two-way binding.
+    - `XamlEventHandlers_AllCodeBehindHandlers_AreCorrectlyWiredInXaml`: audita a integridade total entre XAML e code-behind, garantindo 0 manipuladores ausentes no code-behind e que todos os métodos de evento interativos de UI em `MainWindow.*.cs` estejam devidamente conectados aos controles nas 32 abas do aplicativo.
 
 ## [0.20.1] - 2026-11-04
 
-### ðŸ› ï¸ CorreÃ§Ãµes
-- **CorreÃ§Ã£o CrÃ­tica de InicializaÃ§Ã£o XAML (`XamlParseException` em `MainWindow.xaml` e `Theme.xaml`):**
-  - Resolvida a exceÃ§Ã£o fatal `NÃ£o Ã© possÃ­vel encontrar o recurso denominado 'Display'` gerada durante o `InitializeComponent()` ao adicionar a fonte `Display` em `Theme.xaml` e alinhar o elemento `TxtBootTypicalTime` com a tipografia `Mono` do projeto.
-  - Corrigida a referÃªncia do conversor de visibilidade no badge "Recomendado" da Central de ReparaÃ§Ã£o do Windows (`BoolToVis` -> `BoolVis`), registrando tambÃ©m o alias `BoolToVis` globalmente em `Theme.xaml` para prevenir futuras regressÃµes.
-  - Padronizadas todas as 38 referÃªncias legadas de recursos dinÃ¢micos (`Text`, `Primary`, `Border`, `BorderBrush`, `CardBg`) em `MainWindow.xaml` para as chaves oficiais da paleta (`Fg`, `Accent`, `Line`, `LineStrong`, `Card`), garantindo conformidade total com os temas escuro e claro.
+### 🛠️ Correções
+- **Correção Crítica de Inicialização XAML (`XamlParseException` em `MainWindow.xaml` e `Theme.xaml`):**
+  - Resolvida a exceção fatal `Não é possível encontrar o recurso denominado 'Display'` gerada durante o `InitializeComponent()` ao adicionar a fonte `Display` em `Theme.xaml` e alinhar o elemento `TxtBootTypicalTime` com a tipografia `Mono` do projeto.
+  - Corrigida a referência do conversor de visibilidade no badge "Recomendado" da Central de Reparação do Windows (`BoolToVis` -> `BoolVis`), registrando também o alias `BoolToVis` globalmente em `Theme.xaml` para prevenir futuras regressões.
+  - Padronizadas todas as 38 referências legadas de recursos dinâmicos (`Text`, `Primary`, `Border`, `BorderBrush`, `CardBg`) em `MainWindow.xaml` para as chaves oficiais da paleta (`Fg`, `Accent`, `Line`, `LineStrong`, `Card`), garantindo conformidade total com os temas escuro e claro.
 
 ## [0.20.0] - 2026-11-04
 
-### ðŸš€ Adicionado & Aprimorado
-- **Nova Central PÃ³s-FormataÃ§Ã£o (`PagePostFormat`, `PostFormatManager`, `MainWindow.PostFormat`):**
-  - **Descoberta AutomÃ¡tica de Backups em Todas as Unidades:** Varredura automÃ¡tica em todas as partiÃ§Ãµes internas e discos externos/pendrives em busca de backups feitos pelo Lumini Tray (drivers exportados, redes Wi-Fi e senhas salvas, instaladores de programas Winget).
-  - **Fila Sequencial Automatizada com Controles de Parada e ContinuaÃ§Ã£o:** Painel visual com lista de tarefas ordenadas por categoria (Drivers, Wi-Fi, OtimizaÃ§Ãµes, Programas), status de cada etapa em tempo real e botÃµes `[PARAR / PAUSAR]` e `[CONTINUAR]`.
-  - **PersistÃªncia de Estado e Continuidade PÃ³s-ReinicializaÃ§Ã£o:** GravaÃ§Ã£o automÃ¡tica do progresso da fila em `%LocalAppData%\LuminiTray\post_format_state.json` com chave `RunOnce` no Registro do Windows. Caso o computador seja reiniciado ou o aplicativo fechado no meio do processo, o Lumini Tray retoma automaticamente do ponto exato onde parou atravÃ©s de um banner no topo da tela inicial.
-- **TransformaÃ§Ã£o Completa da Aba de Bad Blocks em "SaÃºde dos Discos" (`PageDiskTools`, `UsbFakeDriveScanner`, `MainWindow.DisksHealth`):**
-  - **ReestruturaÃ§Ã£o e Identidade Visual do HUB Pro:** BotÃ£o e cabeÃ§alho reformulados para "SaÃºde dos discos" com navegaÃ§Ã£o interna por sub-abas: `[â¤ï¸ SaÃºde]` e `[ðŸ”Œ Verificar se Ã© original (capacidade falsa)]`.
-  - **Sub-aba SaÃºde Geral & S.M.A.R.T.:** PÃ­lulas de seleÃ§Ã£o de unidades de armazenamento, diagnÃ³stico de saÃºde e temperatura, telemetria S.M.A.R.T. em tempo real, heatmap de blocos de superfÃ­cie e veredito consolidado de integridade com orientaÃ§Ãµes tÃ©cnicas.
-  - **Sub-aba Verificar se Ã© Original (Pendrive / CartÃ£o / HD Falsificado):**
-    - Seletor inteligente exclusivo para unidades removÃ­veis (o disco do Windows e discos fixos sÃ£o protegidos e ocultados dessa verificaÃ§Ã£o).
-    - **IdentificaÃ§Ã£o de Hardware & Controlador USB:** Leitura de Vendor ID (VID), Product ID (PID), fabricante e revisÃ£o, com banco de dados de controladores suspeitos frequentemente usados em rÃ©plicas falsificadas (Chipsbank, FirstChip, Appotech, Alcor, Micov, etc.).
-    - **Teste RÃ¡pido NÃ£o-Destrutivo por Amostragem:** GravaÃ§Ã£o e conferÃªncia de mais de 1.000 pontos (ou 2.000 pontos em modo precisÃ£o mÃ¡xima) distribuÃ­dos em todo o span da unidade sem apagar arquivos existentes, detectando looping de memÃ³ria flash e capacidade falsa em poucos minutos.
+### 🚀 Adicionado & Aprimorado
+- **Nova Central Pós-Formatação (`PagePostFormat`, `PostFormatManager`, `MainWindow.PostFormat`):**
+  - **Descoberta Automática de Backups em Todas as Unidades:** Varredura automática em todas as partições internas e discos externos/pendrives em busca de backups feitos pelo Lumini Tray (drivers exportados, redes Wi-Fi e senhas salvas, instaladores de programas Winget).
+  - **Fila Sequencial Automatizada com Controles de Parada e Continuação:** Painel visual com lista de tarefas ordenadas por categoria (Drivers, Wi-Fi, Otimizações, Programas), status de cada etapa em tempo real e botões `[PARAR / PAUSAR]` e `[CONTINUAR]`.
+  - **Persistência de Estado e Continuidade Pós-Reinicialização:** Gravação automática do progresso da fila em `%LocalAppData%\LuminiTray\post_format_state.json` com chave `RunOnce` no Registro do Windows. Caso o computador seja reiniciado ou o aplicativo fechado no meio do processo, o Lumini Tray retoma automaticamente do ponto exato onde parou através de um banner no topo da tela inicial.
+- **Transformação Completa da Aba de Bad Blocks em "Saúde dos Discos" (`PageDiskTools`, `UsbFakeDriveScanner`, `MainWindow.DisksHealth`):**
+  - **Reestruturação e Identidade Visual do HUB Pro:** Botão e cabeçalho reformulados para "Saúde dos discos" com navegação interna por sub-abas: `[❤️ Saúde]` e `[🔌 Verificar se é original (capacidade falsa)]`.
+  - **Sub-aba Saúde Geral & S.M.A.R.T.:** Pílulas de seleção de unidades de armazenamento, diagnóstico de saúde e temperatura, telemetria S.M.A.R.T. em tempo real, heatmap de blocos de superfície e veredito consolidado de integridade com orientações técnicas.
+  - **Sub-aba Verificar se é Original (Pendrive / Cartão / HD Falsificado):**
+    - Seletor inteligente exclusivo para unidades removíveis (o disco do Windows e discos fixos são protegidos e ocultados dessa verificação).
+    - **Identificação de Hardware & Controlador USB:** Leitura de Vendor ID (VID), Product ID (PID), fabricante e revisão, com banco de dados de controladores suspeitos frequentemente usados em réplicas falsificadas (Chipsbank, FirstChip, Appotech, Alcor, Micov, etc.).
+    - **Teste Rápido Não-Destrutivo por Amostragem:** Gravação e conferência de mais de 1.000 pontos (ou 2.000 pontos em modo precisão máxima) distribuídos em todo o span da unidade sem apagar arquivos existentes, detectando looping de memória flash e capacidade falsa em poucos minutos.
 - **Nova Aba Reparar o Windows (`PageWindowsRepair`, `WindowsRepairService`, `MainWindow.WindowsRepair`):**
-  - **SuÃ­te Completa de CorreÃ§Ã£o Oficial da Microsoft:** ExecuÃ§Ã£o em ordem tÃ©cnica recomendada das principais rotinas de reparo: CriaÃ§Ã£o de Ponto de RestauraÃ§Ã£o, `chkdsk C: /scan`, `DISM /RestoreHealth`, `sfc /scannow`, WMI `salvagerepository`, limpeza de cache de Ã­cones/miniaturas, reset de rede e Winsock/DNS, e agendamento de verificaÃ§Ã£o profunda `chkdsk /f` no prÃ³ximo boot.
-  - **Terminal de Logs e Acompanhamento Unificado:** Terminal embutido com saÃ­da detalhada dos processos, barra de progresso percentual, botÃ£o de cancelamento seguro a qualquer momento e card de veredito com aviso de reinicializaÃ§Ã£o.
-- **Telemetria AvanÃ§ada de Bateria em Energia (`BatteryReportService`, `BatteryInfo`, `MainWindow.Net`, `PageEnergy`):**
-  - **DetecÃ§Ã£o AutomÃ¡tica de Notebooks:** IdentificaÃ§Ã£o em tempo real da presenÃ§a de bateria no sistema, exibindo card dedicado e ocultando automaticamente a seÃ§Ã£o quando executado em desktops.
-  - **MÃ©tricas Completas do HUB Pro:** ExtraÃ§Ã£o via `powercfg /batteryreport /xml` e WMI com badge de saÃºde percentual, contagem de ciclos (`CycleCount`), capacidade de fÃ¡brica (Design Capacity), capacidade atual em carga total (Full Charge Capacity) em mWh e Wh, taxa de degradaÃ§Ã£o da bateria %, quÃ­mica (LÃ­on, etc.), fabricante e nÃºmero de sÃ©rie.
-  - **Comparativo de DuraÃ§Ã£o e HistÃ³rico:** Estimativa de autonomia quando novo vs duraÃ§Ã£o atual, histÃ³rico de capacidade das Ãºltimas sessÃµes e botÃ£o dedicado para abrir o RelatÃ³rio Oficial HTML do Windows (`powercfg /batteryreport`) no navegador padrÃ£o.
+  - **Suíte Completa de Correção Oficial da Microsoft:** Execução em ordem técnica recomendada das principais rotinas de reparo: Criação de Ponto de Restauração, `chkdsk C: /scan`, `DISM /RestoreHealth`, `sfc /scannow`, WMI `salvagerepository`, limpeza de cache de ícones/miniaturas, reset de rede e Winsock/DNS, e agendamento de verificação profunda `chkdsk /f` no próximo boot.
+  - **Terminal de Logs e Acompanhamento Unificado:** Terminal embutido com saída detalhada dos processos, barra de progresso percentual, botão de cancelamento seguro a qualquer momento e card de veredito com aviso de reinicialização.
+- **Telemetria Avançada de Bateria em Energia (`BatteryReportService`, `BatteryInfo`, `MainWindow.Net`, `PageEnergy`):**
+  - **Detecção Automática de Notebooks:** Identificação em tempo real da presença de bateria no sistema, exibindo card dedicado e ocultando automaticamente a seção quando executado em desktops.
+  - **Métricas Completas do HUB Pro:** Extração via `powercfg /batteryreport /xml` e WMI com badge de saúde percentual, contagem de ciclos (`CycleCount`), capacidade de fábrica (Design Capacity), capacidade atual em carga total (Full Charge Capacity) em mWh e Wh, taxa de degradação da bateria %, química (Líon, etc.), fabricante e número de série.
+  - **Comparativo de Duração e Histórico:** Estimativa de autonomia quando novo vs duração atual, histórico de capacidade das últimas sessões e botão dedicado para abrir o Relatório Oficial HTML do Windows (`powercfg /batteryreport`) no navegador padrão.
 
 ## [0.19.0] - 2026-11-04
 
-### ðŸš€ Adicionado & Aprimorado
-- **Nova Tela Dedicada de InicializaÃ§Ã£o do Windows (`BootDiagnosticsService`, `PageStartup`, `MainWindow.Startup`):**
-  - **Tempo de Boot e MÃ©tricas Detalhadas:** CÃ¡lculo do tempo tÃ­pico para ligar o Windows, decomposiÃ§Ã£o do Caminho Principal (`MainPath` - Kernel e Drivers) e PÃ³s-InicializaÃ§Ã£o (`PostBoot` - carregamento de aplicativos e tempo atÃ© a ociosidade do desktop) baseado no log `Microsoft-Windows-Diagnostics-Performance/Operational` (Event ID 100) com fallback para o log de Sistema (Event ID 6005) e Uptime.
-  - **Indicador de InÃ­cio RÃ¡pido (Fast Startup / Hiberboot):** DetecÃ§Ã£o inteligente do estado do inÃ­cio rÃ¡pido do Windows via registro (`HiberbootEnabled`), explicando o impacto no boot a frio e reinicializaÃ§Ãµes.
-  - **Timeline HistÃ³rica Visual das Ãšltimas InicializaÃ§Ãµes:** GrÃ¡fico visual comparativo das Ãºltimas sessÃµes de inicializaÃ§Ã£o com barras horizontais proporcionais, data, horÃ¡rio e tempo total decorrido.
-  - **DiagnÃ³stico de Gargalos ("O que atrasou o inÃ­cio"):** Mapeamento automÃ¡tico dos programas (ID 101), drivers (ID 102), serviÃ§os (ID 103) e tarefas em segundo plano (ID 108) que adicionaram atraso ao boot, exibindo tempo exato de lentidÃ£o e Ã­cones de identificaÃ§Ã£o.
-  - **Programas de InicializaÃ§Ã£o com Selos de RecomendaÃ§Ã£o do HUB Pro:** CategorizaÃ§Ã£o de cada item de inicializaÃ§Ã£o com selos coloridos ("Seguro de desligar" em verde esmeralda, "Melhor deixar ligado" em azul e "Confira antes" em Ã¢mbar), alÃ©m de interruptor de ativaÃ§Ã£o rÃ¡pida, botÃ£o de remoÃ§Ã£o e restauraÃ§Ã£o de removidos.
-  - **Retorno da Aba ao Menu Lateral:** Item "InicializaÃ§Ã£o" reintroduzido no menu `RESET FERRAMENTAS`, desvinculando-o da aba Geral das ConfiguraÃ§Ãµes.
-  - **Fechamento AutomÃ¡tico de Abas na InicializaÃ§Ã£o:** Ao abrir o programa, todos os grupos expansÃ­veis do menu lateral (Ferramentas, Reset Maker, etc.) iniciam devidamente recolhidos.
-- **Atalhos RÃ¡pidos & Controles do Programa na Aba Geral (`MainWindow.Settings`, `PanelSettingsGeneral`):**
-  - Novo card de conveniÃªncia na aba Geral de ConfiguraÃ§Ãµes sem remover os controles das pÃ¡ginas originais.
-  - Atalho rÃ¡pido para mutar/desmutar microfone com tecla de atalho global (`Ctrl + Shift + M`).
-  - Atalho rÃ¡pido para ativar/desativar controle de volume com scroll do mouse na barra de tarefas.
-  - Seletor rÃ¡pido de dispositivo de saÃ­da de som e microfone padrÃ£o com sincronizaÃ§Ã£o instantÃ¢nea.
-  - Atalho rÃ¡pido para ligar/desligar o Supressor Neural de RuÃ­do.
-  - Atalho rÃ¡pido para ligar/desligar a Overlay de Desempenho e FPS nos jogos.
-- **Sub-aba de AtualizaÃ§Ã£o de Programas no Instalador de Apps (`AppInstaller`, `MainWindow.Apps`, `ViewAppsUpdate`):**
-  - Sub-abas `[ðŸ“¦ INSTALAR PROGRAMAS]` e `[ðŸ”„ ATUALIZAR PROGRAMAS]` no topo da tela de aplicativos.
-  - DetecÃ§Ã£o de novas versÃµes disponÃ­veis via `winget upgrade --include-unknown` exibindo versÃ£o instalada, versÃ£o disponÃ­vel, ID e status.
-  - BotÃµes para "Verificar AtualizaÃ§Ãµes", "Atualizar Selecionados" e "ðŸš€ ATUALIZAR TODOS" com execuÃ§Ã£o silenciosa em lote.
-- **AtualizaÃ§Ã£o Completa de Drivers com Ponto de RestauraÃ§Ã£o (`DriverManager`, `MainWindow.Driver`):**
-  - BotÃ£o `[ðŸš€ ATUALIZAR TODOS OS DRIVERS DISPONÃVEIS]` na tela de Drivers & DDU.
-  - CriaÃ§Ã£o automÃ¡tica prÃ©via de Ponto de RestauraÃ§Ã£o do Windows via `SystemRestoreManager` antes de baixar e instalar as atualizaÃ§Ãµes pelo Windows Update.
-- **RestauraÃ§Ã£o de Aplicativos PadrÃ£o do Windows no Debloat (`WindowsDebloatService`, `MainWindow.WindowsDebloat`):**
-  - BotÃ£o `[â†º REINSTALAR APPS DO WINDOWS]` na aba Bloatware, permitindo re-registrar todos os pacotes AppX nativos de fÃ¡brica do Windows de forma segura caso algum componente tenha sido removido por engano.
-- **Backup e RestauraÃ§Ã£o de Redes Wi-Fi e Senhas (`BackupService`, `MainWindow.Backup`):**
+### 🚀 Adicionado & Aprimorado
+- **Nova Tela Dedicada de Inicialização do Windows (`BootDiagnosticsService`, `PageStartup`, `MainWindow.Startup`):**
+  - **Tempo de Boot e Métricas Detalhadas:** Cálculo do tempo típico para ligar o Windows, decomposição do Caminho Principal (`MainPath` - Kernel e Drivers) e Pós-Inicialização (`PostBoot` - carregamento de aplicativos e tempo até a ociosidade do desktop) baseado no log `Microsoft-Windows-Diagnostics-Performance/Operational` (Event ID 100) com fallback para o log de Sistema (Event ID 6005) e Uptime.
+  - **Indicador de Início Rápido (Fast Startup / Hiberboot):** Detecção inteligente do estado do início rápido do Windows via registro (`HiberbootEnabled`), explicando o impacto no boot a frio e reinicializações.
+  - **Timeline Histórica Visual das Últimas Inicializações:** Gráfico visual comparativo das últimas sessões de inicialização com barras horizontais proporcionais, data, horário e tempo total decorrido.
+  - **Diagnóstico de Gargalos ("O que atrasou o início"):** Mapeamento automático dos programas (ID 101), drivers (ID 102), serviços (ID 103) e tarefas em segundo plano (ID 108) que adicionaram atraso ao boot, exibindo tempo exato de lentidão e ícones de identificação.
+  - **Programas de Inicialização com Selos de Recomendação do HUB Pro:** Categorização de cada item de inicialização com selos coloridos ("Seguro de desligar" em verde esmeralda, "Melhor deixar ligado" em azul e "Confira antes" em âmbar), além de interruptor de ativação rápida, botão de remoção e restauração de removidos.
+  - **Retorno da Aba ao Menu Lateral:** Item "Inicialização" reintroduzido no menu `RESET FERRAMENTAS`, desvinculando-o da aba Geral das Configurações.
+  - **Fechamento Automático de Abas na Inicialização:** Ao abrir o programa, todos os grupos expansíveis do menu lateral (Ferramentas, Reset Maker, etc.) iniciam devidamente recolhidos.
+- **Atalhos Rápidos & Controles do Programa na Aba Geral (`MainWindow.Settings`, `PanelSettingsGeneral`):**
+  - Novo card de conveniência na aba Geral de Configurações sem remover os controles das páginas originais.
+  - Atalho rápido para mutar/desmutar microfone com tecla de atalho global (`Ctrl + Shift + M`).
+  - Atalho rápido para ativar/desativar controle de volume com scroll do mouse na barra de tarefas.
+  - Seletor rápido de dispositivo de saída de som e microfone padrão com sincronização instantânea.
+  - Atalho rápido para ligar/desligar o Supressor Neural de Ruído.
+  - Atalho rápido para ligar/desligar a Overlay de Desempenho e FPS nos jogos.
+- **Sub-aba de Atualização de Programas no Instalador de Apps (`AppInstaller`, `MainWindow.Apps`, `ViewAppsUpdate`):**
+  - Sub-abas `[📦 INSTALAR PROGRAMAS]` e `[🔄 ATUALIZAR PROGRAMAS]` no topo da tela de aplicativos.
+  - Detecção de novas versões disponíveis via `winget upgrade --include-unknown` exibindo versão instalada, versão disponível, ID e status.
+  - Botões para "Verificar Atualizações", "Atualizar Selecionados" e "🚀 ATUALIZAR TODOS" com execução silenciosa em lote.
+- **Atualização Completa de Drivers com Ponto de Restauração (`DriverManager`, `MainWindow.Driver`):**
+  - Botão `[🚀 ATUALIZAR TODOS OS DRIVERS DISPONÍVEIS]` na tela de Drivers & DDU.
+  - Criação automática prévia de Ponto de Restauração do Windows via `SystemRestoreManager` antes de baixar e instalar as atualizações pelo Windows Update.
+- **Restauração de Aplicativos Padrão do Windows no Debloat (`WindowsDebloatService`, `MainWindow.WindowsDebloat`):**
+  - Botão `[↺ REINSTALAR APPS DO WINDOWS]` na aba Bloatware, permitindo re-registrar todos os pacotes AppX nativos de fábrica do Windows de forma segura caso algum componente tenha sido removido por engano.
+- **Backup e Restauração de Redes Wi-Fi e Senhas (`BackupService`, `MainWindow.Backup`):**
   - Card dedicado **REDES WI-FI E SENHAS (BACKUP PARA FORMATAÃ‡ÃƒO)** na Central de Backup.
-  - Leitura e listagem de todos os perfis Wi-Fi salvos com SSID, autenticaÃ§Ã£o e senhas.
-  - ExportaÃ§Ã£o de perfis XML com chave legÃ­vel (`key=clear`), relatÃ³rio em texto (`Redes-WiFi-Senhas.txt`) e script em lote automatizado (`Restaurar-WiFi.bat`).
-  - RestauraÃ§Ã£o com 1 clique de todos os perfis de uma pasta de backup de volta para o Windows.
+  - Leitura e listagem de todos os perfis Wi-Fi salvos com SSID, autenticação e senhas.
+  - Exportação de perfis XML com chave legível (`key=clear`), relatório em texto (`Redes-WiFi-Senhas.txt`) e script em lote automatizado (`Restaurar-WiFi.bat`).
+  - Restauração com 1 clique de todos os perfis de uma pasta de backup de volta para o Windows.
 
 ## [0.18.0] - 2026-11-04
 
-### ðŸš€ Adicionado & Aprimorado
+### 🚀 Adicionado & Aprimorado
 - **Novo Mapa do Disco com Particionamento 2D Squarified Treemap (`TreemapLayoutEngine`, `DiskSpaceAnalyzer`, `MainWindow.DiskSpace`):**
-  - **Treemap Squarified 2D Responsivo:** ImplementaÃ§Ã£o do algoritmo Squarified Treemap (Bruls, Huizing, van Wijk) com retÃ¢ngulos aninhados proporcionais de alta resoluÃ§Ã£o, separaÃ§Ã£o visual, hierarquia de profundidade (zoom-in ao clicar nas pastas) e botÃ£o de retorno (â† Voltar).
-  - **CategorizaÃ§Ã£o AutomÃ¡tica em 8 Grupos com Cores Oficiais:** VÃ­deos (`#E11D48`), Imagens (`#06B6D4`), MÃºsicas (`#A855F7`), Documentos (`#F59E0B`), Programas e jogos (`#10B981`), Compactados (`#F97316`), Windows e sistema (`#3B82F6`) e Outros (`#64748B`).
-  - **Faixa Superior de CartÃµes de Unidades (Drive Cards):** DetecÃ§Ã£o automÃ¡tica de todos os discos com grÃ¡ficos de uso coloridos (verde/accent ou vermelho para >90%), espaÃ§o livre/total e seletor para pastas personalizadas (`Escolher pasta...`).
-  - **Painel Lateral com Abas Duplas:** `[ðŸ“ Maiores pastas]` e `[ðŸ“„ Maiores arquivos]`, exibindo indicador de categoria, tamanho, contagem de arquivos, porcentagem e mini barra de progresso horizontal para cada item.
-  - **PÃ­lulas de Resumo de Categorias e Dicas de Atalhos:** Total em bytes e porcentagem em tempo real para cada uma das 8 categorias no diretÃ³rio atual, com atalhos de clique direto para Limpeza, Desinstalador e Arquivos duplicados.
-- **20 Novas OtimizaÃ§Ãµes do Windows ExtraÃ­das do HUB Pro (`WindowsDebloatService`):**
-  - **Barra de Tarefas & Menu Iniciar:** Ocultar VisÃ£o de Tarefas (Task View), Exibir segundos no relÃ³gio, Alinhar Menu Iniciar Ã  esquerda (estilo Windows 10), Ocultar Widgets e NotÃ­cias (economiza memÃ³ria RAM), Ocultar Chat/Teams da barra, Reduzir pesquisa da barra para apenas Ã­cone, Desativar instalaÃ§Ã£o silenciosa de jogos patrocinados (Candy Crush, etc).
-  - **Windows Explorer & Interface:** Mostrar extensÃµes de arquivos conhecidos (.exe, .zip), Mostrar pastas e arquivos ocultos, Abrir Explorador direto em "Este Computador", Desativar histÃ³rico e arquivos recentes no Acesso RÃ¡pido, Desativar pesquisa web do Bing no Menu Iniciar.
-  - **Privacidade & Telemetria:** Desativar ID de publicidade e anÃºncios direcionados, Desativar rastreamento de inicializaÃ§Ã£o de aplicativos, Desativar feed de atividades e linha do tempo, Desativar coleta de telemetria de digitaÃ§Ã£o e escrita, Desativar questionÃ¡rios de feedback e avaliaÃ§Ãµes do Windows.
-  - **Desempenho & Fluidez:** Desativar HibernaÃ§Ã£o do Windows (liberaÃ§Ã£o imediata de gigabytes do `hiberfil.sys`), Encerramento acelerado de aplicativos travados (reduÃ§Ã£o de timeout de 20s para 2s), Desativar efeitos de transparÃªncia do Windows (alÃ­vio de GPU e DWM).
-- **Nova Central Desfazer Integrada nas ConfiguraÃ§Ãµes (`MainWindow.Settings.Undo`, `PanelSettingsUndo`):**
-  - Aba dedicada **CENTRAL DESFAZER** dentro da tela de ConfiguraÃ§Ãµes (`PageSettings`).
-  - Status em tempo real do sistema com contagem de ajustes ativos e banner visual intuitivo ("VocÃª tem N ajustes aplicados" ou "Seu PC estÃ¡ no estado original").
-  - BotÃ£o `[â†º RESTAURAR TUDO AO PADRÃƒO]`: reverte todas as modificaÃ§Ãµes aplicadas pelo Lumini Tray de uma vez sÃ³, recuperando o estado de fÃ¡brica do Windows.
-  - BotÃ£o `[DESFAZER]` individual para cada ajuste listado, com exibiÃ§Ã£o de categoria e efeito.
-  - Atalhos integrados para `Abrir RestauraÃ§Ã£o do Sistema (rstrui.exe)` e `Criar Ponto de RestauraÃ§Ã£o Agora`.
+  - **Treemap Squarified 2D Responsivo:** Implementação do algoritmo Squarified Treemap (Bruls, Huizing, van Wijk) com retângulos aninhados proporcionais de alta resolução, separação visual, hierarquia de profundidade (zoom-in ao clicar nas pastas) e botão de retorno (← Voltar).
+  - **Categorização Automática em 8 Grupos com Cores Oficiais:** Vídeos (`#E11D48`), Imagens (`#06B6D4`), Músicas (`#A855F7`), Documentos (`#F59E0B`), Programas e jogos (`#10B981`), Compactados (`#F97316`), Windows e sistema (`#3B82F6`) e Outros (`#64748B`).
+  - **Faixa Superior de Cartões de Unidades (Drive Cards):** Detecção automática de todos os discos com gráficos de uso coloridos (verde/accent ou vermelho para >90%), espaço livre/total e seletor para pastas personalizadas (`Escolher pasta...`).
+  - **Painel Lateral com Abas Duplas:** `[📁 Maiores pastas]` e `[📄 Maiores arquivos]`, exibindo indicador de categoria, tamanho, contagem de arquivos, porcentagem e mini barra de progresso horizontal para cada item.
+  - **Pílulas de Resumo de Categorias e Dicas de Atalhos:** Total em bytes e porcentagem em tempo real para cada uma das 8 categorias no diretório atual, com atalhos de clique direto para Limpeza, Desinstalador e Arquivos duplicados.
+- **20 Novas Otimizações do Windows Extraídas do HUB Pro (`WindowsDebloatService`):**
+  - **Barra de Tarefas & Menu Iniciar:** Ocultar Visão de Tarefas (Task View), Exibir segundos no relógio, Alinhar Menu Iniciar à esquerda (estilo Windows 10), Ocultar Widgets e Notícias (economiza memória RAM), Ocultar Chat/Teams da barra, Reduzir pesquisa da barra para apenas ícone, Desativar instalação silenciosa de jogos patrocinados (Candy Crush, etc).
+  - **Windows Explorer & Interface:** Mostrar extensões de arquivos conhecidos (.exe, .zip), Mostrar pastas e arquivos ocultos, Abrir Explorador direto em "Este Computador", Desativar histórico e arquivos recentes no Acesso Rápido, Desativar pesquisa web do Bing no Menu Iniciar.
+  - **Privacidade & Telemetria:** Desativar ID de publicidade e anúncios direcionados, Desativar rastreamento de inicialização de aplicativos, Desativar feed de atividades e linha do tempo, Desativar coleta de telemetria de digitação e escrita, Desativar questionários de feedback e avaliações do Windows.
+  - **Desempenho & Fluidez:** Desativar Hibernação do Windows (liberação imediata de gigabytes do `hiberfil.sys`), Encerramento acelerado de aplicativos travados (redução de timeout de 20s para 2s), Desativar efeitos de transparência do Windows (alívio de GPU e DWM).
+- **Nova Central Desfazer Integrada nas Configurações (`MainWindow.Settings.Undo`, `PanelSettingsUndo`):**
+  - Aba dedicada **CENTRAL DESFAZER** dentro da tela de Configurações (`PageSettings`).
+  - Status em tempo real do sistema com contagem de ajustes ativos e banner visual intuitivo ("Você tem N ajustes aplicados" ou "Seu PC está no estado original").
+  - Botão `[↺ RESTAURAR TUDO AO PADRÃO]`: reverte todas as modificações aplicadas pelo Lumini Tray de uma vez só, recuperando o estado de fábrica do Windows.
+  - Botão `[DESFAZER]` individual para cada ajuste listado, com exibição de categoria e efeito.
+  - Atalhos integrados para `Abrir Restauração do Sistema (rstrui.exe)` e `Criar Ponto de Restauração Agora`.
 
 ## [0.17.9] - 2026-11-03
 
-### ðŸ› ï¸ CorreÃ§Ãµes & ReativaÃ§Ã£o de Cabo Virtual
-- **ReativaÃ§Ã£o e Roteamento AutÃ´nomo do Microfone Virtual (`VirtualCableManager`, `MainWindow.Suppressor` & `MicrophoneSuppressorService`):**
-  - **Auto-ativaÃ§Ã£o do CABLE Input via PolicyConfig:** Implementado `EnsureCableInputEnabled()`. Quando o dispositivo de Ã¡udio `CABLE Input (VB-Audio Virtual Cable)` estiver presente no Windows porÃ©m marcado como Desativado (`Disabled`), o sistema reativa-o automaticamente em tempo de execuÃ§Ã£o via `IPolicyConfig.SetEndpointVisibility`.
-  - **RecuperaÃ§Ã£o e SeleÃ§Ã£o AutomÃ¡tica no Dropdown:** A interface agora detecta o cabo virtual em todos os estados, reativa-o e seleciona-o automaticamente com destaque (`â­ CABLE Input (VB-Audio Virtual Cable) (Recomendado)`), restaurando a rota de Ã¡udio para o Discord, jogos e Windows.
-  - **Isolamento de Retorno Preservado:** O Ã¡udio continua sendo transmitido com zero ruÃ­do para o cabo virtual sem vazar para o fone de ouvido do usuÃ¡rio, mantendo o retorno restrito apenas Ã  opÃ§Ã£o sob demanda (`ChkListenSelf`).
+### 🛠️ Correções & Reativação de Cabo Virtual
+- **Reativação e Roteamento Autônomo do Microfone Virtual (`VirtualCableManager`, `MainWindow.Suppressor` & `MicrophoneSuppressorService`):**
+  - **Auto-ativação do CABLE Input via PolicyConfig:** Implementado `EnsureCableInputEnabled()`. Quando o dispositivo de áudio `CABLE Input (VB-Audio Virtual Cable)` estiver presente no Windows porém marcado como Desativado (`Disabled`), o sistema reativa-o automaticamente em tempo de execução via `IPolicyConfig.SetEndpointVisibility`.
+  - **Recuperação e Seleção Automática no Dropdown:** A interface agora detecta o cabo virtual em todos os estados, reativa-o e seleciona-o automaticamente com destaque (`⭐ CABLE Input (VB-Audio Virtual Cable) (Recomendado)`), restaurando a rota de áudio para o Discord, jogos e Windows.
+  - **Isolamento de Retorno Preservado:** O áudio continua sendo transmitido com zero ruído para o cabo virtual sem vazar para o fone de ouvido do usuário, mantendo o retorno restrito apenas à opção sob demanda (`ChkListenSelf`).
 
 ## [0.17.8] - 2026-11-03
 
-### ðŸ› ï¸ CorreÃ§Ãµes & Isolamento de Ãudio
-- **Isolamento Estrito do Retorno de Voz no Supressor de RuÃ­do (`MicrophoneSuppressorService` & `MainWindow.Suppressor`):**
-  - **Fim do Retorno Permanente Acidental:** Corrigido problema em que a rota do Microfone Virtual (CABLE Input) recorria ao endpoint de renderizaÃ§Ã£o padrÃ£o do sistema (`GetDefaultAudioEndpoint`), fazendo com que o Ã¡udio do microfone fosse reproduzido continuamente no fone de ouvido do usuÃ¡rio assim que o supressor neural era ativado.
-  - **Bloqueio de Fallback no Roteamento Virtual:** O mÃ©todo de inicializaÃ§Ã£o de endpoints WASAPI (`TryInitRenderEndpoint`) agora desabilita estritamente o fallback padrÃ£o (`allowDefaultFallback = false`) para cabos virtuais. Se nenhum cabo virtual estiver presente ou configurado, o Ã¡udio NÃƒO Ã© enviado aos alto-falantes/fones do usuÃ¡rio.
-  - **Filtro Seguro de Dispositivos de Cabo Virtual:** O seletor `CmbVirtualCableDev` agora lista apenas dispositivos de cabo virtual autÃªnticos (`VirtualCableManager.IsCableDevice`). Se nenhum driver estiver instalado, exibe aviso e zera a seleÃ§Ã£o, impedindo seleÃ§Ã£o automÃ¡tica do fone de ouvido como cabo virtual.
-  - **Retorno de Voz Sob Demanda:** O retorno de voz no fone de ouvido agora sÃ³ Ã© ativado quando o usuÃ¡rio marca expressamente a opÃ§Ã£o *"Ouvir retorno da minha voz no fone de ouvido"* (`ChkListenSelf`) ou durante a reproduÃ§Ã£o do Teste RÃ¡pido de 5 segundos. Com a opÃ§Ã£o desmarcada, hÃ¡ silÃªncio absoluto no fone.
+### 🛠️ Correções & Isolamento de Áudio
+- **Isolamento Estrito do Retorno de Voz no Supressor de Ruído (`MicrophoneSuppressorService` & `MainWindow.Suppressor`):**
+  - **Fim do Retorno Permanente Acidental:** Corrigido problema em que a rota do Microfone Virtual (CABLE Input) recorria ao endpoint de renderização padrão do sistema (`GetDefaultAudioEndpoint`), fazendo com que o áudio do microfone fosse reproduzido continuamente no fone de ouvido do usuário assim que o supressor neural era ativado.
+  - **Bloqueio de Fallback no Roteamento Virtual:** O método de inicialização de endpoints WASAPI (`TryInitRenderEndpoint`) agora desabilita estritamente o fallback padrão (`allowDefaultFallback = false`) para cabos virtuais. Se nenhum cabo virtual estiver presente ou configurado, o áudio NÃO é enviado aos alto-falantes/fones do usuário.
+  - **Filtro Seguro de Dispositivos de Cabo Virtual:** O seletor `CmbVirtualCableDev` agora lista apenas dispositivos de cabo virtual autênticos (`VirtualCableManager.IsCableDevice`). Se nenhum driver estiver instalado, exibe aviso e zera a seleção, impedindo seleção automática do fone de ouvido como cabo virtual.
+  - **Retorno de Voz Sob Demanda:** O retorno de voz no fone de ouvido agora só é ativado quando o usuário marca expressamente a opção *"Ouvir retorno da minha voz no fone de ouvido"* (`ChkListenSelf`) ou durante a reprodução do Teste Rápido de 5 segundos. Com a opção desmarcada, há silêncio absoluto no fone.
 
 ## [0.17.7] - 2026-11-02
 
-### ðŸš€ Adicionado & Aprimorado
-- **Overlay Responsiva com Redimensionamento Proporcional DinÃ¢mico (`OverlayWindow`):**
-  - IntegraÃ§Ã£o de `Viewbox` dinÃ¢mico (`Stretch="Uniform"`, `StretchDirection="Both"`) envolvendo a estrutura interna do overlay (`Box`).
-  - As informaÃ§Ãµes (FPS, Frametimes, GrÃ¡fico e telemetria de sensores) agora se ajustam, escalam e adaptam perfeitamente ao tamanho da janela de overlay quando o usuÃ¡rio a estica ou diminui, sem cortes ou desalinhamento.
-- **Aprimoramento do Supressor de RuÃ­do com AdaptaÃ§Ãµes do EasyEffects para Windows 11 (`NoiseSuppressionEngine`):**
-  - Engenharia reversa e adaptaÃ§Ã£o do pipeline de reduÃ§Ã£o de ruÃ­do e VAD do EasyEffects (`easyeffects-master/src/rnnoise.cpp` / `rnnoise.hpp` e `gate.cpp`).
-  - ImplementaÃ§Ã£o de mixagem Wet/Dry linear configurÃ¡vel baseada na intensidade de supressÃ£o, prevenindo distorÃ§Ãµes robÃ³ticas e mantendo a voz encorpada e cristalina.
-  - VAD Grace Counter integrado (sustentaÃ§Ã£o de fala do EasyEffects com liberaÃ§Ã£o em blocos de 10ms) para impedir cortes prematuros em consoantes fricativas e cauda de frases.
-  - Ajuste na precisÃ£o dos coeficientes de filtros Butterworth passa-altas de 80Hz para isolamento de rumble subsÃ´nico.
+### 🚀 Adicionado & Aprimorado
+- **Overlay Responsiva com Redimensionamento Proporcional Dinâmico (`OverlayWindow`):**
+  - Integração de `Viewbox` dinâmico (`Stretch="Uniform"`, `StretchDirection="Both"`) envolvendo a estrutura interna do overlay (`Box`).
+  - As informações (FPS, Frametimes, Gráfico e telemetria de sensores) agora se ajustam, escalam e adaptam perfeitamente ao tamanho da janela de overlay quando o usuário a estica ou diminui, sem cortes ou desalinhamento.
+- **Aprimoramento do Supressor de Ruído com Adaptações do EasyEffects para Windows 11 (`NoiseSuppressionEngine`):**
+  - Engenharia reversa e adaptação do pipeline de redução de ruído e VAD do EasyEffects (`easyeffects-master/src/rnnoise.cpp` / `rnnoise.hpp` e `gate.cpp`).
+  - Implementação de mixagem Wet/Dry linear configurável baseada na intensidade de supressão, prevenindo distorções robóticas e mantendo a voz encorpada e cristalina.
+  - VAD Grace Counter integrado (sustentação de fala do EasyEffects com liberação em blocos de 10ms) para impedir cortes prematuros em consoantes fricativas e cauda de frases.
+  - Ajuste na precisão dos coeficientes de filtros Butterworth passa-altas de 80Hz para isolamento de rumble subsônico.
 
-### âš¡ Performance & Testes
-- **Novos Testes Automatizados:** Adicionada suite `EasyEffectsAdaptationTests.cs` validando o algoritmo adaptado do EasyEffects com retenÃ§Ã£o de naturalidade vocal e conformidade temporal.
-- **ValidaÃ§Ã£o de CompilaÃ§Ã£o e Testes:** Build concluÃ­do com Ãªxito e 123 testes unitÃ¡rios aprovados com 100% de sucesso.
+### ⚡ Performance & Testes
+- **Novos Testes Automatizados:** Adicionada suite `EasyEffectsAdaptationTests.cs` validando o algoritmo adaptado do EasyEffects com retenção de naturalidade vocal e conformidade temporal.
+- **Validação de Compilação e Testes:** Build concluído com êxito e 123 testes unitários aprovados com 100% de sucesso.
 
 ## [0.17.7] - 2026-11-02
 
-### ðŸš€ Adicionado & Aprimorado
-- **Overlay adaptÃ¡vel Ã  janela (mesmo visual da v0.17.6):** o conteÃºdo agora escala conforme o tamanho da janela (cabe em largura e altura) e a largura extra Ã© usada pelo grÃ¡fico de frametime e pelos valores dos sensores, que se alinham Ã  direita. Os presets Pequeno/MÃ©dio/Grande redimensionam a janela.
-- **Novas mÃ©tricas de RAM na overlay (opcionais):** "RAM do jogo em foco" e "RAM do Lumini Tray".
-- **Supressor de RuÃ­do com tÃ©cnicas do EasyEffects adaptadas ao Windows 11:**
-  - *VAD grace*: o gate segue aberto por um tempo apÃ³s a Ãºltima voz detectada pelo RNNoise (evita cortar finais de palavras e sussurros).
+### 🚀 Adicionado & Aprimorado
+- **Overlay adaptável à janela (mesmo visual da v0.17.6):** o conteúdo agora escala conforme o tamanho da janela (cabe em largura e altura) e a largura extra é usada pelo gráfico de frametime e pelos valores dos sensores, que se alinham à direita. Os presets Pequeno/Médio/Grande redimensionam a janela.
+- **Novas métricas de RAM na overlay (opcionais):** "RAM do jogo em foco" e "RAM do Lumini Tray".
+- **Supressor de Ruído com técnicas do EasyEffects adaptadas ao Windows 11:**
+  - *VAD grace*: o gate segue aberto por um tempo após a última voz detectada pelo RNNoise (evita cortar finais de palavras e sussurros).
   - *Sidechain com passa-altas (150 Hz)*: o detector do gate ignora batidas de mesa e graves.
-  - *Limitador suave anti-estouro* e *De-esser* (sibilÃ¢ncia acima de 6,5 kHz), ambos ativos por padrÃ£o.
-- **Barra lateral:** todos os grupos agora iniciam fechados (antes PerifÃ©ricos e Ferramentas iniciavam abertos).
+  - *Limitador suave anti-estouro* e *De-esser* (sibilância acima de 6,5 kHz), ambos ativos por padrão.
+- **Barra lateral:** todos os grupos agora iniciam fechados (antes Periféricos e Ferramentas iniciavam abertos).
 
-### âš¡ Performance & Testes
+### ⚡ Performance & Testes
 - Novos testes em `EasyEffectsSuppressorTests.cs`.
 
 ## [0.17.6] - 2026-11-02
 
-### ðŸš€ Adicionado & Aprimorado
-- **ModernizaÃ§Ã£o e Aprimoramento da Overlay de FPS & MÃ©tricas (`OverlayWindow`):**
+### 🚀 Adicionado & Aprimorado
+- **Modernização e Aprimoramento da Overlay de FPS & Métricas (`OverlayWindow`):**
   - **Redimensionamento Nativo de Janela:** A overlay agora pode ser redimensionada livremente pelas bordas e cantos como uma janela tradicional do Windows, integrando o processamento nativo de `WM_NCHITTEST` com cursores de dimensionamento do sistema operacional.
-  - **Controle de TransparÃªncia por Scroll:** Girar a roda do mouse (*mouse wheel*) diretamente sobre a overlay ajusta a opacidade de forma contÃ­nua entre 20% e 100%, com exibiÃ§Ã£o de badge visual de feedback momentÃ¢neo.
-  - **InÃ­cio Solto e ArrastÃ¡vel:** A overlay inicia sempre desbloqueada por padrÃ£o, permitindo reposicionamento imediato em qualquer monitor e ponto da tela.
-  - **FixaÃ§Ã£o por Duplo Clique:** Eliminada a antiga barra superior de arraste e o botÃ£o fixar; basta dar 2 cliques rÃ¡pidos (duplo clique) em qualquer parte da overlay para travar a posiÃ§Ã£o e reativar a transparÃªncia total a cliques (`WS_EX_TRANSPARENT`) para os jogos.
-  - **Fechamento InstantÃ¢neo via BotÃ£o do Meio:** Clicar com a roda do mouse (botÃ£o do meio / *scroll click*) fecha a overlay na hora.
-  - **PersistÃªncia de DimensÃµes e Opacidade:** Salvamento automÃ¡tico de `OverlayWidth`, `OverlayHeight` e `OverlayOpacity` no arquivo de configuraÃ§Ãµes.
-- **ExpansÃ£o do CatÃ¡logo de Aplicativos por Categorias (`PageApps` & `AppInstaller`):**
-  - CatÃ¡logo ampliado com mais de 25 programas essenciais pÃ³s-formataÃ§Ã£o, organizados nas 4 categorias solicitadas:
-    - **ðŸŽ® Jogos:** Steam (Valve), Epic Games Launcher (Epic Games), EA App (Electronic Arts), Ubisoft Connect (Ubisoft), GOG GALAXY (GOG.com), Battle.net (Blizzard).
-    - **ðŸ’¬ ComunicaÃ§Ã£o:** Discord (Discord Inc.), Telegram Desktop (Telegram), TeamSpeak 3 Client (TeamSpeak), Zoom Workplace (Zoom), OBS Studio (OBS Project), Spotify (Spotify AB).
-    - **ðŸŒ NavegaÃ§Ã£o:** Google Chrome (Google), Mozilla Firefox (Mozilla), Brave Browser (Brave Software), Opera GX (Opera), Microsoft Edge (Microsoft).
-    - **ðŸ› ï¸ UtilitÃ¡rios:** 7-Zip (Igor Pavlov), WinRAR (win.rar GmbH), VLC media player (VideoLAN), Lightshot (Skillbrains), ShareX (ShareX Team), Notepad++ (Notepad++ Team), qBittorrent (The qBittorrent project), Visual Studio Code (Microsoft).
-  - Todos os pacotes sÃ£o validados diretamente da fonte oficial do fabricante pelo `winget`.
-  - Nova barra de filtros rÃ¡pidos por categoria (*Chips*) na interface com suporte aos temas Escuro e Claro do Lumini Tray.
+  - **Controle de Transparência por Scroll:** Girar a roda do mouse (*mouse wheel*) diretamente sobre a overlay ajusta a opacidade de forma contínua entre 20% e 100%, com exibição de badge visual de feedback momentâneo.
+  - **Início Solto e Arrastável:** A overlay inicia sempre desbloqueada por padrão, permitindo reposicionamento imediato em qualquer monitor e ponto da tela.
+  - **Fixação por Duplo Clique:** Eliminada a antiga barra superior de arraste e o botão fixar; basta dar 2 cliques rápidos (duplo clique) em qualquer parte da overlay para travar a posição e reativar a transparência total a cliques (`WS_EX_TRANSPARENT`) para os jogos.
+  - **Fechamento Instantâneo via Botão do Meio:** Clicar com a roda do mouse (botão do meio / *scroll click*) fecha a overlay na hora.
+  - **Persistência de Dimensões e Opacidade:** Salvamento automático de `OverlayWidth`, `OverlayHeight` e `OverlayOpacity` no arquivo de configurações.
+- **Expansão do Catálogo de Aplicativos por Categorias (`PageApps` & `AppInstaller`):**
+  - Catálogo ampliado com mais de 25 programas essenciais pós-formatação, organizados nas 4 categorias solicitadas:
+    - **🎮 Jogos:** Steam (Valve), Epic Games Launcher (Epic Games), EA App (Electronic Arts), Ubisoft Connect (Ubisoft), GOG GALAXY (GOG.com), Battle.net (Blizzard).
+    - **💬 Comunicação:** Discord (Discord Inc.), Telegram Desktop (Telegram), TeamSpeak 3 Client (TeamSpeak), Zoom Workplace (Zoom), OBS Studio (OBS Project), Spotify (Spotify AB).
+    - **🌐 Navegação:** Google Chrome (Google), Mozilla Firefox (Mozilla), Brave Browser (Brave Software), Opera GX (Opera), Microsoft Edge (Microsoft).
+    - **🛠️ Utilitários:** 7-Zip (Igor Pavlov), WinRAR (win.rar GmbH), VLC media player (VideoLAN), Lightshot (Skillbrains), ShareX (ShareX Team), Notepad++ (Notepad++ Team), qBittorrent (The qBittorrent project), Visual Studio Code (Microsoft).
+  - Todos os pacotes são validados diretamente da fonte oficial do fabricante pelo `winget`.
+  - Nova barra de filtros rápidos por categoria (*Chips*) na interface com suporte aos temas Escuro e Claro do Lumini Tray.
 
-### âš¡ Performance & Testes
-- **Novos Testes UnitÃ¡rios:** Adicionada a suite `OverlayAndAppsTests.cs` cobrindo validaÃ§Ã£o de propriedades de catÃ¡logo, categorias, integridade dos IDs do winget e serializaÃ§Ã£o de configuraÃ§Ãµes da overlay.
-- **ValidaÃ§Ã£o com dotnet build e dotnet test:** Projeto compilado sem erros e 122 testes automatizados executados e aprovados com 100% de sucesso.
+### ⚡ Performance & Testes
+- **Novos Testes Unitários:** Adicionada a suite `OverlayAndAppsTests.cs` cobrindo validação de propriedades de catálogo, categorias, integridade dos IDs do winget e serialização de configurações da overlay.
+- **Validação com dotnet build e dotnet test:** Projeto compilado sem erros e 122 testes automatizados executados e aprovados com 100% de sucesso.
 
 ## [0.17.5] - 2026-11-02
 
-### ðŸ› ï¸ CorreÃ§Ãµes & Responsividade de Layout
-- **CorreÃ§Ã£o da ModulaÃ§Ã£o e Redimensionamento da Janela (Window Layout Modulation):**
-  - Resolvido problema em que o conteÃºdo das abas era cortado (clipped) ao redimensionar ou esticar a janela no Windows em vez de se ajustar dinamicamente.
-  - O atributo `HorizontalScrollBarVisibility="Auto"` nas 21 pÃ¡ginas (`ScrollViewer`) passava largura infinita (`double.PositiveInfinity`) durante o ciclo de mensuraÃ§Ã£o do WPF (`MeasureOverride`), o que impedia que `Grid` com colunas proporcionais (`Width="*"`), `WrapPanel` e textos com `TextWrapping="Wrap"` calculassem corretamente a quebra de linha e a largura disponÃ­vel.
-  - Revertido para `HorizontalScrollBarVisibility="Disabled"` em todas as pÃ¡ginas (`PageDash`, `PageDisks`, `PageEnergy`, `PageNet`, `PageDriver`, `PageDiskTools`, `PageRestore`, `PageBackup`, `PageBottleneck`, `PageOverlay`, `PageOptimize`, `PageApps`, `PageUninstaller`, `PageMakerPorts`, `PageMakerDrv`, `PageOc`, `PageSettings`, `PagePerifericos`, `PageFanControl`, `PageWindowsDebloat`, `PageSuppressor`).
-  - Agora, cada container recebe estritamente a largura visÃ­vel da janela (`ViewportWidth`), garantindo que o conteÃºdo responda e se acomode fluidamente ao esticar, diminuir ou maximizar a janela sem cortes indesejados.
+### 🛠️ Correções & Responsividade de Layout
+- **Correção da Modulação e Redimensionamento da Janela (Window Layout Modulation):**
+  - Resolvido problema em que o conteúdo das abas era cortado (clipped) ao redimensionar ou esticar a janela no Windows em vez de se ajustar dinamicamente.
+  - O atributo `HorizontalScrollBarVisibility="Auto"` nas 21 páginas (`ScrollViewer`) passava largura infinita (`double.PositiveInfinity`) durante o ciclo de mensuração do WPF (`MeasureOverride`), o que impedia que `Grid` com colunas proporcionais (`Width="*"`), `WrapPanel` e textos com `TextWrapping="Wrap"` calculassem corretamente a quebra de linha e a largura disponível.
+  - Revertido para `HorizontalScrollBarVisibility="Disabled"` em todas as páginas (`PageDash`, `PageDisks`, `PageEnergy`, `PageNet`, `PageDriver`, `PageDiskTools`, `PageRestore`, `PageBackup`, `PageBottleneck`, `PageOverlay`, `PageOptimize`, `PageApps`, `PageUninstaller`, `PageMakerPorts`, `PageMakerDrv`, `PageOc`, `PageSettings`, `PagePerifericos`, `PageFanControl`, `PageWindowsDebloat`, `PageSuppressor`).
+  - Agora, cada container recebe estritamente a largura visível da janela (`ViewportWidth`), garantindo que o conteúdo responda e se acomode fluidamente ao esticar, diminuir ou maximizar a janela sem cortes indesejados.
 
-### âš¡ Performance & Testes
-- **ValidaÃ§Ã£o com dotnet build e dotnet test:** Projeto compilado sem erros ou avisos e suite de 117 testes automatizados validada com 100% de sucesso.
+### ⚡ Performance & Testes
+- **Validação com dotnet build e dotnet test:** Projeto compilado sem erros ou avisos e suite de 117 testes automatizados validada com 100% de sucesso.
 
 ## [0.17.4] - 2026-11-02
 
-### ðŸ› ï¸ CorreÃ§Ãµes & Tipografia
-- **CorreÃ§Ã£o Geral de AcentuaÃ§Ã£o e Caracteres Especiais (Mojibake Fix):**
-  - Identificada e eliminada toda a corrupÃ§Ã£o de codificaÃ§Ã£o de texto (sequÃªncias de codificaÃ§Ã£o dupla UTF-8/CP1252 como `ÃƒÂ§`, `ÃƒÂ£`, `ÃƒÂ¡`, `ÃƒÂ©`, `ÃƒÂ­`, `ÃƒÂ³`, `Ã¢Å¡Â¡`, etc.) presente na interface grÃ¡fica (`MainWindow.xaml`).
-  - Corrigidos tÃ­tulos, rÃ³tulos, badges, tooltips e comentÃ¡rios em toda a aba do **Supressor de RuÃ­do** e barra de navegaÃ§Ã£o:
-    - `"Supressor de RuÃ­do"` (anteriormente `RuÃƒÂ­do` / `RuÃƒÂ­do`);
-    - `"âš¡ RNNoise Ativo"` (anteriormente `Ã¢Å¡Â¡`);
-    - `"âšª"` (anteriormente `Ã¢Å¡Âª`);
-    - `"-âˆž dB"` (anteriormente `-Ã¢Ë†Å¾ dB`);
-    - `"SUPRESSOR DE RUÃDO: DESATIVADO"` e mensagens de Ã¡udio ativas;
+### 🛠️ Correções & Tipografia
+- **Correção Geral de Acentuação e Caracteres Especiais (Mojibake Fix):**
+  - Identificada e eliminada toda a corrupção de codificação de texto (sequências de codificação dupla UTF-8/CP1252 como `Ã§`, `Ã£`, `Ã¡`, `Ã©`, `Ã­`, `Ã³`, `âš¡`, etc.) presente na interface gráfica (`MainWindow.xaml`).
+  - Corrigidos títulos, rótulos, badges, tooltips e comentários em toda a aba do **Supressor de Ruído** e barra de navegação:
+    - `"Supressor de Ruído"` (anteriormente `RuÃ­do` / `RuÃ­do`);
+    - `"⚡ RNNoise Ativo"` (anteriormente `âš¡`);
+    - `"⚪"` (anteriormente `âšª`);
+    - `"-∞ dB"` (anteriormente `-âˆž dB`);
+    - `"SUPRESSOR DE RUÍDO: DESATIVADO"` e mensagens de áudio ativas;
     - `"SINAL PROCESSADO (APÃ“S SUPRESSÃƒO)"`;
     - `"PARÃ‚METROS DO SUPRESSOR NEURAL & NOISE GATE"`;
-    - `"Intensidade da SupressÃ£o"`, `"BalanÃ§o entre corte de ruÃ­do e naturalidade"`;
-    - `"Ganho de PrÃ©-AmplificaÃ§Ã£o (dB)"`, `"Muda para silÃªncio absoluto abaixo deste nÃ­vel"`;
-    - `"Tempo de LiberaÃ§Ã£o (Release)"`, `"Corpo e presenÃ§a da voz"`;
-    - `"MÃ‰DIOS (1.2 kHz)"`, `"SaÃ­da"`, `"cÃ¡psula do microfone"`.
-  - Varredura e validaÃ§Ã£o completa em todos os arquivos de cÃ³digo (`.cs`, `.xaml`, `.json`), assegurando que 100% dos textos e caracteres ortogrÃ¡ficos do portuguÃªs brasileiro estejam codificados de forma pura e limpa em UTF-8 sem perdas.
+    - `"Intensidade da Supressão"`, `"Balanço entre corte de ruído e naturalidade"`;
+    - `"Ganho de Pré-Amplificação (dB)"`, `"Muda para silêncio absoluto abaixo deste nível"`;
+    - `"Tempo de Liberação (Release)"`, `"Corpo e presença da voz"`;
+    - `"MÉDIOS (1.2 kHz)"`, `"Saída"`, `"cápsula do microfone"`.
+  - Varredura e validação completa em todos os arquivos de código (`.cs`, `.xaml`, `.json`), assegurando que 100% dos textos e caracteres ortográficos do português brasileiro estejam codificados de forma pura e limpa em UTF-8 sem perdas.
 
-### âš¡ Performance & Testes
-- **ValidaÃ§Ã£o de Testes UnitÃ¡rios:** Todos os 117 testes automatizados executados e validados com 100% de aprovaÃ§Ã£o.
+### ⚡ Performance & Testes
+- **Validação de Testes Unitários:** Todos os 117 testes automatizados executados e validados com 100% de aprovação.
 
 
 ## [0.17.3] - 2026-11-02
 
-### ðŸš€ Adicionado & Aprimorado
-- **DesinstalaÃ§Ã£o em Lote com Caixas de SeleÃ§Ã£o:**
-  - Adicionadas caixas de seleÃ§Ã£o (`CheckBox`) individuais em cada programa da lista para marcaÃ§Ã£o mÃºltipla.
-  - Nova barra de ferramentas em lote com opÃ§Ãµes "Selecionar Todos", "Desmarcar Todos" e botÃ£o de aÃ§Ã£o `ðŸ—‘ï¸ Desinstalar Selecionados (X)`.
-  - Processamento sequencial organizado de todos os desinstaladores marcados com atualizaÃ§Ã£o contÃ­nua de status na tela.
-  - Suporte Ã  varredura profunda consolidada ao final do lote, agrupando resÃ­duos no disco e no Registro de todos os programas removidos.
-- **OpÃ§Ã£o "Abrir Local do Arquivo" (ðŸ“ Abrir Local):**
-  - Adicionado botÃ£o direto em cada programa da lista que abre a pasta de instalaÃ§Ã£o oficial ou localiza o executÃ¡vel selecionado no Windows Explorer.
-- **AtivaÃ§Ã£o e DesativaÃ§Ã£o de Programas Ocultos e Componentes:**
-  - Adicionado alternador `Exibir programas ocultos e componentes` para revelar ou ocultar instalaÃ§Ãµes que nÃ£o possuem interface de aplicativo direta (runtimes, dependÃªncias, redistributÃ¡veis C++, drivers e componentes marcados como `SystemComponent`/`ParentKeyName` no Registro).
-  - IdentificaÃ§Ã£o visual clara com badge `[âš™ï¸ Componente]` para diferenciar softwares comuns de componentes do sistema.
-- **ConfirmaÃ§Ã£o de SeguranÃ§a ObrigatÃ³ria em Todas as DesinstalaÃ§Ãµes:**
-  - DiÃ¡logos explÃ­citos de confirmaÃ§Ã£o antes de iniciar qualquer desinstalaÃ§Ã£o (individual, profunda ou em lote), listando os softwares a serem removidos para evitar cliques acidentais.
+### 🚀 Adicionado & Aprimorado
+- **Desinstalação em Lote com Caixas de Seleção:**
+  - Adicionadas caixas de seleção (`CheckBox`) individuais em cada programa da lista para marcação múltipla.
+  - Nova barra de ferramentas em lote com opções "Selecionar Todos", "Desmarcar Todos" e botão de ação `🗑️ Desinstalar Selecionados (X)`.
+  - Processamento sequencial organizado de todos os desinstaladores marcados com atualização contínua de status na tela.
+  - Suporte à varredura profunda consolidada ao final do lote, agrupando resíduos no disco e no Registro de todos os programas removidos.
+- **Opção "Abrir Local do Arquivo" (📁 Abrir Local):**
+  - Adicionado botão direto em cada programa da lista que abre a pasta de instalação oficial ou localiza o executável selecionado no Windows Explorer.
+- **Ativação e Desativação de Programas Ocultos e Componentes:**
+  - Adicionado alternador `Exibir programas ocultos e componentes` para revelar ou ocultar instalações que não possuem interface de aplicativo direta (runtimes, dependências, redistributáveis C++, drivers e componentes marcados como `SystemComponent`/`ParentKeyName` no Registro).
+  - Identificação visual clara com badge `[⚙️ Componente]` para diferenciar softwares comuns de componentes do sistema.
+- **Confirmação de Segurança Obrigatória em Todas as Desinstalações:**
+  - Diálogos explícitos de confirmação antes de iniciar qualquer desinstalação (individual, profunda ou em lote), listando os softwares a serem removidos para evitar cliques acidentais.
 
-### ðŸ› ï¸ CorreÃ§Ãµes & RefatoraÃ§Ã£o
-- **RemoÃ§Ã£o do Modo Silencioso:**
-  - Removido o botÃ£o e a badge de "âš¡ Silencioso", assegurando que os desinstaladores oficiais sejam sempre iniciados de maneira visÃ­vel e controlada pelo usuÃ¡rio.
+### 🛠️ Correções & Refatoração
+- **Remoção do Modo Silencioso:**
+  - Removido o botão e a badge de "⚡ Silencioso", assegurando que os desinstaladores oficiais sejam sempre iniciados de maneira visível e controlada pelo usuário.
 
-### âš¡ Performance & Testes
-- **ExpansÃ£o da SuÃ­te de Testes:** SuÃ­te atualizada com 117 testes unitÃ¡rios automatizados passando com 100% de aprovaÃ§Ã£o.
+### ⚡ Performance & Testes
+- **Expansão da Suíte de Testes:** Suíte atualizada com 117 testes unitários automatizados passando com 100% de aprovação.
 
 
 ## [0.17.2] - 2026-11-02
 
-### ðŸš€ Adicionado & Aprimorado
-- **Sistema Completo de NavegaÃ§Ã£o HistÃ³rica entre Abas (Setas Voltar / AvanÃ§ar):**
-  - **Setas na Barra de TÃ­tulo (TitleBar):** Adicionados botÃµes dedicados de navegaÃ§Ã£o histÃ³rica (`BtnNavBack` e `BtnNavForward`) posicionados no topo da janela entre o logotipo "Lumini Tray" e o tÃ­tulo da pÃ¡gina ativa, com suporte total a clique nativo (`WindowChrome.IsHitTestVisibleInChrome="True"`).
-  - **Tooltips Contextuais Inteligentes:** Os botÃµes exibem dinamicamente o nome da pÃ¡gina de destino ao passar o mouse (ex: *"Voltar para Sensores em Tempo Real (Alt+Seta Esquerda / BotÃ£o Voltar do Mouse)"*), ficando desabilitados e com opacidade reduzida quando nÃ£o houver pÃ¡ginas para voltar ou avanÃ§ar.
-  - **Suporte Nativo a BotÃµes do Mouse:** NavegaÃ§Ã£o instantÃ¢nea com botÃµes laterais de mouses gamer/office (`XButton1` para Voltar e `XButton2` para AvanÃ§ar).
-  - **Atalhos de Teclado Universais:** NavegaÃ§Ã£o histÃ³rica por `Alt + Seta Esquerda` (Voltar), `Alt + Seta Direita` (AvanÃ§ar) e tecla `Backspace` (quando nÃ£o estiver digitando em campos de texto).
-  - **Gerenciador de HistÃ³rico Encadeado (`NavigationHistoryManager`):** Rastreia pÃ¡ginas visitadas com capacidade de atÃ© 50 itens, descarta automaticamente ramificaÃ§Ãµes futuras ao navegar para uma nova aba e evita entradas consecutivas duplicadas.
-  - **SincronizaÃ§Ã£o Completa com Menus e AcordeÃµes:** Ao retroceder ou avanÃ§ar, o menu lateral ativa automaticamente o radio button correspondente, expande a categoria pai de acordeÃµes (ex: PerifÃ©ricos) e atualiza o cabeÃ§alho.
+### 🚀 Adicionado & Aprimorado
+- **Sistema Completo de Navegação Histórica entre Abas (Setas Voltar / Avançar):**
+  - **Setas na Barra de Título (TitleBar):** Adicionados botões dedicados de navegação histórica (`BtnNavBack` e `BtnNavForward`) posicionados no topo da janela entre o logotipo "Lumini Tray" e o título da página ativa, com suporte total a clique nativo (`WindowChrome.IsHitTestVisibleInChrome="True"`).
+  - **Tooltips Contextuais Inteligentes:** Os botões exibem dinamicamente o nome da página de destino ao passar o mouse (ex: *"Voltar para Sensores em Tempo Real (Alt+Seta Esquerda / Botão Voltar do Mouse)"*), ficando desabilitados e com opacidade reduzida quando não houver páginas para voltar ou avançar.
+  - **Suporte Nativo a Botões do Mouse:** Navegação instantânea com botões laterais de mouses gamer/office (`XButton1` para Voltar e `XButton2` para Avançar).
+  - **Atalhos de Teclado Universais:** Navegação histórica por `Alt + Seta Esquerda` (Voltar), `Alt + Seta Direita` (Avançar) e tecla `Backspace` (quando não estiver digitando em campos de texto).
+  - **Gerenciador de Histórico Encadeado (`NavigationHistoryManager`):** Rastreia páginas visitadas com capacidade de até 50 itens, descarta automaticamente ramificações futuras ao navegar para uma nova aba e evita entradas consecutivas duplicadas.
+  - **Sincronização Completa com Menus e Acordeões:** Ao retroceder ou avançar, o menu lateral ativa automaticamente o radio button correspondente, expande a categoria pai de acordeões (ex: Periféricos) e atualiza o cabeçalho.
 
-- **ModulaÃ§Ã£o Responsiva e Fluida do Layout (Zero Quebras ao Redimensionar/Esticar):**
-  - **EliminaÃ§Ã£o de Margens RÃ­gidas:** Reformulados todos os cabeÃ§alhos de pÃ¡ginas que possuÃ­am margens duras Ã  direita (atÃ© 450px) para grades responsivas de 2 colunas (`Grid.ColumnDefinitions` com `Width="*"` e `Width="Auto"`), permitindo que tÃ­tulos e botÃµes de aÃ§Ã£o se adaptem perfeitamente a qualquer largura.
-  - **Suporte a Rolagem Horizontal em Telas Pequenas/Divididas (`HorizontalScrollBarVisibility="Auto"`):** Habilitada rolagem horizontal automÃ¡tica em todos os 21 painÃ©is de pÃ¡ginas (`ScrollViewer`), garantindo que nenhum conteÃºdo, tabela, cartÃ£o ou botÃ£o seja cortado ao utilizar o aplicativo em meia-tela (Snap do Windows) ou monitores compactos.
-  - **Alinhamento e EstilizaÃ§Ã£o Dark/Light Theme:** UtilizaÃ§Ã£o rigorosa das fontes e temas dinÃ¢micos do projeto (`{DynamicResource Fg}`, `{DynamicResource Hover}`, `{DynamicResource CardSubtleBg}`, etc.) sem cores fixadas no sistema.
+- **Modulação Responsiva e Fluida do Layout (Zero Quebras ao Redimensionar/Esticar):**
+  - **Eliminação de Margens Rígidas:** Reformulados todos os cabeçalhos de páginas que possuíam margens duras à direita (até 450px) para grades responsivas de 2 colunas (`Grid.ColumnDefinitions` com `Width="*"` e `Width="Auto"`), permitindo que títulos e botões de ação se adaptem perfeitamente a qualquer largura.
+  - **Suporte a Rolagem Horizontal em Telas Pequenas/Divididas (`HorizontalScrollBarVisibility="Auto"`):** Habilitada rolagem horizontal automática em todos os 21 painéis de páginas (`ScrollViewer`), garantindo que nenhum conteúdo, tabela, cartão ou botão seja cortado ao utilizar o aplicativo em meia-tela (Snap do Windows) ou monitores compactos.
+  - **Alinhamento e Estilização Dark/Light Theme:** Utilização rigorosa das fontes e temas dinâmicos do projeto (`{DynamicResource Fg}`, `{DynamicResource Hover}`, `{DynamicResource CardSubtleBg}`, etc.) sem cores fixadas no sistema.
 
-### âš¡ Performance & Testes
-- **ExpansÃ£o da SuÃ­te de Testes Automatizados:** Adicionada a classe `NavigationHistoryTests` com 9 novos testes unitÃ¡rios validando empilhamento de pÃ¡ginas, navegaÃ§Ã£o de ida e volta, truncamento de ramificaÃ§Ã£o futura, limite de capacidade e mapeamento de nomes amigÃ¡veis.
-- **100% de AprovaÃ§Ã£o:** SuÃ­te agora conta com 114 testes unitÃ¡rios automatizados passando com Ãªxito total.
+### ⚡ Performance & Testes
+- **Expansão da Suíte de Testes Automatizados:** Adicionada a classe `NavigationHistoryTests` com 9 novos testes unitários validando empilhamento de páginas, navegação de ida e volta, truncamento de ramificação futura, limite de capacidade e mapeamento de nomes amigáveis.
+- **100% de Aprovação:** Suíte agora conta com 114 testes unitários automatizados passando com êxito total.
 
 
 ## [0.17.1] - 2026-11-02
 
-### ðŸš€ Adicionado & Aprimorado
-- **ReformulaÃ§Ã£o Completa da Aba de Desinstalar Programas (Baseada no Bulk Crap Uninstaller 6.3):**
-  - **Motor de DetecÃ§Ã£o Multi-Origem (Multi-Source Factory):**
-    - **Reconhecimento Muito Mais Abrangente:** O app agora identifica nÃ£o apenas softwares do registro clÃ¡ssico, mas tambÃ©m aplicativos modernos da Microsoft Store (UWP / MSIX), jogos do Steam em todas as bibliotecas e unidades de disco (`libraryfolders.vdf` e `appmanifest_*.acf`), e softwares portÃ¡teis/diretÃ³rios em `Program Files` e `AppData\Programs`. (Salto de 60 para 127+ softwares detectados no sistema).
-    - **DetecÃ§Ã£o Inteligente de Motores de InstalaÃ§Ã£o:** Reconhece Inno Setup, NSIS (Nullsoft), MSI / Windows Installer, InstallShield, StoreApp (UWP) e Steam.
-    - **DesinstalaÃ§Ã£o Silenciosa com 1-Clique (âš¡ Silencioso):** Gera automaticamente os argumentos silenciosos corretos (`/VERYSILENT /SUPPRESSMSGBOXES /NORESTART` para InnoSetup, `/S` para NSIS, `/qn /norestart` para MSI e `Remove-AppxPackage` para Store Apps) permitindo desinstalar em segundo plano sem caixas de diÃ¡logo.
-  - **Motor de Varredura Profunda de ResÃ­duos (Junk Engine com 5 Categorias):**
-    - **Pastas e Arquivos Residuais:** Varre `InstallLocation`, `AppData\Roaming`, `AppData\Local`, `AppData\LocalLow`, `ProgramData` e `Common Files`, alÃ©m de limpar com seguranÃ§a pastas vazias de fabricantes.
-    - **Atalhos Ã“rfÃ£os:** Identifica atalhos `.lnk` abandonados na Ãrea de Trabalho (UsuÃ¡rio e PÃºblica) e no Menu Iniciar.
-    - **Chaves no Registro:** Localiza chaves residuais em `HKCU\Software`, `HKLM\Software`, chaves de desinstalaÃ§Ã£o Ã³rfÃ£s e registros de inicializaÃ§Ã£o.
-    - **Regras do Firewall do Windows:** Detecta e elimina regras Ã³rfÃ£s em `FirewallPolicy\FirewallRules` que vinculavam a executÃ¡veis deletados.
-    - **Rastros do Sistema:** Remove arquivos de Prefetch (`*.pf`) e relatÃ³rios de falha (`WER\ReportArchive`, `%LOCALAPPDATA%\CrashDumps`).
-    - **Guarda de SeguranÃ§a Estrito (Safe Guard):** Impede a exclusÃ£o acidental de pastas protegidas do Windows, raÃ­zes de unidades ou diretÃ³rios de fabricantes que ainda contenham outros softwares instalados.
-  - **Interface GrÃ¡fica Reformulada com Filtros RÃ¡pidos:**
-    - Filtros por categoria com badges e contadores dinÃ¢micos: **[ðŸŒ Todos]**, **[ðŸ’» Desktop (Win32)]**, **[ðŸ›ï¸ Microsoft Store]**, **[ðŸŽ® Steam & Jogos]**, **[ðŸ“ PortÃ¡teis & DiretÃ³rios]**.
-    - Lista de softwares com alinhamento fluido (`HorizontalContentAlignment="Stretch"`), badge de categoria, badge de suporte silencioso, tamanho formatado e data de instalaÃ§Ã£o.
-    - Painel modal de revisÃ£o categorizada de resÃ­duos com botÃµes "Marcar Todos", "Desmarcar" e resumo visual do espaÃ§o em disco liberado.
+### 🚀 Adicionado & Aprimorado
+- **Reformulação Completa da Aba de Desinstalar Programas (Baseada no Bulk Crap Uninstaller 6.3):**
+  - **Motor de Detecção Multi-Origem (Multi-Source Factory):**
+    - **Reconhecimento Muito Mais Abrangente:** O app agora identifica não apenas softwares do registro clássico, mas também aplicativos modernos da Microsoft Store (UWP / MSIX), jogos do Steam em todas as bibliotecas e unidades de disco (`libraryfolders.vdf` e `appmanifest_*.acf`), e softwares portáteis/diretórios em `Program Files` e `AppData\Programs`. (Salto de 60 para 127+ softwares detectados no sistema).
+    - **Detecção Inteligente de Motores de Instalação:** Reconhece Inno Setup, NSIS (Nullsoft), MSI / Windows Installer, InstallShield, StoreApp (UWP) e Steam.
+    - **Desinstalação Silenciosa com 1-Clique (⚡ Silencioso):** Gera automaticamente os argumentos silenciosos corretos (`/VERYSILENT /SUPPRESSMSGBOXES /NORESTART` para InnoSetup, `/S` para NSIS, `/qn /norestart` para MSI e `Remove-AppxPackage` para Store Apps) permitindo desinstalar em segundo plano sem caixas de diálogo.
+  - **Motor de Varredura Profunda de Resíduos (Junk Engine com 5 Categorias):**
+    - **Pastas e Arquivos Residuais:** Varre `InstallLocation`, `AppData\Roaming`, `AppData\Local`, `AppData\LocalLow`, `ProgramData` e `Common Files`, além de limpar com segurança pastas vazias de fabricantes.
+    - **Atalhos Órfãos:** Identifica atalhos `.lnk` abandonados na Área de Trabalho (Usuário e Pública) e no Menu Iniciar.
+    - **Chaves no Registro:** Localiza chaves residuais em `HKCU\Software`, `HKLM\Software`, chaves de desinstalação órfãs e registros de inicialização.
+    - **Regras do Firewall do Windows:** Detecta e elimina regras órfãs em `FirewallPolicy\FirewallRules` que vinculavam a executáveis deletados.
+    - **Rastros do Sistema:** Remove arquivos de Prefetch (`*.pf`) e relatórios de falha (`WER\ReportArchive`, `%LOCALAPPDATA%\CrashDumps`).
+    - **Guarda de Segurança Estrito (Safe Guard):** Impede a exclusão acidental de pastas protegidas do Windows, raízes de unidades ou diretórios de fabricantes que ainda contenham outros softwares instalados.
+  - **Interface Gráfica Reformulada com Filtros Rápidos:**
+    - Filtros por categoria com badges e contadores dinâmicos: **[🌐 Todos]**, **[💻 Desktop (Win32)]**, **[🛍️ Microsoft Store]**, **[🎮 Steam & Jogos]**, **[📁 Portáteis & Diretórios]**.
+    - Lista de softwares com alinhamento fluido (`HorizontalContentAlignment="Stretch"`), badge de categoria, badge de suporte silencioso, tamanho formatado e data de instalação.
+    - Painel modal de revisão categorizada de resíduos com botões "Marcar Todos", "Desmarcar" e resumo visual do espaço em disco liberado.
 
-### ðŸ› ï¸ CorreÃ§Ãµes & Autonomia
-- **Empacotamento 100% AutÃ´nomo do Driver de Microfone Virtual (VB-CABLE):**
-  - Corrigido o erro onde o executÃ¡vel publicado em arquivo Ãºnico (`Single-File Release`) nÃ£o localizava o instalador do driver (`VBCABLE_Setup_x64.exe`), devido Ã  exclusÃ£o padrÃ£o de arquivos `.exe` e `.sys` em pastas de conteÃºdo pelo publicador do .NET.
-  - O pacote completo do driver oficial agora Ã© embutido diretamente como recurso do assembly (`Drivers/VBCable.zip`) no `LuminiTray.dll` e extraÃ­do de forma transparente para `%TEMP%\LuminiTray\VBCable\` sob demanda.
-  - Implementada cadeia de instalaÃ§Ã£o robusta com fallback progressivo:
-    1. InstalaÃ§Ã£o silenciosa oficial com elevaÃ§Ã£o de administrador (`-i -h`);
-    2. InstalaÃ§Ã£o nativa de driver via `pnputil.exe /add-driver vbMmeCable64_win10.inf /install`;
-    3. Abertura interativa do instalador oficial VB-Audio com elevaÃ§Ã£o para clique manual ("Install Driver") caso o modo silencioso seja bloqueado pelo sistema.
-  - **Novo BotÃ£o "ðŸ“ Abrir Pasta":** Adicionado na interface do Supressor de RuÃ­do ao lado do botÃ£o de 1 clique para que o usuÃ¡rio possa inspecionar os arquivos e executar o instalador manualmente quando desejar.
-  - Atualizado o script de distribuiÃ§Ã£o `publicar.bat` para copiar preventivamente a pasta descompactada de drivers para a pasta de distribuiÃ§Ã£o.
+### 🛠️ Correções & Autonomia
+- **Empacotamento 100% Autônomo do Driver de Microfone Virtual (VB-CABLE):**
+  - Corrigido o erro onde o executável publicado em arquivo único (`Single-File Release`) não localizava o instalador do driver (`VBCABLE_Setup_x64.exe`), devido à exclusão padrão de arquivos `.exe` e `.sys` em pastas de conteúdo pelo publicador do .NET.
+  - O pacote completo do driver oficial agora é embutido diretamente como recurso do assembly (`Drivers/VBCable.zip`) no `LuminiTray.dll` e extraído de forma transparente para `%TEMP%\LuminiTray\VBCable\` sob demanda.
+  - Implementada cadeia de instalação robusta com fallback progressivo:
+    1. Instalação silenciosa oficial com elevação de administrador (`-i -h`);
+    2. Instalação nativa de driver via `pnputil.exe /add-driver vbMmeCable64_win10.inf /install`;
+    3. Abertura interativa do instalador oficial VB-Audio com elevação para clique manual ("Install Driver") caso o modo silencioso seja bloqueado pelo sistema.
+  - **Novo Botão "📁 Abrir Pasta":** Adicionado na interface do Supressor de Ruído ao lado do botão de 1 clique para que o usuário possa inspecionar os arquivos e executar o instalador manualmente quando desejar.
+  - Atualizado o script de distribuição `publicar.bat` para copiar preventivamente a pasta descompactada de drivers para a pasta de distribuição.
 
-### âš¡ Performance & OtimizaÃ§Ã£o
-- **SuÃ­te de Testes Expandida:** Total de 105 testes unitÃ¡rios automatizados com 100% de aprovaÃ§Ã£o, incluindo testes de classificaÃ§Ã£o de motor, geraÃ§Ã£o de comandos silenciosos, proteÃ§Ã£o de pastas do sistema e varredura ao vivo.
+### ⚡ Performance & Otimização
+- **Suíte de Testes Expandida:** Total de 105 testes unitários automatizados com 100% de aprovação, incluindo testes de classificação de motor, geração de comandos silenciosos, proteção de pastas do sistema e varredura ao vivo.
 
 ## [0.17.0] - 2026-11-01
 
-### ðŸš€ Adicionado & Aprimorado
+### 🚀 Adicionado & Aprimorado
 - **Microfone Virtual para Discord, Jogos e Aplicativos do Windows:**
-  - O Ã¡udio processado pelo Lumini Tray agora pode ser usado na prÃ¡tica como um microfone real pelo Windows e qualquer outro programa (Discord, CS2, Valorant, Zoom, OBS, Google Meet, etc.).
-  - IntegraÃ§Ã£o do driver de Ã¡udio virtual oficial assinado `VB-Audio Virtual Cable` na pasta `Assets/Drivers/VBCable/` com detecÃ§Ã£o automÃ¡tica de status em tempo real.
-  - **InstalaÃ§Ã£o com 1-Clique Integrada:** Se o driver nÃ£o estiver presente no Windows, um botÃ£o direto na interface executa a instalaÃ§Ã£o silenciosa oficial com elevaÃ§Ã£o de administrador e atualiza os dispositivos instantaneamente.
-  - **Roteamento ContÃ­nuo para o Microfone:** O Ã¡udio tratado e sem ruÃ­dos Ã© continuamente transmitido para o dispositivo `CABLE Input`, disponibilizando o microfone virtual `CABLE Output` para seleÃ§Ã£o nos aplicativos.
-  - **Monitoramento de PÃ³s-Processamento Dedicado:** OpÃ§Ã£o direta para ouvir **somente o Ã¡udio pÃ³s-processamento** (limpo com RNNoise e Gate) nos fones de ouvido ou alternar para o Ã¡udio bruto (cru) para comparaÃ§Ã£o A/B ao vivo.
-  - **Teste RÃ¡pido de Microfone (5 Segundos):** Gravador e reprodutor integrado na interface (`ðŸŽ™ï¸ Gravar Amostra de 5s e Reproduzir`) que permite ao usuÃ¡rio escutar com 100% de clareza e fidelidade como sua voz estÃ¡ soando, eliminando a confusÃ£o causada pela vibraÃ§Ã£o Ã³ssea natural da fala.
+  - O áudio processado pelo Lumini Tray agora pode ser usado na prática como um microfone real pelo Windows e qualquer outro programa (Discord, CS2, Valorant, Zoom, OBS, Google Meet, etc.).
+  - Integração do driver de áudio virtual oficial assinado `VB-Audio Virtual Cable` na pasta `Assets/Drivers/VBCable/` com detecção automática de status em tempo real.
+  - **Instalação com 1-Clique Integrada:** Se o driver não estiver presente no Windows, um botão direto na interface executa a instalação silenciosa oficial com elevação de administrador e atualiza os dispositivos instantaneamente.
+  - **Roteamento Contínuo para o Microfone:** O áudio tratado e sem ruídos é continuamente transmitido para o dispositivo `CABLE Input`, disponibilizando o microfone virtual `CABLE Output` para seleção nos aplicativos.
+  - **Monitoramento de Pós-Processamento Dedicado:** Opção direta para ouvir **somente o áudio pós-processamento** (limpo com RNNoise e Gate) nos fones de ouvido ou alternar para o áudio bruto (cru) para comparação A/B ao vivo.
+  - **Teste Rápido de Microfone (5 Segundos):** Gravador e reprodutor integrado na interface (`🎙️ Gravar Amostra de 5s e Reproduzir`) que permite ao usuário escutar com 100% de clareza e fidelidade como sua voz está soando, eliminando a confusão causada pela vibração óssea natural da fala.
 
-### âš¡ Performance & OtimizaÃ§Ã£o
-- **Reamostrador DinÃ¢mico de Amostragem (`LinearResampler` Zero GC):**
-  - Implementado reamostrador linear de alta precisÃ£o que converte automaticamente entre qualquer combinaÃ§Ã£o de taxas de amostragem (44.1 kHz, 48 kHz, 96 kHz, 192 kHz) do microfone de entrada e dos dispositivos de saÃ­da.
-  - Elimina distorÃ§Ãµes de velocidade, estalos e efeito *chipmunk* quando o headset opera em 44.1 kHz ou 96 kHz.
-- **SuÃ­te de Testes Expandida:** Total de 97 testes unitÃ¡rios automatizados cobrindo reamostragem, detecÃ§Ã£o de microfone virtual e mÃ¡quina de estados de gravaÃ§Ã£o de amostras.
+### ⚡ Performance & Otimização
+- **Reamostrador Dinâmico de Amostragem (`LinearResampler` Zero GC):**
+  - Implementado reamostrador linear de alta precisão que converte automaticamente entre qualquer combinação de taxas de amostragem (44.1 kHz, 48 kHz, 96 kHz, 192 kHz) do microfone de entrada e dos dispositivos de saída.
+  - Elimina distorções de velocidade, estalos e efeito *chipmunk* quando o headset opera em 44.1 kHz ou 96 kHz.
+- **Suíte de Testes Expandida:** Total de 97 testes unitários automatizados cobrindo reamostragem, detecção de microfone virtual e máquina de estados de gravação de amostras.
 
 ## [0.16.9] - 2026-11-01
 
-### âš¡ Performance & OtimizaÃ§Ã£o
-- **AtivaÃ§Ã£o da Rede Neural RNNoise Nativa x64 (`rnnoise.dll`):**
-  - IntegraÃ§Ã£o do binÃ¡rio nativo prÃ©-compilado de alta performance `rnnoise.dll` na pasta `Native/` com cÃ³pia automÃ¡tica para o diretÃ³rio de build e execuÃ§Ã£o (`CopyToOutputDirectory="PreserveNewest"`).
-  - Implementado `NativeLibrary.SetDllImportResolver` no motor `NoiseSuppressionEngine` para resoluÃ§Ã£o estrita e robusta de DLLs do RNNoise tanto na raiz quanto na pasta `Native/`.
-  - SupressÃ£o de ruÃ­do neural em 22 bandas com arquitetura GRU recorrente: elimina ruÃ­dos contÃ­nuos, cliques de teclado mecÃ¢nico e ventiladores durante a fala sem distorcer o timbre natural da voz.
+### ⚡ Performance & Otimização
+- **Ativação da Rede Neural RNNoise Nativa x64 (`rnnoise.dll`):**
+  - Integração do binário nativo pré-compilado de alta performance `rnnoise.dll` na pasta `Native/` com cópia automática para o diretório de build e execução (`CopyToOutputDirectory="PreserveNewest"`).
+  - Implementado `NativeLibrary.SetDllImportResolver` no motor `NoiseSuppressionEngine` para resolução estrita e robusta de DLLs do RNNoise tanto na raiz quanto na pasta `Native/`.
+  - Supressão de ruído neural em 22 bandas com arquitetura GRU recorrente: elimina ruídos contínuos, cliques de teclado mecânico e ventiladores durante a fala sem distorcer o timbre natural da voz.
 
-### ðŸ› ï¸ CorreÃ§Ãµes & Refinamentos
+### 🛠️ Correções & Refinamentos
 - **Noise Gate Inteligente com Histerese (Schmitt Trigger) e Hold Time:**
-  - Corrigido o corte abrupto de palavras e sÃ­labas fracas ("comeÃ§a a cortar as palavras"):
-    - Adicionado limiar de fechamento com histerese de 8 dB abaixo do limiar de abertura (`GateHysteresisDb`), mantendo a porta de Ã¡udio aberta durante sussurros ou consoantes finais suaves;
-    - Adicionado Hold Time de 140 ms (`GateHoldMs`) pÃ³s-fala que impede fechamento prematuro do sinal em pausas naturais entre palavras;
-    - IntegraÃ§Ã£o direta entre o Voice Activity Detector (VAD neural com probabilidade da rede RNNoise) e o Noise Gate pÃ³s-processamento, silenciando completamente o piso de ruÃ­do no silÃªncio absoluto.
-  - Ajuste no badge visual de status do motor para `âš¡ RNNoise Neural Ativo`.
-  - SuÃ­te completa de 92 testes unitÃ¡rios aprovada com cobertura para carregamento de biblioteca nativa e preservaÃ§Ã£o de cauda de fala via histerese e hold.
+  - Corrigido o corte abrupto de palavras e sílabas fracas ("começa a cortar as palavras"):
+    - Adicionado limiar de fechamento com histerese de 8 dB abaixo do limiar de abertura (`GateHysteresisDb`), mantendo a porta de áudio aberta durante sussurros ou consoantes finais suaves;
+    - Adicionado Hold Time de 140 ms (`GateHoldMs`) pós-fala que impede fechamento prematuro do sinal em pausas naturais entre palavras;
+    - Integração direta entre o Voice Activity Detector (VAD neural com probabilidade da rede RNNoise) e o Noise Gate pós-processamento, silenciando completamente o piso de ruído no silêncio absoluto.
+  - Ajuste no badge visual de status do motor para `⚡ RNNoise Neural Ativo`.
+  - Suíte completa de 92 testes unitários aprovada com cobertura para carregamento de biblioteca nativa e preservação de cauda de fala via histerese e hold.
 
 ## [0.16.8] - 2026-11-01
 
-### ðŸš€ Adicionado & Aprimorado
-- **Nova Ferramenta: Supressor de RuÃ­do de Microfone em Tempo Real (`RESET FERRAMENTAS`):**
-  - ImplementaÃ§Ã£o completa da pÃ¡gina `PageSuppressor` acessÃ­vel via menu lateral `NavSuppressor` em RESET FERRAMENTAS.
-  - **Motor HÃ­brido de SupressÃ£o:** Suporte opcional Ã  rede neural RNNoise (`rnnoise.dll`) com fallback automÃ¡tico para processamento DSP puro de alta fidelidade:
-    - Filtro Passa-Altas Biquad de 80 Hz contra estrondos subsÃ´nicos (vibraÃ§Ã£o de mesa, ar-condicionado, baques);
-    - Downward Expander / Noise Gate com limiar (-70 dB a -25 dB) e envelope de liberaÃ§Ã£o suave (30 ms a 400 ms);
-    - Equalizador vocal paramÃ©trico de 3 bandas (Graves 180 Hz, MÃ©dios 1.2 kHz, Agudos 6 kHz) com botÃ£o de reset Flat;
-    - Ganho de prÃ©-amplificaÃ§Ã£o ajustÃ¡vel de -12 dB a +20 dB.
+### 🚀 Adicionado & Aprimorado
+- **Nova Ferramenta: Supressor de Ruído de Microfone em Tempo Real (`RESET FERRAMENTAS`):**
+  - Implementação completa da página `PageSuppressor` acessível via menu lateral `NavSuppressor` em RESET FERRAMENTAS.
+  - **Motor Híbrido de Supressão:** Suporte opcional à rede neural RNNoise (`rnnoise.dll`) com fallback automático para processamento DSP puro de alta fidelidade:
+    - Filtro Passa-Altas Biquad de 80 Hz contra estrondos subsônicos (vibração de mesa, ar-condicionado, baques);
+    - Downward Expander / Noise Gate com limiar (-70 dB a -25 dB) e envelope de liberação suave (30 ms a 400 ms);
+    - Equalizador vocal paramétrico de 3 bandas (Graves 180 Hz, Médios 1.2 kHz, Agudos 6 kHz) com botão de reset Flat;
+    - Ganho de pré-amplificação ajustável de -12 dB a +20 dB.
   - **Arquitetura WASAPI Multithread e RingBuffer (Zero GC):** Thread dedicada com prioridade elevada (`AboveNormal`) operando em blocos precisos de 10 ms (480 amostras a 48 kHz).
-  - **Telemetria e Medidores VU em Tempo Real:** Medidores duplos de sinal de entrada bruto vs sinal processado limpo com leitura em dB, alÃ©m de indicador visual inteligente de detecÃ§Ã£o de voz (`VAD Pill`).
-  - **Monitoramento / Retorno ao Vivo:** OpÃ§Ã£o "Ouvir minha voz" em tempo real para ajuste fino e testes rÃ¡pidos pelo usuÃ¡rio.
-  - **PersistÃªncia Total:** Todas as preferÃªncias de dispositivos, volumes, switches e sliders sÃ£o salvas em `AppSettings.json`.
+  - **Telemetria e Medidores VU em Tempo Real:** Medidores duplos de sinal de entrada bruto vs sinal processado limpo com leitura em dB, além de indicador visual inteligente de detecção de voz (`VAD Pill`).
+  - **Monitoramento / Retorno ao Vivo:** Opção "Ouvir minha voz" em tempo real para ajuste fino e testes rápidos pelo usuário.
+  - **Persistência Total:** Todas as preferências de dispositivos, volumes, switches e sliders são salvas em `AppSettings.json`.
 
 ---
 
 ## [0.16.7] - 2026-11-01
 
-### ðŸš€ Adicionado & Aprimorado
-- **ReestruturaÃ§Ã£o de InicializaÃ§Ã£o e ConfiguraÃ§Ãµes:**
-  - O item "InicializaÃ§Ã£o" foi removido de RESET FERRAMENTAS e migrado para **CONFIGURAÃ‡Ã•ES > GERAL**.
-  - Nova sub-aba **GERAL** (somente geral): inicializaÃ§Ã£o completa do Lumini Tray (Agendador de Tarefas, funÃ§Ãµes automÃ¡ticas), gerenciador de programas de inicializaÃ§Ã£o do Windows, comportamento/bandeja do sistema, taxa dos sensores e encerramento completo.
+### 🚀 Adicionado & Aprimorado
+- **Reestruturação de Inicialização e Configurações:**
+  - O item "Inicialização" foi removido de RESET FERRAMENTAS e migrado para **CONFIGURAÇÕES > GERAL**.
+  - Nova sub-aba **GERAL** (somente geral): inicialização completa do Lumini Tray (Agendador de Tarefas, funções automáticas), gerenciador de programas de inicialização do Windows, comportamento/bandeja do sistema, taxa dos sensores e encerramento completo.
   - A antiga "Geral & Cores" virou **TEMAS & CORES**, contendo apenas modo escuro/claro e paleta de cores de destaque.
-  - Sub-abas Ãudio & Microfone, Wallpapers & Telas e IntegraÃ§Ãµes mantidas sem alteraÃ§Ãµes.
-  - Removida a opÃ§Ã£o duplicada "Iniciar com o Windows" da bandeja (jÃ¡ existe na inicializaÃ§Ã£o completa).
+  - Sub-abas Áudio & Microfone, Wallpapers & Telas e Integrações mantidas sem alterações.
+  - Removida a opção duplicada "Iniciar com o Windows" da bandeja (já existe na inicialização completa).
 
 ---
 
 ## [0.16.6] - 2026-11-01
 
-### ðŸš€ Adicionado & Aprimorado
-- **OtimizaÃ§Ã£o AutomÃ¡tica Programada em Segundo Plano:**
-  - Adicionado novo mÃ³dulo de agendamento automÃ¡tico na aba `RESET OTIMIZA` gerenciado pelo novo serviÃ§o `AutoOptimizeService`.
-  - Seletor flexÃ­vel de intervalo com prÃ©-definiÃ§Ãµes de 1 min, 5 min, 10 min, 15 min, 30 min, 60 min e modo "Personalizado..." com input numÃ©rico dinÃ¢mico em minutos.
-  - TrÃªs aÃ§Ãµes de otimizaÃ§Ã£o selecionÃ¡veis: *Liberar MemÃ³ria RAM em Segundo Plano*, *Fechar Processos em Segundo Plano / NÃ£o Ãšteis*, e *Limpar Cache e Arquivos TemporÃ¡rios (%TEMP%)*.
-  - Indicador visual dinÃ¢mico com badge de status ("â³ PrÃ³xima em Xm Ys", "Otimizando agora...", "Inativo") e contagem regressiva em tempo real.
-  - BotÃ£o de execuÃ§Ã£o manual imediata ("Otimizar Agora") com feedback sonoro e visual.
-- **Lacuna de ExclusÃ£o (Whitelist) e Fechamento Inteligente de Processos:**
-  - Novo mecanismo de proteÃ§Ã£o de processos com campo de inserÃ§Ã£o Ã¡gil (suporte Ã  tecla `Enter` ou botÃ£o `+ Adicionar`).
-  - BotÃµes de atalho rÃ¡pido em 1 clique para proteger processos de jogos e programas populares (`+ Discord`, `+ Steam`, `+ Spotify`, `+ Chrome`, `+ OBS`).
-  - Chips visuais interativos e dinÃ¢micos para cada processo excluÃ­do, com remoÃ§Ã£o em 1 clique (botÃ£o `âœ•`).
-  - ImunizaÃ§Ã£o automÃ¡tica de processos essenciais do Windows (`explorer`, `dwm`, `taskmgr`, `svchost`, etc.) e do prÃ³prio aplicativo (`LuminiTray`).
-  - NormalizaÃ§Ã£o inteligente de nomes de processos (indiferente a maiÃºsculas/minÃºsculas e extensÃ£o `.exe`) com deduplicaÃ§Ã£o automÃ¡tica.
-  - PersistÃªncia completa de todas as configuraÃ§Ãµes, tempos e lista de exclusÃµes em `AppSettings.json`.
+### 🚀 Adicionado & Aprimorado
+- **Otimização Automática Programada em Segundo Plano:**
+  - Adicionado novo módulo de agendamento automático na aba `RESET OTIMIZA` gerenciado pelo novo serviço `AutoOptimizeService`.
+  - Seletor flexível de intervalo com pré-definições de 1 min, 5 min, 10 min, 15 min, 30 min, 60 min e modo "Personalizado..." com input numérico dinâmico em minutos.
+  - Três ações de otimização selecionáveis: *Liberar Memória RAM em Segundo Plano*, *Fechar Processos em Segundo Plano / Não Úteis*, e *Limpar Cache e Arquivos Temporários (%TEMP%)*.
+  - Indicador visual dinâmico com badge de status ("⏳ Próxima em Xm Ys", "Otimizando agora...", "Inativo") e contagem regressiva em tempo real.
+  - Botão de execução manual imediata ("Otimizar Agora") com feedback sonoro e visual.
+- **Lacuna de Exclusão (Whitelist) e Fechamento Inteligente de Processos:**
+  - Novo mecanismo de proteção de processos com campo de inserção ágil (suporte à tecla `Enter` ou botão `+ Adicionar`).
+  - Botões de atalho rápido em 1 clique para proteger processos de jogos e programas populares (`+ Discord`, `+ Steam`, `+ Spotify`, `+ Chrome`, `+ OBS`).
+  - Chips visuais interativos e dinâmicos para cada processo excluído, com remoção em 1 clique (botão `✕`).
+  - Imunização automática de processos essenciais do Windows (`explorer`, `dwm`, `taskmgr`, `svchost`, etc.) e do próprio aplicativo (`LuminiTray`).
+  - Normalização inteligente de nomes de processos (indiferente a maiúsculas/minúsculas e extensão `.exe`) com deduplicação automática.
+  - Persistência completa de todas as configurações, tempos e lista de exclusões em `AppSettings.json`.
 
-### âš¡ Performance & OtimizaÃ§Ã£o de Disco
-- **ReduÃ§Ã£o Significativa da Pasta Raiz (~620 MB a 800 MB Liberados):**
-  - MigraÃ§Ã£o limpa do catÃ¡logo de bloatware (`Apps.json` e `pt-BR/Apps.json`) para a pasta de assets internos `LuminiTray-latest\Assets\Debloat\`.
-  - ExclusÃ£o total de pastas de pacotes redundantes (`debloat/` com 221 MB e `novos/` com 60 MB).
-  - Limpeza de artefatos temporÃ¡rios e builds de teste residuais (`bin/TestOut/` com ~250 MB e `.wpftmp.csproj`).
-  - RemoÃ§Ã£o de arquivo executÃ¡vel descontinuado `LuminiTray-dist\LuminiTray.exe.old` (89 MB).
-  - O repositÃ³rio agora contÃ©m apenas arquivos estritamente necessÃ¡rios para o desenvolvimento, testes e execuÃ§Ã£o do app.
+### ⚡ Performance & Otimização de Disco
+- **Redução Significativa da Pasta Raiz (~620 MB a 800 MB Liberados):**
+  - Migração limpa do catálogo de bloatware (`Apps.json` e `pt-BR/Apps.json`) para a pasta de assets internos `LuminiTray-latest\Assets\Debloat\`.
+  - Exclusão total de pastas de pacotes redundantes (`debloat/` com 221 MB e `novos/` com 60 MB).
+  - Limpeza de artefatos temporários e builds de teste residuais (`bin/TestOut/` com ~250 MB e `.wpftmp.csproj`).
+  - Remoção de arquivo executável descontinuado `LuminiTray-dist\LuminiTray.exe.old` (89 MB).
+  - O repositório agora contém apenas arquivos estritamente necessários para o desenvolvimento, testes e execução do app.
 
 ---
 
 ## [0.16.5] - 2026-10-31
 
-### ðŸ› ï¸ CorreÃ§Ãµes & Aprimoramentos de Layout
-- **CorreÃ§Ã£o da Escala de Tela Cheia e Janela (Build e RodapÃ© VisÃ­veis):**
-  - ImplementaÃ§Ã£o de gancho Win32 nativo para a mensagem `WM_GETMINMAXINFO` no `HotkeyHook` de `MainWindow`, restringindo a maximizaÃ§Ã£o estritamente Ã  Ã¡rea de trabalho Ãºtil (`rcWork`) calculada via `GetMonitorInfo` e `MonitorFromWindow`.
-  - EliminaÃ§Ã£o definitiva da sobreposiÃ§Ã£o sob a barra de tarefas do Windows: em tela cheia (maximizado), o aplicativo nÃ£o mais invade a barra de tarefas nem perde o rodapÃ© da interface.
-  - O indicador de versÃ£o e build (`SideVersion`) no rodapÃ© da barra lateral agora permanece 100% visÃ­vel, legÃ­vel e posicionado com margem de seguranÃ§a perfeita em qualquer resoluÃ§Ã£o e proporÃ§Ã£o de tela.
-  - CompensaÃ§Ã£o dinÃ¢mica do sizing frame (`SM_CXFRAME + SM_CXPADDEDBORDER`) sensÃ­vel ao DPI da tela (`VisualTreeHelper.GetDpi`), garantindo alinhamento pixel-perfect tanto em 100%, 125%, 150% quanto em 175% de escala de exibiÃ§Ã£o do Windows.
-  - FunÃ§Ã£o `AdjustWindowScaleForScreen` na inicializaÃ§Ã£o para ajustar proporÃ§Ãµes em modo janela caso o monitor possua resoluÃ§Ã£o vertical menor (ex: 768p ou 900p com escala elevada), impedindo que a janela ultrapasse os limites visÃ­veis da tela.
-- **Debloat de Aplicativos - EliminaÃ§Ã£o de EspaÃ§o Vazio & Layout Fluido:**
-  - Redesenho completo das colunas do `LstDebloatApps`: o bloco de informaÃ§Ãµes do aplicativo (Nome, DescriÃ§Ã£o e ID do Pacote) agora opera com coluna fluida `Width="*"`, preenchendo 100% do espaÃ§o livre disponÃ­vel.
-  - Agrupamento compacto e alinhado Ã  direita do Fabricante (`Vendor`, largura padronizada de 85px com alinhamento Ã  direita) e do Badge de RecomendaÃ§Ã£o (`MinWidth="80"`), eliminando a lacuna de espaÃ§o ocioso apontada na interface e mantendo distÃ¢ncia consistente de 14px entre eles.
-  - HabilitaÃ§Ã£o de `TextWrapping="Wrap"` nas descriÃ§Ãµes de bloatware, permitindo que textos longos quebrem linha suavemente sem reticÃªncias desnecessÃ¡rias.
-  - DesativaÃ§Ã£o explÃ­cita de rolagem horizontal (`ScrollViewer.HorizontalScrollBarVisibility="Disabled"`) e faixa de altura responsiva (`MinHeight="380" MaxHeight="620"`), permitindo visualizaÃ§Ã£o de todos os dados do app sem necessidade de rolar para o lado.
-  - EspaÃ§amento de seguranÃ§a no Salvador de Programas Winget (`LstBackupApps`) para evitar sobreposiÃ§Ã£o entre o nome do programa e a publicadora.
+### 🛠️ Correções & Aprimoramentos de Layout
+- **Correção da Escala de Tela Cheia e Janela (Build e Rodapé Visíveis):**
+  - Implementação de gancho Win32 nativo para a mensagem `WM_GETMINMAXINFO` no `HotkeyHook` de `MainWindow`, restringindo a maximização estritamente à área de trabalho útil (`rcWork`) calculada via `GetMonitorInfo` e `MonitorFromWindow`.
+  - Eliminação definitiva da sobreposição sob a barra de tarefas do Windows: em tela cheia (maximizado), o aplicativo não mais invade a barra de tarefas nem perde o rodapé da interface.
+  - O indicador de versão e build (`SideVersion`) no rodapé da barra lateral agora permanece 100% visível, legível e posicionado com margem de segurança perfeita em qualquer resolução e proporção de tela.
+  - Compensação dinâmica do sizing frame (`SM_CXFRAME + SM_CXPADDEDBORDER`) sensível ao DPI da tela (`VisualTreeHelper.GetDpi`), garantindo alinhamento pixel-perfect tanto em 100%, 125%, 150% quanto em 175% de escala de exibição do Windows.
+  - Função `AdjustWindowScaleForScreen` na inicialização para ajustar proporções em modo janela caso o monitor possua resolução vertical menor (ex: 768p ou 900p com escala elevada), impedindo que a janela ultrapasse os limites visíveis da tela.
+- **Debloat de Aplicativos - Eliminação de Espaço Vazio & Layout Fluido:**
+  - Redesenho completo das colunas do `LstDebloatApps`: o bloco de informações do aplicativo (Nome, Descrição e ID do Pacote) agora opera com coluna fluida `Width="*"`, preenchendo 100% do espaço livre disponível.
+  - Agrupamento compacto e alinhado à direita do Fabricante (`Vendor`, largura padronizada de 85px com alinhamento à direita) e do Badge de Recomendação (`MinWidth="80"`), eliminando a lacuna de espaço ocioso apontada na interface e mantendo distância consistente de 14px entre eles.
+  - Habilitação de `TextWrapping="Wrap"` nas descrições de bloatware, permitindo que textos longos quebrem linha suavemente sem reticências desnecessárias.
+  - Desativação explícita de rolagem horizontal (`ScrollViewer.HorizontalScrollBarVisibility="Disabled"`) e faixa de altura responsiva (`MinHeight="380" MaxHeight="620"`), permitindo visualização de todos os dados do app sem necessidade de rolar para o lado.
+  - Espaçamento de segurança no Salvador de Programas Winget (`LstBackupApps`) para evitar sobreposição entre o nome do programa e a publicadora.
 
 ---
 
 ## [0.16.4] - 2026-10-31
 
-### ðŸš€ Adicionado & Aprimorado
+### 🚀 Adicionado & Aprimorado
 - **Nova Aba Windows & Debloat (RESET FERRAMENTAS):**
-  - ImplementaÃ§Ã£o completa da pÃ¡gina dedicada `PageWindowsDebloat` acessÃ­vel via `NavWindowsDebloat` na categoria RESET FERRAMENTAS.
-  - **Perfil Adaptativo Inteligente ("Otimizar para meu Hardware"):** AnÃ¡lise em tempo real do processador (Intel com P-cores/E-cores vs AMD Ryzen com CPPC), placa de vÃ­deo (NVIDIA GeForce, AMD Radeon, Intel Arc) e quantidade de memÃ³ria RAM (>= 16 GB vs <= 8 GB) aplicando um conjunto individualizado de parÃ¢metros ideais para a mÃ¡quina.
-  - **100% ReversÃ­vel (Desfazer ModificaÃ§Ãµes):** Backup prÃ©vio automÃ¡tico de todas as chaves e valores originais do registro do Windows antes de qualquer alteraÃ§Ã£o, com botÃ£o em destaque para restaurar as configuraÃ§Ãµes de fÃ¡brica em 1 clique.
-  - **Debloat de Aplicativos do Windows & OEM:** IntegraÃ§Ã£o com o catÃ¡logo de 162 identificadores de bloatware do `Win11Debloat` com suporte completo para fabricantes OEM (Dell, HP, Lenovo, ASUS, Acer, Samsung e MSI).
-  - SeleÃ§Ã£o em lote rÃ¡pida (*Marcar Seguros*, *Marcar Bloatware OEM*, *Desmarcar Todos*), barra de pesquisa dinÃ¢mica com marca d'Ã¡gua e remoÃ§Ã£o assÃ­ncrona multithread via PowerShell (`Remove-AppxPackage -AllUsers` e `Remove-AppxProvisionedPackage -Online`) com barra de progresso e relatÃ³rio detalhado.
-  - **Ajustes de CPU, GPU, Input e Sistema:** 17 otimizaÃ§Ãµes documentadas e seguras com leitura de estado real no registro (`Registry.GetValue`), incluindo `SystemResponsiveness = 0`, agendamento de GPU acelerado por hardware (HAGS), DirectX Flip Model, `DisableDXMaxFrameLatency = 1`, mira linear 1:1 sem aceleraÃ§Ã£o de mouse, desativaÃ§Ã£o de Game DVR, desativaÃ§Ã£o de telemetria diagnÃ³stica, desativaÃ§Ã£o de Copilot e Recall, e retorno do menu de contexto clÃ¡ssico.
+  - Implementação completa da página dedicada `PageWindowsDebloat` acessível via `NavWindowsDebloat` na categoria RESET FERRAMENTAS.
+  - **Perfil Adaptativo Inteligente ("Otimizar para meu Hardware"):** Análise em tempo real do processador (Intel com P-cores/E-cores vs AMD Ryzen com CPPC), placa de vídeo (NVIDIA GeForce, AMD Radeon, Intel Arc) e quantidade de memória RAM (>= 16 GB vs <= 8 GB) aplicando um conjunto individualizado de parâmetros ideais para a máquina.
+  - **100% Reversível (Desfazer Modificações):** Backup prévio automático de todas as chaves e valores originais do registro do Windows antes de qualquer alteração, com botão em destaque para restaurar as configurações de fábrica em 1 clique.
+  - **Debloat de Aplicativos do Windows & OEM:** Integração com o catálogo de 162 identificadores de bloatware do `Win11Debloat` com suporte completo para fabricantes OEM (Dell, HP, Lenovo, ASUS, Acer, Samsung e MSI).
+  - Seleção em lote rápida (*Marcar Seguros*, *Marcar Bloatware OEM*, *Desmarcar Todos*), barra de pesquisa dinâmica com marca d'água e remoção assíncrona multithread via PowerShell (`Remove-AppxPackage -AllUsers` e `Remove-AppxProvisionedPackage -Online`) com barra de progresso e relatório detalhado.
+  - **Ajustes de CPU, GPU, Input e Sistema:** 17 otimizações documentadas e seguras com leitura de estado real no registro (`Registry.GetValue`), incluindo `SystemResponsiveness = 0`, agendamento de GPU acelerado por hardware (HAGS), DirectX Flip Model, `DisableDXMaxFrameLatency = 1`, mira linear 1:1 sem aceleração de mouse, desativação de Game DVR, desativação de telemetria diagnóstica, desativação de Copilot e Recall, e retorno do menu de contexto clássico.
   - Suporte completo aos temas Claro e Escuro com `{DynamicResource Fg}`, `{DynamicResource CardSubtleBg}`, e alinhamento fluido (`HorizontalContentAlignment="Stretch"`).
 
 ---
 
 ## [0.16.3] - 2026-10-31
 
-### ðŸš€ Aprimorado & Corrigido
+### 🚀 Aprimorado & Corrigido
 - **Central de Backup no Tema Escuro & Alinhamento:**
-  - CorreÃ§Ã£o das cores de texto dos softwares listados (`LstBackupApps`), aplicando `{DynamicResource Fg}` para leitura em alto contraste no tema escuro.
-  - ImplementaÃ§Ã£o de `ItemContainerStyle` com `HorizontalContentAlignment="Stretch"`, eliminando o agrupamento incorreto Ã  esquerda e garantindo alinhamento fluido de colunas (Nome, Desenvolvedor e Tamanho).
-  - AdiÃ§Ã£o de marca d'Ã¡gua (`Buscar programas instalados...`) no campo de pesquisa e alto contraste para os seletores de formato de backup (.ZIP e CÃ³pia direta).
-- **Controle de Fans - EdiÃ§Ã£o Direta de PrÃ©-definiÃ§Ãµes:**
-  - Auto-preenchimento do nome da prÃ©-definiÃ§Ã£o na caixa de texto ao selecionar um perfil customizado no ComboBox (CPU e GPU).
-  - Ao clicar em "Salvar", caso a prÃ©-definiÃ§Ã£o jÃ¡ esteja selecionada, o software atualiza e sobrescreve as novas curvas diretamente sem exigir redigitaÃ§Ã£o do nome.
-  - Limpeza automÃ¡tica do campo de texto ao selecionar presets originais do sistema (*Silencioso*, *Equilibrado*, *Desempenho*).
-- **Suporte a MÃºltiplos Monitores no MonitorLab Pro:**
-  - IntegraÃ§Ã£o das ferramentas de calibraÃ§Ã£o e testes de tela cheia (*Dead Pixels*, *Uniformidade*, *Contraste*, *Gradientes*, *Nitidez* e *UFO Ghosting*) ao monitor selecionado na aba PerifÃ©ricos.
-  - Posicionamento e maximizaÃ§Ã£o direcionados para as coordenadas reais do display alvo via `System.Windows.Forms.Screen.AllScreens`.
-  - ExibiÃ§Ã£o do nome do monitor em teste no HUD de abertura e notificaÃ§Ã£o imediata (*toast*) ao alternar de monitor.
+  - Correção das cores de texto dos softwares listados (`LstBackupApps`), aplicando `{DynamicResource Fg}` para leitura em alto contraste no tema escuro.
+  - Implementação de `ItemContainerStyle` com `HorizontalContentAlignment="Stretch"`, eliminando o agrupamento incorreto à esquerda e garantindo alinhamento fluido de colunas (Nome, Desenvolvedor e Tamanho).
+  - Adição de marca d'água (`Buscar programas instalados...`) no campo de pesquisa e alto contraste para os seletores de formato de backup (.ZIP e Cópia direta).
+- **Controle de Fans - Edição Direta de Pré-definições:**
+  - Auto-preenchimento do nome da pré-definição na caixa de texto ao selecionar um perfil customizado no ComboBox (CPU e GPU).
+  - Ao clicar em "Salvar", caso a pré-definição já esteja selecionada, o software atualiza e sobrescreve as novas curvas diretamente sem exigir redigitação do nome.
+  - Limpeza automática do campo de texto ao selecionar presets originais do sistema (*Silencioso*, *Equilibrado*, *Desempenho*).
+- **Suporte a Múltiplos Monitores no MonitorLab Pro:**
+  - Integração das ferramentas de calibração e testes de tela cheia (*Dead Pixels*, *Uniformidade*, *Contraste*, *Gradientes*, *Nitidez* e *UFO Ghosting*) ao monitor selecionado na aba Periféricos.
+  - Posicionamento e maximização direcionados para as coordenadas reais do display alvo via `System.Windows.Forms.Screen.AllScreens`.
+  - Exibição do nome do monitor em teste no HUD de abertura e notificação imediata (*toast*) ao alternar de monitor.
 
 ---
 
 ## [0.16.2] - 2026-10-31
 
-### ðŸš€ Adicionado & Aprimorado
-- **Gerenciador de PrÃ©-definiÃ§Ãµes de Fans:**
-  - AdiÃ§Ã£o de lacuna de texto (`TextBox`), botÃ£o "Salvar" e seletor suspenso (`ComboBox`) para nomear, armazenar e trocar perfis de curvas de ventoinhas em tempo real (CPU e GPU).
-  - PersistÃªncia automÃ¡tica de todas as prÃ©-definiÃ§Ãµes salvas em `settings.json`, com opÃ§Ã£o de exclusÃ£o rÃ¡pida de presets personalizados.
-- **Nova Central de Backup & RestauraÃ§Ã£o (`PageBackup`):**
-  - **Salvador de Drivers (pnputil):** Exporta todos os drivers de terceiros instalados e gera um script/executÃ¡vel instalador autÃ´nomo com auto-elevaÃ§Ã£o administrativa (`Instalar_Drivers.bat`) para reinstalaÃ§Ã£o instantÃ¢nea em 1 clique apÃ³s formataÃ§Ã£o.
-  - **Salvador de Programas (Winget):** Lista dinÃ¢mica de programas instalados com busca e checkboxes (`[x]`); gera um instalador em lote (`Instalar_Programas.bat`) que reinstala automaticamente os aplicativos selecionados via `winget`.
-  - **Backup de Pastas do UsuÃ¡rio:** Backup com cÃ¡lculo de tamanho em tempo real para **Ãrea de Trabalho**, **Downloads**, **Imagens** e **VÃ­deos** (com opÃ§Ã£o de arquivo comprimido `.ZIP` ou cÃ³pia de pastas direta, barra de progresso e cancelamento).
+### 🚀 Adicionado & Aprimorado
+- **Gerenciador de Pré-definições de Fans:**
+  - Adição de lacuna de texto (`TextBox`), botão "Salvar" e seletor suspenso (`ComboBox`) para nomear, armazenar e trocar perfis de curvas de ventoinhas em tempo real (CPU e GPU).
+  - Persistência automática de todas as pré-definições salvas em `settings.json`, com opção de exclusão rápida de presets personalizados.
+- **Nova Central de Backup & Restauração (`PageBackup`):**
+  - **Salvador de Drivers (pnputil):** Exporta todos os drivers de terceiros instalados e gera um script/executável instalador autônomo com auto-elevação administrativa (`Instalar_Drivers.bat`) para reinstalação instantânea em 1 clique após formatação.
+  - **Salvador de Programas (Winget):** Lista dinâmica de programas instalados com busca e checkboxes (`[x]`); gera um instalador em lote (`Instalar_Programas.bat`) que reinstala automaticamente os aplicativos selecionados via `winget`.
+  - **Backup de Pastas do Usuário:** Backup com cálculo de tamanho em tempo real para **Área de Trabalho**, **Downloads**, **Imagens** e **Vídeos** (com opção de arquivo comprimido `.ZIP` ou cópia de pastas direta, barra de progresso e cancelamento).
 
 ---
 
 ## [0.16.1] - 2026-10-30
 
-### ðŸš€ Adicionado & Aprimorado
+### 🚀 Adicionado & Aprimorado
 - **Controle de Fans & Bomba AIO em Segundo Plano:**
-  - O motor de controle de ventoinhas agora roda em uma thread de background dedicada desacoplada da interface grÃ¡fica, garantindo que o controle continue ativo mesmo com o app minimizado para a bandeja.
-  - Heartbeat anti-timeout para canais com trava de 100% (ex: bombas de Water Cooler / AIO), prevenindo que a BIOS ou o SuperI/O da placa-mÃ£e restaurem o controle padrÃ£o por falta de pulsos PWM.
-  - CorreÃ§Ã£o do desarme indevido: a restauraÃ§Ã£o dos ventiladores para a BIOS (`RestoreAllToBios`) nÃ£o Ã© mais acionada ao fechar a janela para a bandeja, ocorrendo unicamente no encerramento real do aplicativo ("Sair").
-  - InicializaÃ§Ã£o automÃ¡tica do serviÃ§o de fans no startup do programa, sem necessidade de navegar manualmente atÃ© a aba FanControl.
-  - **PersistÃªncia Completa:** As curvas de CPU e GPU, modos manuais e travas de 100% dos canais agora sÃ£o salvas automaticamente em `settings.json` e restauradas em cada inicializaÃ§Ã£o.
+  - O motor de controle de ventoinhas agora roda em uma thread de background dedicada desacoplada da interface gráfica, garantindo que o controle continue ativo mesmo com o app minimizado para a bandeja.
+  - Heartbeat anti-timeout para canais com trava de 100% (ex: bombas de Water Cooler / AIO), prevenindo que a BIOS ou o SuperI/O da placa-mãe restaurem o controle padrão por falta de pulsos PWM.
+  - Correção do desarme indevido: a restauração dos ventiladores para a BIOS (`RestoreAllToBios`) não é mais acionada ao fechar a janela para a bandeja, ocorrendo unicamente no encerramento real do aplicativo ("Sair").
+  - Inicialização automática do serviço de fans no startup do programa, sem necessidade de navegar manualmente até a aba FanControl.
+  - **Persistência Completa:** As curvas de CPU e GPU, modos manuais e travas de 100% dos canais agora são salvas automaticamente em `settings.json` e restauradas em cada inicialização.
 
-### âš¡ Performance & OtimizaÃ§Ã£o
-- **ReduÃ§Ã£o DrÃ¡stica do EspaÃ§o em Disco:**
-  - AtivaÃ§Ã£o da compressÃ£o nativa Single-File no compilador do .NET 8 (`<EnableCompressionInSingleFile>true</EnableCompressionInSingleFile>`). O executÃ¡vel distribuÃ­vel foi reduzido de **~207 MB para cerca de 70 MB** (economia de mais de 65% de espaÃ§o em disco).
-- **OtimizaÃ§Ã£o de Consumo de MemÃ³ria RAM:**
-  - AtivaÃ§Ã£o do modo DATAS do .NET 8 (`<GarbageCollectionAdaptationMode>1</GarbageCollectionAdaptationMode>`), ajustando a dimensÃ£o do heap de forma adaptativa e automÃ¡tica ao tamanho real dos dados ativos.
-  - Carregamento sob demanda (lazy) do `TraceEventSession` no `FrameMonitor` e reduÃ§Ã£o do buffer ETW de 64 MB para 1 MB, liberando de 60 MB a 100 MB quando o overlay e os testes de benchmark nÃ£o estÃ£o ativos.
-  - DesativaÃ§Ã£o de mÃ³dulos nÃ£o utilizados no `LibreHardwareMonitor` (`IsNetworkEnabled = false`, `IsControllerEnabled = false`), eliminando alocaÃ§Ãµes de contadores de desempenho de rede nativos (perflib) e varredura HID contÃ­nua.
-  - OtimizaÃ§Ã£o do loop de sensores com cache de identificadores (`_sensorIdCache`), eliminando alocaÃ§Ãµes repetitivas de strings (`s.Identifier.ToString()`) e descarte automÃ¡tico de ponteiros COM no WMI (`IWbemClassObject`).
-  - Modo ultraleve em segundo plano (`updateUi: false`) que mantÃ©m a telemetria do FanControl sem despachar eventos de formataÃ§Ã£o e PropertyChanged para o WPF enquanto o aplicativo estiver minimizado ou na bandeja.
-  - ExecuÃ§Ã£o de compactaÃ§Ã£o forÃ§ada de heap e `TrimMemory` ao finalizar o carregamento do hardware e na inicializaÃ§Ã£o minimizada, mantendo a pegada em segundo plano em cerca de 25 a 35 MB.
-  - ImplementaÃ§Ã£o de coleta forÃ§ada de lixo e limpeza de Working Set (`EmptyWorkingSet`) via Win32 API ao minimizar para a bandeja do sistema.
+### ⚡ Performance & Otimização
+- **Redução Drástica do Espaço em Disco:**
+  - Ativação da compressão nativa Single-File no compilador do .NET 8 (`<EnableCompressionInSingleFile>true</EnableCompressionInSingleFile>`). O executável distribuível foi reduzido de **~207 MB para cerca de 70 MB** (economia de mais de 65% de espaço em disco).
+- **Otimização de Consumo de Memória RAM:**
+  - Ativação do modo DATAS do .NET 8 (`<GarbageCollectionAdaptationMode>1</GarbageCollectionAdaptationMode>`), ajustando a dimensão do heap de forma adaptativa e automática ao tamanho real dos dados ativos.
+  - Carregamento sob demanda (lazy) do `TraceEventSession` no `FrameMonitor` e redução do buffer ETW de 64 MB para 1 MB, liberando de 60 MB a 100 MB quando o overlay e os testes de benchmark não estão ativos.
+  - Desativação de módulos não utilizados no `LibreHardwareMonitor` (`IsNetworkEnabled = false`, `IsControllerEnabled = false`), eliminando alocações de contadores de desempenho de rede nativos (perflib) e varredura HID contínua.
+  - Otimização do loop de sensores com cache de identificadores (`_sensorIdCache`), eliminando alocações repetitivas de strings (`s.Identifier.ToString()`) e descarte automático de ponteiros COM no WMI (`IWbemClassObject`).
+  - Modo ultraleve em segundo plano (`updateUi: false`) que mantém a telemetria do FanControl sem despachar eventos de formatação e PropertyChanged para o WPF enquanto o aplicativo estiver minimizado ou na bandeja.
+  - Execução de compactação forçada de heap e `TrimMemory` ao finalizar o carregamento do hardware e na inicialização minimizada, mantendo a pegada em segundo plano em cerca de 25 a 35 MB.
+  - Implementação de coleta forçada de lixo e limpeza de Working Set (`EmptyWorkingSet`) via Win32 API ao minimizar para a bandeja do sistema.
 
-### ðŸ› ï¸ CorreÃ§Ãµes de Ambiente e Scripts
-- CorreÃ§Ã£o de scripts `.bat` (`iniciar.bat`, `publicar.bat`, `executar_e_testar.bat`, `testar.bat`):
-  - LocalizaÃ§Ã£o automÃ¡tica do .NET 8 SDK em `%USERPROFILE%\.dotnet`, `%ProgramFiles%\dotnet` ou variÃ¡veis de ambiente.
-  - DefiniÃ§Ã£o correta do diretÃ³rio de trabalho (`-WorkingDirectory`) ao iniciar processos com elevaÃ§Ã£o de Administrador (`UAC`), corrigindo falhas na execuÃ§Ã£o com arquivos soltos.
-  - CorreÃ§Ã£o de ambiguidade no `dotnet publish` especificando explicitamente `LuminiTray.csproj` (resolvendo o erro `MSB1011`).
-  - CriaÃ§Ã£o de scripts ponte na pasta raiz facilitando a execuÃ§Ã£o direta sem entrar em subpastas.
+### 🛠️ Correções de Ambiente e Scripts
+- Correção de scripts `.bat` (`iniciar.bat`, `publicar.bat`, `executar_e_testar.bat`, `testar.bat`):
+  - Localização automática do .NET 8 SDK em `%USERPROFILE%\.dotnet`, `%ProgramFiles%\dotnet` ou variáveis de ambiente.
+  - Definição correta do diretório de trabalho (`-WorkingDirectory`) ao iniciar processos com elevação de Administrador (`UAC`), corrigindo falhas na execução com arquivos soltos.
+  - Correção de ambiguidade no `dotnet publish` especificando explicitamente `LuminiTray.csproj` (resolvendo o erro `MSB1011`).
+  - Criação de scripts ponte na pasta raiz facilitando a execução direta sem entrar em subpastas.
 
 ---
 
 ## [0.16.0] - 2026-10-28
-- ImplementaÃ§Ã£o inicial da aba de controle de fans (FanControl) com suporte a curvas personalizadas e histerese anti-spike.
-- Suporte a sensores de placas-mÃ£e (SuperI/O) e placas de vÃ­deo NVIDIA/AMD/Intel.
-- AdiÃ§Ã£o da trava de seguranÃ§a de 100% para bombas de Water Cooler.
-- Monitoramento de temperatura de hotspot e memÃ³ria VRAM em GPUs compatÃ­veis.
+- Implementação inicial da aba de controle de fans (FanControl) com suporte a curvas personalizadas e histerese anti-spike.
+- Suporte a sensores de placas-mãe (SuperI/O) e placas de vídeo NVIDIA/AMD/Intel.
+- Adição da trava de segurança de 100% para bombas de Water Cooler.
+- Monitoramento de temperatura de hotspot e memória VRAM em GPUs compatíveis.
