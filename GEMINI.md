@@ -2,9 +2,14 @@
 
 Estas regras são permanentes e devem ser rigorosamente seguidas em todas as interações e atualizações do projeto.
 
-## 1. Controle de Versão e Documentação de Mudanças (Changelog)
-- **Incremento de Build Obrigatório:** A cada nova funcionalidade, alteração relevante, refatoração ou correção de bugs, a versão da build DEVE ser incrementada no arquivo de projeto `LuminiTray/LuminiTray.csproj` nas tags `<Version>`, `<AssemblyVersion>` e `<FileVersion>` seguindo o versionamento semântico (SemVer: `MAJOR.MINOR.PATCH`).
-- **Registro no Changelog:** Toda alteração DEVE ser documentada e registrada no arquivo `CHANGELOG.md` na raiz do projeto, sob o novo número de versão e a data correspondente, categorizando em seções claras como `### 🚀 Adicionado & Aprimorado`, `### ⚡ Performance & Otimização` ou `### 🛠️ Correções`.
+## 1. Controle de Versão Semântico (SemVer 2.0.0) e Changelog
+- **Adesão Estrita ao SemVer (https://semver.org/lang/pt-BR/):** O projeto adota oficialmente a especificação do Versionamento Semântico 2.0.0 no formato estrito `MAJOR.MINOR.PATCH` (X.Y.Z):
+  - **`PATCH` (Correção / Terceiro Número - X.Y.Z):** Deve ser incrementado obrigatoriamente ao aplicar correções de falhas (*bug fixes*), pequenas refatorações internas ou ajustes que não adicionem novas funcionalidades nem quebrem a compatibilidade (ex: de `0.24.1` para `0.24.2`).
+  - **`MINOR` (Menor / Número do Meio - X.Y.0):** Deve ser incrementado obrigatoriamente quando uma nova funcionalidade for adicionada ao software de forma retrocompatível. Ao incrementar o número `MINOR`, o `PATCH` DEVE ser reiniciado em zero `0` (ex: de `0.24.x` para `0.25.0`).
+  - **`MAJOR` (Maior / Primeiro Número - X.0.0):** Deve ser incrementado ao introduzir modificações que quebrem compatibilidade (*breaking changes*), reestruturações de grande impacto ou ao atingir a maturidade para a versão pública estável `1.0.0`. Ao incrementar `MAJOR`, tanto `MINOR` quanto `PATCH` DEVEM ser reiniciados em zero `0`.
+  - **Imutabilidade de Versões Publicadas:** Uma versão lançada jamais deve ter seu conteúdo alterado; qualquer modificação futura exige um novo incremento de versão.
+  - **Sincronização nos Arquivos de Projeto:** Sempre atualizar as tags `<Version>`, `<AssemblyVersion>` e `<FileVersion>` no arquivo de projeto `LuminiTray.csproj` em conjunto com a nova versão.
+- **Registro no Changelog:** Toda alteração DEVE ser documentada e registrada no arquivo `CHANGELOG.md`, sob o novo número de versão e a data correspondente, categorizando em seções claras como `### 🚀 Adicionado & Aprimorado`, `### ⚡ Performance & Otimização` ou `### 🛠️ Correções`.
 
 ## 2. Política de Publicação do Executável (.exe)
 - **Não publicar automaticamente:** NUNCA execute scripts de publicação como `publicar.bat` ou comandos de publicação `dotnet publish` para gerar executáveis únicos distribuíveis (`Single-File Release`) automaticamente, exceto quando o usuário solicitar expressamente (ex: *"gere o executável"*, *"publique o .exe"*, *"faça a release"*).
