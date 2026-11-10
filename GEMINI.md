@@ -25,3 +25,9 @@ Estas regras são permanentes e devem ser rigorosamente seguidas em todas as int
 - **Estrutura de Pastas (Desenvolvimento vs Release):**
   - **`desenvolvimento/`:** Diretório de trabalho onde ficam os arquivos de teste, depuração e os scripts `.bat` (`iniciar.bat`, `publicar.bat`, `executar_e_testar.bat`, `testar.bat`). Nenhum arquivo `.bat` deve ir para o GitHub.
   - **`release/`:** Diretório que contém estritamente os arquivos limpos e finais que compõem o repositório do GitHub. É proibido conter scripts `.bat` nesta pasta.
+
+## 5. Padrão de Fábrica e Higienização Pré-Publicação (Clean Factory State)
+- **Zeramento Obrigatório de Dados e Preferências:** Antes de qualquer publicação, release ou sincronização para o repositório público (`release/` e GitHub), é terminantemente OBRIGATÓRIO zerar todas as configurações, preferências, histórico e dados locais da máquina do desenvolvedor:
+  - **Estado Padrão de Fábrica (Factory Defaults):** Nenhuma configuração pessoal (ex: volume preferido, curvas de fans calibradas para o hardware local, atalhos modificados, monitores específicos, dispositivos de áudio selecionados ou preferências locais) deve ser incluída nos arquivos versionados ou pacotes de release. O software deve chegar ao repositório sempre no seu estado virgem/padrão de fábrica.
+  - **Limpeza de Histórico e Caches:** Devem ser eliminados quaisquer arquivos residuais de histórico de navegação, relatórios de benchmark locais, arquivos temporários de teste, dumps de memória, logs de depuração ou arquivos de estado de execução (ex: `post_format_state.json`, `*.log`, caches em `%AppData%` ou `%LocalAppData%`).
+  - **Sanitização de Caminhos Absolutos:** Nenhum caminho absoluto contendo diretórios do computador local (ex: `C:\Users\...`, unidades ou nomes de usuário) deve estar gravado no código ou em arquivos de configuração do repositório.
