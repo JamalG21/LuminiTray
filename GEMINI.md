@@ -19,9 +19,9 @@ Estas regras são permanentes e devem ser rigorosamente seguidas em todas as int
 - **Suporte a Tema Escuro e Claro:** Todo novo controle, texto (`TextBlock`) ou lista (`ListView`, `ItemsControl`) deve utilizar os recursos dinâmicos da aplicação (`{DynamicResource Fg}`, `{DynamicResource Muted}`, `{DynamicResource CardSubtleBg}`, `{DynamicResource Line}`, `{DynamicResource Accent}`). Nunca deixe texto sem cor explícita para evitar o uso da cor padrão do sistema (preto).
 - **Layout de Listas WPF:** Em `ListView` com `DataTemplate`, sempre configure `HorizontalContentAlignment="Stretch"` no `ItemContainerStyle` para que colunas fluídas expandam por completo e elementos com alinhamento à direita fiquem perfeitamente posicionados.
 
-## 4. Política de Upload para o Repositório GitHub
-- **Frequência de Upload (Mudança no Número do Meio):** O repositório remoto no GitHub (`https://github.com/JamalG21/LuminiTray.git`) DEVE ser atualizado e sincronizado apenas quando o projeto atualizar o **número do meio** da versão (versão Minor, por exemplo: de `0.24.x` para `0.25.0`), OU quando o usuário pedir pessoalmente para subir/upar.
-- **Registro Contínuo no Changelog:** Apesar de o upload ocorrer apenas na mudança de versão do meio ou sob demanda, o arquivo `CHANGELOG.md` DEVE ser sempre rigorosamente atualizado com todas as alterações detalhadas de cada versão intermediária ou patch.
+## 4. Política de Publicação e Sincronização com o GitHub (Ciclo SemVer)
+- **Publicação Conforme Versionamento Semântico:** As versões são publicadas no repositório GitHub (`https://github.com/JamalG21/LuminiTray.git`) acompanhando o ciclo natural do SemVer 2.0.0 (seja PATCH, MINOR ou MAJOR) a cada versão lançada e validada, criando sua respectiva tag de versão (ex: `v0.24.2`).
+- **Registro Rigoroso no Changelog:** Toda publicação deve vir acompanhada da atualização correspondente no `CHANGELOG.md`.
 - **Estrutura de Pastas (Desenvolvimento vs Release):**
   - **`desenvolvimento/`:** Diretório de trabalho onde ficam os arquivos de teste, depuração e os scripts `.bat` (`iniciar.bat`, `publicar.bat`, `executar_e_testar.bat`, `testar.bat`). Nenhum arquivo `.bat` deve ir para o GitHub.
   - **`release/`:** Diretório que contém estritamente os arquivos limpos e finais que compõem o repositório do GitHub. É proibido conter scripts `.bat` nesta pasta.
