@@ -52,6 +52,8 @@ public sealed class MiniTaskManagerService : IDisposable
         public int TopRamPct { get; set; }
         public string TopRamName { get; set; } = string.Empty;
         public ProcessTargetInfo TopRamTarget { get; set; } = new();
+        // Raw RAM usage in bytes for the top consumer
+        public long TopRamBytes { get; set; }
 
         public double TotalDiskBps { get; set; }
         public string TotalDiskFormatted { get; set; } = "0 B/s";

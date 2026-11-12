@@ -53,6 +53,63 @@ public partial class MainWindow
         _ovShow = keys;
         SaveOverlayItems();
         BuildOverlayPicker();
+        InitOverlayOutlineUi();
+    }
+
+    private void InitOverlayOutlineUi()
+    {
+        if (ChkOverlayTextOutline == null) return;
+        ChkOverlayTextOutline.IsChecked = _settings.OverlayTextOutlineEnabled;
+        ChkOverlayTextOutlineAutoOnly.IsChecked = _settings.OverlayTextOutlineAutoOnly;
+
+        SliderOverlayOutlineThickness.Value = _settings.OverlayTextOutlineThickness;
+        TxtOverlayOutlineThicknessVal.Text = $"{_settings.OverlayTextOutlineThickness:F1} px";
+
+        SliderOverlayOutlineOpacity.Value = Math.Round(_settings.OverlayTextOutlineOpacity * 100);
+        TxtOverlayOutlineOpacityVal.Text = $"{Math.Round(_settings.OverlayTextOutlineOpacity * 100):F0}%";
+    }
+
+    private void OverlayOutlineOption_Changed(object sender, RoutedEventArgs e)
+    {
+        if (ChkOverlayTextOutline == null) return;
+        _settings.OverlayTextOutlineEnabled = ChkOverlayTextOutline.IsChecked == true;
+        _settings.OverlayTextOutlineAutoOnly = ChkOverlayTextOutlineAutoOnly.IsChecked == true;
+        _settings.Save();
+        SyncOverlayOutline();
+    }
+
+    private void SliderOverlayOutline_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
+    {
+        if (SliderOverlayOutlineThickness == null || SliderOverlayOutlineOpacity == null) return;
+        double thick = Math.Round(SliderOverlayOutlineThickness.Value, 1);
+        double op = Math.Round(SliderOverlayOutlineOpacity.Value) / 100.0;
+
+        _settings.OverlayTextOutlineThickness = thick;
+        _settings.OverlayTextOutlineOpacity = op;
+        _settings.Save();
+
+        if (TxtOverlayOutlineThicknessVal != null) TxtOverlayOutlineThicknessVal.Text = $"{thick:F1} px";
+        if (TxtOverlayOutlineOpacityVal != null) TxtOverlayOutlineOpacityVal.Text = $"{Math.Round(op * 100):F0}%";
+
+        SyncOverlayOutline();
+    }
+
+    private void SyncOverlayOutline()
+    {
+        _overlay?.UpdateTextOutline(
+            _settings.OverlayTextOutlineEnabled,
+            _settings.OverlayTextOutlineThickness,
+            _settings.OverlayTextOutlineOpacity,
+            _settings.OverlayTextOutlineAutoOnly);
+
+        if (MiniTaskManagerWindow.IsWindowVisible)
+        {
+            MiniTaskManagerWindow.Instance.UpdateTextOutline(
+                _settings.OverlayTextOutlineEnabled,
+                _settings.OverlayTextOutlineThickness,
+                _settings.OverlayTextOutlineOpacity,
+                _settings.OverlayTextOutlineAutoOnly);
+        }
     }
 
     // ------------------------------------------------------------------ leitura dos sensores

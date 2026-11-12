@@ -73,6 +73,10 @@ public class OverlayAndAppsTests
         Assert.AreEqual(180, restored.OverlayHeight, 0.001);
         Assert.AreEqual(0.75, restored.OverlayOpacity, 0.001);
         Assert.IsFalse(restored.OverlayLocked);
+        Assert.IsTrue(restored.OverlayTextOutlineEnabled);
+        Assert.AreEqual(3.0, restored.OverlayTextOutlineThickness, 0.001);
+        Assert.AreEqual(0.90, restored.OverlayTextOutlineOpacity, 0.001);
+        Assert.IsTrue(restored.OverlayTextOutlineAutoOnly);
     }
 
     [TestMethod]

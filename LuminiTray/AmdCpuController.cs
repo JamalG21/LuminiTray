@@ -237,8 +237,7 @@ public sealed class AmdCpuController : ICpuController, IDisposable
                     string[] possibleBinPaths =
                     {
                         Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Assets", "AMD", "PawnIO", "RyzenSMU.bin"),
-                        Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "RyzenSMU.bin"),
-                        @"C:\Users\Willian\Desktop\LuminiTray\LuminiTray\Assets\AMD\PawnIO\RyzenSMU.bin"
+                        Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "RyzenSMU.bin")
                     };
 
                     foreach (var binPath in possibleBinPaths)

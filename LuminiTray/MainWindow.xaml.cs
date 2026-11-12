@@ -2428,6 +2428,11 @@ public partial class MainWindow : Window
         _overlay.SetBackgroundOpacity(_settings.OverlayBackgroundOpacity);
         _overlay.SetScale(_settings.OverlayScale);
         _overlay.SetLocked(_settings.OverlayLocked);
+        _overlay.UpdateTextOutline(
+            _settings.OverlayTextOutlineEnabled,
+            _settings.OverlayTextOutlineThickness,
+            _settings.OverlayTextOutlineOpacity,
+            _settings.OverlayTextOutlineAutoOnly);
         _overlay.Reposition();
         UpdateOverlayPositionUi();
     }
@@ -2817,6 +2822,11 @@ public partial class MainWindow : Window
             _settings.MiniTaskCustomX,
             _settings.MiniTaskCustomY,
             _settings.MiniTaskLocked);
+        win.UpdateTextOutline(
+            _settings.OverlayTextOutlineEnabled,
+            _settings.OverlayTextOutlineThickness,
+            _settings.OverlayTextOutlineOpacity,
+            _settings.OverlayTextOutlineAutoOnly);
 
         UpdateMiniTaskPositionUi();
     }

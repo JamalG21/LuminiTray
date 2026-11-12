@@ -4,6 +4,7 @@ using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Interop;
 using System.Windows.Media;
+using System.Windows.Media.Effects;
 using System.Windows.Shapes;
 using System.Windows.Threading;
 
@@ -30,6 +31,12 @@ public partial class OverlayWindow : Window
     public event Action<bool>? LockChanged;
     public event Action? RequestClose;
     public double BackgroundOpacity { get; private set; } = 0.85;
+
+    // Configurações de contorno de texto
+    private bool _outlineEnabled = true;
+    private double _outlineThickness = 3.0;
+    private double _outlineOpacity = 0.90;
+    private bool _outlineAutoOnly = true;
 
     private bool _isDragging;
     private IntPtr _hwnd, _hook;
@@ -158,6 +165,38 @@ public partial class OverlayWindow : Window
         BackgroundOpacity = Math.Clamp(Math.Round(opacity, 2), 0.00, 1.00);
         byte alpha = (byte)Math.Clamp(Math.Round(BackgroundOpacity * 255), 0, 255);
         Box.Background = new SolidColorBrush(Color.FromArgb(alpha, 0, 0, 0));
+        ApplyTextOutlineEffect();
+    }
+
+    public void UpdateTextOutline(bool enabled, double thickness, double opacity, bool autoOnly)
+    {
+        _outlineEnabled = enabled;
+        _outlineThickness = thickness;
+        _outlineOpacity = opacity;
+        _outlineAutoOnly = autoOnly;
+        ApplyTextOutlineEffect();
+    }
+
+    private void ApplyTextOutlineEffect()
+    {
+        if (ContentStack == null) return;
+
+        bool shouldApply = _outlineEnabled && (!_outlineAutoOnly || BackgroundOpacity < 0.50);
+        if (shouldApply)
+        {
+            ContentStack.Effect = new DropShadowEffect
+            {
+                ShadowDepth = 0,
+                BlurRadius = Math.Clamp(_outlineThickness, 1.0, 10.0),
+                Opacity = Math.Clamp(_outlineOpacity, 0.0, 1.0),
+                Color = Colors.Black,
+                RenderingBias = RenderingBias.Performance
+            };
+        }
+        else
+        {
+            ContentStack.Effect = null;
+        }
     }
 
     /// <summary>

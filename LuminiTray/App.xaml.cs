@@ -89,6 +89,10 @@ public partial class App : Application
         }
 
         var settings = AppSettings.Load();
+
+        // Auto-reparo: se o programa foi movido de pasta, atualiza o caminho do início automático.
+        bool syncMinimized = settings.AutoStartMinimized;
+        _ = System.Threading.Tasks.Task.Run(() => AutoStartManager.SyncExecutablePath(syncMinimized));
         bool isAutoStart = e.Args.Any(a => a.Equals("--autostart", StringComparison.OrdinalIgnoreCase) ||
                                           a.Equals("--startup", StringComparison.OrdinalIgnoreCase));
         bool isMinimized = e.Args.Any(a => a.Equals("--minimized", StringComparison.OrdinalIgnoreCase)) || (isAutoStart && settings.StartMinimizedToTray) || settings.StartMinimizedToTray;

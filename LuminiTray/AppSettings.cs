@@ -71,6 +71,9 @@ public sealed class AppSettings
     // Inicialização automática com o Windows e Funções Automáticas
     public bool AutoStartWithWindows { get; set; }
     public bool AutoStartMinimized { get; set; } = true;
+
+    /// <summary>Momento (UTC) em que o usuário zerou o histórico de inicializações; eventos anteriores são ignorados.</summary>
+    public DateTime? BootHistoryClearedUtc { get; set; }
     public bool AutoApplyTweaks { get; set; } = true;
     public bool AutoCleanRam { get; set; } = true;
     public bool AutoCloseBackgroundApps { get; set; } = false;
@@ -178,6 +181,12 @@ public sealed class AppSettings
     public double OverlayCustomX { get; set; } = 20;
     public double OverlayCustomY { get; set; } = 20;
     public bool OverlayLocked { get; set; } = false; // Padrão livre para arrastar
+
+    // Contorno das Letras das Overlays (Legibilidade com fundo transparente)
+    public bool OverlayTextOutlineEnabled { get; set; } = true;
+    public double OverlayTextOutlineThickness { get; set; } = 3.0; // BlurRadius entre 1.0 e 8.0
+    public double OverlayTextOutlineOpacity { get; set; } = 0.90;   // Entre 0.10 e 1.00
+    public bool OverlayTextOutlineAutoOnly { get; set; } = true;    // Se true, só ativa quando BackgroundOpacity < 0.50
 
     // Mini Gerenciador de Tarefas (Mesmas funcionalidades do Overlay)
     public bool MiniTaskVisible { get; set; } = false;

@@ -22,6 +22,7 @@ Estas regras são permanentes e devem ser rigorosamente seguidas em todas as int
 ## 4. Política de Publicação e Sincronização com o GitHub (Ciclo SemVer)
 - **Publicação Conforme Versionamento Semântico:** As versões são publicadas no repositório GitHub (`https://github.com/JamalG21/LuminiTray.git`) acompanhando o ciclo natural do SemVer 2.0.0 (seja PATCH, MINOR ou MAJOR) a cada versão lançada e validada, criando sua respectiva tag de versão (ex: `v0.24.2`).
 - **Registro Rigoroso no Changelog:** Toda publicação deve vir acompanhada da atualização correspondente no `CHANGELOG.md`.
+- **Notas de Release Exclusivas da Versão Atual:** A partir das próximas releases, a descrição / notas de lançamento (`Release Notes`) publicadas no GitHub DEVE conter estritamente e exclusivamente as mudanças da versão específica que está sendo lançada (apenas a seção correspondente `## [X.Y.Z]`). É proibido incluir versões anteriores acumuladas no corpo da release do GitHub, devendo conter unicamente as novidades da versão e um link para o `CHANGELOG.md` completo.
 - **Estrutura de Pastas (Desenvolvimento vs Release):**
   - **`desenvolvimento/`:** Diretório de trabalho onde ficam os arquivos de teste, depuração e os scripts `.bat` (`iniciar.bat`, `publicar.bat`, `executar_e_testar.bat`, `testar.bat`). Nenhum arquivo `.bat` deve ir para o GitHub.
   - **`release/`:** Diretório que contém estritamente os arquivos limpos e finais que compõem o repositório do GitHub. É proibido conter scripts `.bat` nesta pasta.

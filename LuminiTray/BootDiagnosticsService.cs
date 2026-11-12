@@ -98,6 +98,15 @@ public static class BootDiagnosticsService
             CollectFallbackBootHistory(records);
         }
 
+        // Histórico zerado pelo usuário: ignora tudo que aconteceu antes do corte
+        DateTime? cutoffUtc = AppSettings.Load().BootHistoryClearedUtc;
+        bool cleared = cutoffUtc.HasValue;
+        if (cleared)
+        {
+            records.RemoveAll(r => r.Timestamp.ToUniversalTime() <= cutoffUtc!.Value);
+            degraders.RemoveAll(d => d.LastOccurrence.ToUniversalTime() <= cutoffUtc!.Value);
+        }
+
         // Ordena timeline por data crescente para gráfico cronológico
         result.Timeline = records.OrderBy(r => r.Timestamp).TakeLast(10).ToList();
         result.LastBoot = records.OrderByDescending(r => r.Timestamp).FirstOrDefault();
@@ -109,19 +118,43 @@ public static class BootDiagnosticsService
         }
         else
         {
-            // Estimativa por Uptime
-            double uptimeSec = TimeSpan.FromMilliseconds(Environment.TickCount64).TotalSeconds;
-            result.TypicalBootSeconds = 25.0;
+            // Sem histórico (zerado): não inventa valor
+            result.TypicalBootSeconds = cleared ? 0 : 25.0;
         }
 
         // Se nenhum degrader foi registrado pelo EventLog, extrai os maiores programas da inicialização
-        if (degraders.Count == 0)
+        if (degraders.Count == 0 && !cleared)
         {
             CollectEstimatedDegraders(degraders);
         }
 
         result.Degraders = degraders.OrderByDescending(d => d.DelaySeconds).Take(10).ToList();
         return result;
+    }
+
+    /// <summary>
+    /// Zera o histórico de inicializações exibido: grava um marcador de corte (eventos anteriores são ignorados)
+    /// e tenta limpar o log de desempenho de boot do Windows (só funciona como administrador).
+    /// </summary>
+    public static void ClearBootHistory()
+    {
+        var s = AppSettings.Load();
+        s.BootHistoryClearedUtc = DateTime.UtcNow;
+        s.Save();
+
+        try
+        {
+            var psi = new ProcessStartInfo("wevtutil.exe", $"cl \"{DiagLogName}\"")
+            {
+                CreateNoWindow = true,
+                UseShellExecute = false,
+                RedirectStandardError = true,
+                RedirectStandardOutput = true
+            };
+            using var p = Process.Start(psi);
+            p?.WaitForExit(4000);
+        }
+        catch { }
     }
 
     private static bool CheckFastStartup()

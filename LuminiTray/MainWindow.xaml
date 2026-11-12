@@ -6164,6 +6164,73 @@
 
               </Border>
 
+              <Border Style="{StaticResource CardBorder}" Margin="0,0,0,14">
+
+                <StackPanel>
+
+                  <TextBlock Text="CONTORNO DAS LETRAS (FUNDO TRANSPARENTE)" Style="{StaticResource Label}" Margin="0,0,0,4" />
+
+                  <TextBlock Foreground="{DynamicResource Muted}" FontSize="12" Margin="0,0,0,12" TextWrapping="Wrap"
+                             Text="Adiciona contorno nítido nas letras e números quando o fundo da overlay estiver transparente, garantindo máxima legibilidade sobre jogos e janelas claras." />
+
+                  <WrapPanel Margin="0,0,0,12">
+
+                    <CheckBox Name="ChkOverlayTextOutline" Content="Ativar contorno nas letras" Margin="0,0,24,6"
+                              Checked="OverlayOutlineOption_Changed" Unchecked="OverlayOutlineOption_Changed" />
+
+                    <CheckBox Name="ChkOverlayTextOutlineAutoOnly" Content="Aplicar automaticamente apenas quando fundo for transparente" Margin="0,0,0,6"
+                              Checked="OverlayOutlineOption_Changed" Unchecked="OverlayOutlineOption_Changed" />
+
+                  </WrapPanel>
+
+                  <Grid Margin="0,0,0,10">
+
+                    <Grid.ColumnDefinitions>
+
+                      <ColumnDefinition Width="180" />
+
+                      <ColumnDefinition Width="*" />
+
+                      <ColumnDefinition Width="70" />
+
+                    </Grid.ColumnDefinitions>
+
+                    <TextBlock Text="Grossura do contorno:" VerticalAlignment="Center" Foreground="{DynamicResource Fg}" FontSize="12" />
+
+                    <Slider Name="SliderOverlayOutlineThickness" Grid.Column="1" Minimum="1" Maximum="8" Value="3" TickFrequency="0.5"
+                            IsSnapToTickEnabled="True" VerticalAlignment="Center" Margin="12,0" ValueChanged="SliderOverlayOutline_ValueChanged" />
+
+                    <TextBlock Name="TxtOverlayOutlineThicknessVal" Grid.Column="2" Text="3.0 px" FontWeight="Bold" Foreground="{DynamicResource Accent}"
+                               VerticalAlignment="Center" HorizontalAlignment="Right" />
+
+                  </Grid>
+
+                  <Grid>
+
+                    <Grid.ColumnDefinitions>
+
+                      <ColumnDefinition Width="180" />
+
+                      <ColumnDefinition Width="*" />
+
+                      <ColumnDefinition Width="70" />
+
+                    </Grid.ColumnDefinitions>
+
+                    <TextBlock Text="Transparência do contorno:" VerticalAlignment="Center" Foreground="{DynamicResource Fg}" FontSize="12" />
+
+                    <Slider Name="SliderOverlayOutlineOpacity" Grid.Column="1" Minimum="10" Maximum="100" Value="90" TickFrequency="5"
+                            IsSnapToTickEnabled="True" VerticalAlignment="Center" Margin="12,0" ValueChanged="SliderOverlayOutline_ValueChanged" />
+
+                    <TextBlock Name="TxtOverlayOutlineOpacityVal" Grid.Column="2" Text="90%" FontWeight="Bold" Foreground="{DynamicResource Accent}"
+                               VerticalAlignment="Center" HorizontalAlignment="Right" />
+
+                  </Grid>
+
+                </StackPanel>
+
+              </Border>
+
               <Border Style="{StaticResource CardBorder}">
 
                 <StackPanel>
@@ -8618,7 +8685,10 @@
 
                                 <!-- Visual Timeline: Histórico das últimas inicializações -->
 
-                                <TextBlock Text="HISTÓRICO DAS ÚLTIMAS INICIALIZAÇÕES" Style="{StaticResource Label}" Margin="0,0,0,10"/>
+                                <DockPanel Margin="0,0,0,10" LastChildFill="False">
+                                    <TextBlock Text="HISTÓRICO DAS ÚLTIMAS INICIALIZAÇÕES" Style="{StaticResource Label}" VerticalAlignment="Center"/>
+                                    <Button x:Name="BtnClearBootHistory" DockPanel.Dock="Right" Style="{StaticResource OutlineButton}" Content="ZERAR HISTÓRICO" Padding="12,5" FontSize="11" ToolTip="Apaga o histórico de inicializações exibido aqui" Click="BtnClearBootHistory_Click"/>
+                                </DockPanel>
 
                                 <Border Background="{DynamicResource CardSubtleBg}" CornerRadius="8" Padding="16,12" Margin="0,0,0,18">
 

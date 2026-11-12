@@ -32,9 +32,11 @@ public partial class MainWindow
             {
                 if (TxtBootTypicalTime != null)
                 {
-                    TxtBootTypicalTime.Text = res.TypicalBootSeconds >= 60
-                        ? $"{Math.Floor(res.TypicalBootSeconds / 60):F0}m {res.TypicalBootSeconds % 60:F0}s"
-                        : $"{res.TypicalBootSeconds:F0} s";
+                    TxtBootTypicalTime.Text = res.TypicalBootSeconds <= 0
+                        ? "-- s"
+                        : res.TypicalBootSeconds >= 60
+                            ? $"{Math.Floor(res.TypicalBootSeconds / 60):F0}m {res.TypicalBootSeconds % 60:F0}s"
+                            : $"{res.TypicalBootSeconds:F0} s";
                 }
 
                 if (TxtBootSummaryDetail != null)
@@ -49,6 +51,12 @@ public partial class MainWindow
                     if (TxtBootMainPathTime != null) TxtBootMainPathTime.Text = $"{res.LastBoot.MainPathSeconds:F1} s";
                     if (TxtBootPostBootTime != null) TxtBootPostBootTime.Text = $"{res.LastBoot.PostBootSeconds:F1} s";
                     if (TxtBootLastDate != null) TxtBootLastDate.Text = res.LastBoot.Timestamp.ToString("dd/MM/yyyy HH:mm");
+                }
+                else
+                {
+                    if (TxtBootMainPathTime != null) TxtBootMainPathTime.Text = "-- s";
+                    if (TxtBootPostBootTime != null) TxtBootPostBootTime.Text = "-- s";
+                    if (TxtBootLastDate != null) TxtBootLastDate.Text = "Sem histórico";
                 }
 
                 if (TxtBootLastUptime != null)
@@ -74,16 +82,23 @@ public partial class MainWindow
                 }
 
                 // Timeline
-                if (BootTimelineList != null && res.Timeline.Count > 0)
+                if (BootTimelineList != null)
                 {
-                    double maxVal = Math.Max(res.Timeline.Max(t => t.TotalSeconds), 1.0);
-                    var timelineUi = res.Timeline.Select(t => new
+                    if (res.Timeline.Count > 0)
                     {
-                        t.FormattedDate,
-                        t.FormattedTotal,
-                        BarWidth = Math.Clamp((t.TotalSeconds / maxVal) * 260.0, 10.0, 260.0)
-                    }).ToList();
-                    BootTimelineList.ItemsSource = timelineUi;
+                        double maxVal = Math.Max(res.Timeline.Max(t => t.TotalSeconds), 1.0);
+                        var timelineUi = res.Timeline.Select(t => new
+                        {
+                            t.FormattedDate,
+                            t.FormattedTotal,
+                            BarWidth = Math.Clamp((t.TotalSeconds / maxVal) * 260.0, 10.0, 260.0)
+                        }).ToList();
+                        BootTimelineList.ItemsSource = timelineUi;
+                    }
+                    else
+                    {
+                        BootTimelineList.ItemsSource = null;
+                    }
                 }
 
                 // Degraders
@@ -120,6 +135,31 @@ private void ScanStartup()
         BtnStartupRestore.IsEnabled = _settings.StartupRemoved.Count > 0;
         BtnStartupRestore.Content = _settings.StartupRemoved.Count > 0
             ? $"RESTAURAR REMOVIDOS ({_settings.StartupRemoved.Count})" : "RESTAURAR REMOVIDOS";
+    }
+
+    private async void BtnClearBootHistory_Click(object sender, RoutedEventArgs e)
+    {
+        var r = MessageBox.Show(this,
+            "Zerar o histórico de inicializações do Windows exibido aqui?\n\n" +
+            "Os registros atuais deixam de aparecer e o histórico recomeça a partir da próxima inicialização.",
+            "Inicialização", MessageBoxButton.YesNo, MessageBoxImage.Question);
+        if (r != MessageBoxResult.Yes) return;
+
+        BtnClearBootHistory.IsEnabled = false;
+        try
+        {
+            await Task.Run(BootDiagnosticsService.ClearBootHistory);
+            await LoadStartupBootDiagnosticsAsync();
+            Toast("Inicialização", "Histórico de inicializações zerado.", "\uE74D");
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show(this, $"Não foi possível zerar o histórico: {ex.Message}", "Lumini Tray", MessageBoxButton.OK, MessageBoxImage.Warning);
+        }
+        finally
+        {
+            BtnClearBootHistory.IsEnabled = true;
+        }
     }
 
     private void BtnStartupScan_Click(object sender, RoutedEventArgs e)
