@@ -20,6 +20,8 @@ jobs:
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Publicar (arquivo único, com o .NET embutido)
         shell: pwsh
@@ -33,15 +35,17 @@ jobs:
           if (Test-Path LuminiTray/Assets/Plugins) { Copy-Item -Recurse LuminiTray/Assets/Plugins dist/Assets/Plugins }
           Compress-Archive -Path dist/* -DestinationPath LuminiTray.zip
 
-          # Preparar notas da release exclusivas da versão atual (apenas a seção ## [X.Y.Z])
+          # Preparar notas da release contendo todas as changelogs acima da última versão publicada
           if (Test-Path CHANGELOG.md) {
             $raw = Get-Content CHANGELOG.md -Raw
-            $versionTag = if ($env:GITHUB_REF_NAME) { $env:GITHUB_REF_NAME.TrimStart('v') } else { '' }
-            $regex = if ($versionTag) { "(?ms)##\s*\[$([regex]::Escape($versionTag))\].*?(?=##\s*\[|\Z)" } else { "(?ms)##\s*\[.*?\].*?(?=##\s*\[|\Z)" }
-            if ($raw -match $regex) {
+            $allTags = git tag -l "v*" --sort=-v:refname | Where-Object { $_ -ne 'latest' }
+            $currentTag = if ($env:GITHUB_REF_NAME -and $env:GITHUB_REF_NAME.StartsWith('v')) { $env:GITHUB_REF_NAME } elseif ($allTags) { $allTags | Select-Object -First 1 } else { '' }
+            $prevTags = $allTags | Where-Object { $_ -ne $currentTag }
+            $prevVer = if ($prevTags) { ($prevTags | Select-Object -First 1).TrimStart('v') } else { '' }
+            if ($prevVer -and $raw -match "(?ms)(##\s*\[.*?)(?=##\s*\[$([regex]::Escape($prevVer))\]|\Z)") {
+              $notes = $matches[1].Trim() + "`n`n---`n*Consulte o [CHANGELOG.md](https://github.com/JamalG21/LuminiTray/blob/main/CHANGELOG.md) completo para o histórico de versões anteriores.*"
+            } elseif ($raw -match "(?ms)##\s*\[.*?\].*?(?=##\s*\[|\Z)") {
               $notes = $matches[0].Trim() + "`n`n---`n*Consulte o [CHANGELOG.md](https://github.com/JamalG21/LuminiTray/blob/main/CHANGELOG.md) completo para o histórico de versões anteriores.*"
-            } elseif ($raw.Length -gt 60000) {
-              $notes = $raw.Substring(0, 60000) + "`n`n---`n*Consulte o [CHANGELOG.md](https://github.com/JamalG21/LuminiTray/blob/main/CHANGELOG.md) completo para o histórico de versões anteriores.*"
             } else {
               $notes = $raw
             }
@@ -67,4 +71,7 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
+          $ErrorActionPreference = 'Continue'
+          gh release delete $env:GITHUB_REF_NAME --yes 2>$null
+          $ErrorActionPreference = 'Stop'
           gh release create $env:GITHUB_REF_NAME LuminiTray.zip dist/LuminiTray.exe --title "Lumini Tray $env:GITHUB_REF_NAME" --notes-file release-notes.md --latest=true
