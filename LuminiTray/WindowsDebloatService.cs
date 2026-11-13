@@ -1037,6 +1037,18 @@ $count
                 Write = (on, s) => SetNagleState(on, s),
                 Restore = s => RestoreNagle(s)
             },
+            new WindowsTweakItem
+            {
+                Id = "input_disable_office_hotkeys",
+                Title = "Desativar Office Hotkeys (Ctrl + Shift + Alt + Win)",
+                Description = "Desativa os atalhos globais do Microsoft Office / Copilot (Ctrl+Shift+Alt+Win e combinações W/X/P/O/N/T/Y/L/D) no Windows.",
+                Effect = "Evita abertura acidental do navegador ou app Office ao usar combinações de modificadores em jogos e atalhos.",
+                Category = "🎯 Latência de Input & Periféricos",
+                NeedsRestart = false,
+                Read = () => AreOfficeHotkeysDisabled(),
+                Write = (on, _) => SetOfficeHotkeysDisabled(on),
+                Restore = _ => SetOfficeHotkeysDisabled(false)
+            },
 
             // ===== 4. TELEMETRIA & SISTEMA =====
             new WindowsTweakItem
@@ -1746,6 +1758,34 @@ $count
             return output;
         }
         catch { return ""; }
+    }
+
+    public static bool AreOfficeHotkeysDisabled()
+    {
+        try
+        {
+            using var k = Registry.CurrentUser.OpenSubKey(@"Software\Classes\ms-officeapp\Shell\Open\Command");
+            var val = k?.GetValue("")?.ToString();
+            return string.Equals(val, "rundll32", StringComparison.OrdinalIgnoreCase);
+        }
+        catch { return false; }
+    }
+
+    public static void SetOfficeHotkeysDisabled(bool disable)
+    {
+        try
+        {
+            if (disable)
+            {
+                using var k = Registry.CurrentUser.CreateSubKey(@"Software\Classes\ms-officeapp\Shell\Open\Command");
+                k?.SetValue("", "rundll32", RegistryValueKind.String);
+            }
+            else
+            {
+                Registry.CurrentUser.DeleteSubKeyTree(@"Software\Classes\ms-officeapp", throwOnMissingSubKey: false);
+            }
+        }
+        catch { }
     }
 
     [DllImport("user32.dll")] private static extern bool SystemParametersInfo(uint action, uint param, int[] data, uint winIni);

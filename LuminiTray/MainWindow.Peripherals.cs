@@ -42,7 +42,8 @@ public partial class MainWindow
                 (PanelPerifMonitor?.Visibility != Visibility.Visible) &&
                 (PanelPerifAudio?.Visibility != Visibility.Visible) &&
                 (PanelPerifMic?.Visibility != Visibility.Visible) &&
-                (PanelPerifGamepad?.Visibility != Visibility.Visible))
+                (PanelPerifGamepad?.Visibility != Visibility.Visible) &&
+                (PanelPerifDevices?.Visibility != Visibility.Visible))
             {
                 ShowPerifPanel("PagePerifTeclado");
             }
@@ -52,6 +53,7 @@ public partial class MainWindow
         // 1. Keyboard
         _keyboardTester.StateChanged += () => Dispatcher.InvokeAsync(UpdateKeyboardUi);
         RebuildKeyboardMatrix();
+        InitKeyboardRemapperUi();
 
         // 2. Mouse
         _mouseTester.StateChanged += () => { if (PanelPerifMouse != null && PanelPerifMouse.Visibility == Visibility.Visible) Dispatcher.InvokeAsync(UpdateMouseUi); };
@@ -105,6 +107,7 @@ public partial class MainWindow
         if (PanelPerifAudio != null) PanelPerifAudio.Visibility = Visibility.Collapsed;
         if (PanelPerifMic != null) PanelPerifMic.Visibility = Visibility.Collapsed;
         if (PanelPerifGamepad != null) PanelPerifGamepad.Visibility = Visibility.Collapsed;
+        if (PanelPerifDevices != null) PanelPerifDevices.Visibility = Visibility.Collapsed;
 
         // Parar atividades ativas por padrão
         StopUfoAnimation();
@@ -147,6 +150,11 @@ public partial class MainWindow
                 if (PanelPerifGamepad != null) PanelPerifGamepad.Visibility = Visibility.Visible;
                 if (NavPerifGamepad != null) NavPerifGamepad.IsChecked = true;
                 _gamepadTester.Start();
+                break;
+            case "PagePerifDevices":
+                if (PanelPerifDevices != null) PanelPerifDevices.Visibility = Visibility.Visible;
+                if (NavPerifDevices != null) NavPerifDevices.IsChecked = true;
+                RefreshDevicesSubTab();
                 break;
             default:
                 if (PanelPerifTeclado != null) PanelPerifTeclado.Visibility = Visibility.Visible;
@@ -450,6 +458,14 @@ public partial class MainWindow
         if (PanelPerifTeclado != null && PanelPerifTeclado.Visibility == Visibility.Visible)
         {
             Key k = e.Key == Key.System ? e.SystemKey : e.Key;
+            if (_remapCaptureTarget != 0)
+            {
+                if (HandleRemapKeyCapture(k))
+                {
+                    e.Handled = true;
+                    return;
+                }
+            }
             _keyboardTester.OnKeyDown(k);
             UpdateKeyboardKeyVisual(k);
             e.Handled = true;
@@ -1513,5 +1529,740 @@ public partial class MainWindow
         _audioTester.MicSoftwareGain = val;
         if (TxtMicGainVal != null)
             TxtMicGainVal.Text = $"{val:F1}x";
+    }
+
+    // =========================================================================
+    // SUB-ABA DISPOSITIVOS & BLUETOOTH
+    // =========================================================================
+
+    private bool _btModeInitializing;
+
+    private async void RefreshDevicesSubTab()
+    {
+        _btModeInitializing = true;
+        try
+        {
+            if (RbBtManualMode != null && RbBtAutoMode != null)
+            {
+                RbBtManualMode.IsChecked = _settings.BluetoothManualMode;
+                RbBtAutoMode.IsChecked = !_settings.BluetoothManualMode;
+            }
+        }
+        finally
+        {
+            _btModeInitializing = false;
+        }
+
+        if (TxtPerifDevicesUsbStatus != null)
+            TxtPerifDevicesUsbStatus.Text = "Escaneando dispositivos USB e celulares conectados...";
+        if (TxtBtRadioStatus != null)
+            TxtBtRadioStatus.Text = "Verificando rádio e dispositivos Bluetooth...";
+
+        var (usbDevices, btRadioOn, btDevices) = await Task.Run(() =>
+        {
+            var usb = DeviceManagerService.ScanConnectedDevices();
+            bool radio = BluetoothManagerService.IsBluetoothRadioActive();
+            if (radio && !_settings.BluetoothManualMode)
+            {
+                BluetoothManagerService.AutoConnectFavoritesIfNeeded(_settings);
+            }
+            var bt = BluetoothManagerService.ListPairedDevices(_settings.BluetoothFavoriteAddresses);
+            return (usb, radio, bt);
+        });
+
+        RenderUsbDevicesList(usbDevices);
+        RenderBluetoothDevicesList(btRadioOn, btDevices);
+    }
+
+    private void RenderUsbDevicesList(List<ConnectedDeviceItem> items)
+    {
+        if (PanelPerifUsbList == null) return;
+        PanelPerifUsbList.Children.Clear();
+
+        if (TxtPerifDevicesUsbStatus != null)
+        {
+            TxtPerifDevicesUsbStatus.Text = items.Count == 0
+                ? "Nenhum pen drive, HD externo ou celular MTP conectado no momento."
+                : $"{items.Count} dispositivo(s) conectado(s).";
+        }
+
+        if (items.Count == 0)
+        {
+            PanelPerifUsbList.Children.Add(new TextBlock
+            {
+                Text = "Conecte um pen drive, HD externo, leitor SD ou celular via cabo USB para gerenciar e analisar.",
+                Foreground = (Brush)FindResource("Muted"),
+                FontSize = 12,
+                TextWrapping = TextWrapping.Wrap
+            });
+            return;
+        }
+
+        foreach (var item in items)
+        {
+            var rowBorder = new Border
+            {
+                Background = (Brush)FindResource("CardSubtleBg"),
+                CornerRadius = new CornerRadius(8),
+                Padding = new Thickness(12, 10, 12, 10),
+                Margin = new Thickness(0, 0, 0, 8)
+            };
+
+            var grid = new Grid();
+            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+
+            var infoStack = new StackPanel { VerticalAlignment = VerticalAlignment.Center };
+            infoStack.Children.Add(new TextBlock
+            {
+                Text = $"{item.Name} · {item.Category}",
+                Foreground = (Brush)FindResource("Fg"),
+                FontWeight = FontWeights.SemiBold,
+                FontSize = 13,
+                TextWrapping = TextWrapping.Wrap
+            });
+            infoStack.Children.Add(new TextBlock
+            {
+                Text = item.Details,
+                Foreground = (Brush)FindResource("Muted"),
+                FontSize = 11.5,
+                Margin = new Thickness(0, 2, 0, 0),
+                TextWrapping = TextWrapping.Wrap
+            });
+            Grid.SetColumn(infoStack, 0);
+            grid.Children.Add(infoStack);
+
+            var btnStack = new StackPanel
+            {
+                Orientation = Orientation.Horizontal,
+                VerticalAlignment = VerticalAlignment.Center,
+                Margin = new Thickness(10, 0, 0, 0)
+            };
+
+            var btnOpen = new Button
+            {
+                Content = "Abrir",
+                Style = (Style)FindResource("OutlineButton"),
+                Padding = new Thickness(10, 5, 10, 5),
+                FontSize = 11,
+                Margin = new Thickness(0, 0, 6, 0)
+            };
+            btnOpen.Click += (_, _) => DeviceManagerService.OpenDevice(item);
+            btnStack.Children.Add(btnOpen);
+
+            if (item.HasStorage)
+            {
+                var btnAnalyze = new Button
+                {
+                    Content = "Analisar Disco",
+                    Style = (Style)FindResource("OutlineButton"),
+                    Padding = new Thickness(10, 5, 10, 5),
+                    FontSize = 11,
+                    Margin = new Thickness(0, 0, 6, 0),
+                    ToolTip = "Analisar saúde, velocidade e integridade deste armazenamento"
+                };
+                btnAnalyze.Click += (_, _) =>
+                {
+                    if (NavDisks != null) NavDisks.IsChecked = true;
+                    else ShowPage("PageDisks");
+                };
+                btnStack.Children.Add(btnAnalyze);
+            }
+
+            if (item.CanEject)
+            {
+                var btnEject = new Button
+                {
+                    Content = "Ejetar",
+                    Style = (Style)FindResource("OutlineButton"),
+                    Padding = new Thickness(10, 5, 10, 5),
+                    FontSize = 11
+                };
+                btnEject.Click += async (_, _) =>
+                {
+                    btnEject.IsEnabled = false;
+                    var (ok, msg) = await Task.Run(() =>
+                    {
+                        bool res = DeviceManagerService.EjectDevice(item.PnpDeviceId, out string m);
+                        return (res, m);
+                    });
+                    Toast(ok ? "Dispositivo ejetado" : "Falha na ejeção", msg, "\uE88E");
+                    RefreshDevicesSubTab();
+                };
+                btnStack.Children.Add(btnEject);
+            }
+
+            Grid.SetColumn(btnStack, 1);
+            grid.Children.Add(btnStack);
+            rowBorder.Child = grid;
+            PanelPerifUsbList.Children.Add(rowBorder);
+        }
+    }
+
+    private void RenderBluetoothDevicesList(bool radioActive, List<BluetoothDeviceModel> devices)
+    {
+        if (PanelPerifBtList == null) return;
+        PanelPerifBtList.Children.Clear();
+
+        if (TxtBtRadioStatus != null)
+        {
+            string modeLabel = _settings.BluetoothManualMode
+                ? "Modo Manual ativo (auto-conexão desabilitada)"
+                : $"Auto-conexão de Favoritos ativa ({_settings.BluetoothFavoriteAddresses.Count} favorito(s))";
+            TxtBtRadioStatus.Text = radioActive
+                ? $"Bluetooth ativo · {devices.Count} dispositivo(s) pareado(s) · {modeLabel}"
+                : $"Rádio Bluetooth desligado ou ausente neste PC · {modeLabel}";
+        }
+
+        if (devices.Count == 0)
+        {
+            PanelPerifBtList.Children.Add(new TextBlock
+            {
+                Text = radioActive
+                    ? "Nenhum dispositivo Bluetooth pareado encontrado. Use 'Abrir Windows BT' para parear um novo dispositivo."
+                    : "Ative o Bluetooth do Windows para listar, favoritar e conectar dispositivos.",
+                Foreground = (Brush)FindResource("Muted"),
+                FontSize = 12,
+                TextWrapping = TextWrapping.Wrap
+            });
+            return;
+        }
+
+        foreach (var dev in devices)
+        {
+            var rowBorder = new Border
+            {
+                Background = (Brush)FindResource("CardSubtleBg"),
+                CornerRadius = new CornerRadius(8),
+                Padding = new Thickness(12, 10, 12, 10),
+                Margin = new Thickness(0, 0, 0, 8)
+            };
+
+            var grid = new Grid();
+            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+
+            var infoStack = new StackPanel { VerticalAlignment = VerticalAlignment.Center };
+            infoStack.Children.Add(new TextBlock
+            {
+                Text = $"{dev.Name} {(dev.IsFavorite ? "★" : "")}",
+                Foreground = (Brush)FindResource(dev.IsConnected ? "Accent" : "Fg"),
+                FontWeight = FontWeights.SemiBold,
+                FontSize = 13,
+                TextWrapping = TextWrapping.Wrap
+            });
+            infoStack.Children.Add(new TextBlock
+            {
+                Text = $"{dev.DeviceTypeLabel} · {dev.AddressText} · {(dev.IsConnected ? "Conectado" : "Pareado (Desconectado)")}",
+                Foreground = (Brush)FindResource("Muted"),
+                FontSize = 11.5,
+                Margin = new Thickness(0, 2, 0, 0),
+                TextWrapping = TextWrapping.Wrap
+            });
+            Grid.SetColumn(infoStack, 0);
+            grid.Children.Add(infoStack);
+
+            var btnStack = new StackPanel
+            {
+                Orientation = Orientation.Horizontal,
+                VerticalAlignment = VerticalAlignment.Center,
+                Margin = new Thickness(10, 0, 0, 0)
+            };
+
+            var btnFav = new Button
+            {
+                Content = dev.IsFavorite ? "★ Favorito" : "☆ Favoritar",
+                Style = (Style)FindResource(dev.IsFavorite ? "PrimaryButton" : "OutlineButton"),
+                Padding = new Thickness(10, 5, 10, 5),
+                FontSize = 11,
+                Margin = new Thickness(0, 0, 6, 0)
+            };
+            btnFav.Click += (_, _) =>
+            {
+                if (_settings.BluetoothFavoriteAddresses.Contains(dev.AddressText, StringComparer.OrdinalIgnoreCase))
+                    _settings.BluetoothFavoriteAddresses.RemoveAll(a => a.Equals(dev.AddressText, StringComparison.OrdinalIgnoreCase));
+                else
+                    _settings.BluetoothFavoriteAddresses.Add(dev.AddressText);
+
+                _settings.Save();
+                RefreshDevicesSubTab();
+            };
+            btnStack.Children.Add(btnFav);
+
+            var btnConn = new Button
+            {
+                Content = dev.IsConnected ? "Desconectar" : "Conectar",
+                Style = (Style)FindResource(dev.IsConnected ? "OutlineButton" : "PrimaryButton"),
+                Padding = new Thickness(10, 5, 10, 5),
+                FontSize = 11,
+                Margin = new Thickness(0, 0, 6, 0),
+                IsEnabled = radioActive
+            };
+            btnConn.Click += async (_, _) =>
+            {
+                btnConn.IsEnabled = false;
+                bool targetConnect = !dev.IsConnected;
+                var (ok, msg) = await Task.Run(() =>
+                {
+                    bool res = BluetoothManagerService.SetDeviceConnected(dev.Address, targetConnect, out string m);
+                    return (res, m);
+                });
+                Toast(ok ? "Bluetooth" : "Aviso Bluetooth", msg, "\uE702");
+                RefreshDevicesSubTab();
+            };
+            btnStack.Children.Add(btnConn);
+
+            var btnRem = new Button
+            {
+                Content = "Remover",
+                Style = (Style)FindResource("OutlineButton"),
+                Padding = new Thickness(10, 5, 10, 5),
+                FontSize = 11
+            };
+            btnRem.Click += async (_, _) =>
+            {
+                btnRem.IsEnabled = false;
+                bool ok = await Task.Run(() => BluetoothManagerService.RemoveDevice(dev.Address));
+                if (ok)
+                {
+                    _settings.BluetoothFavoriteAddresses.RemoveAll(a => a.Equals(dev.AddressText, StringComparison.OrdinalIgnoreCase));
+                    _settings.Save();
+                }
+                Toast(ok ? "Bluetooth removido" : "Falha ao remover", dev.Name, "\uE702");
+                RefreshDevicesSubTab();
+            };
+            btnStack.Children.Add(btnRem);
+
+            Grid.SetColumn(btnStack, 1);
+            grid.Children.Add(btnStack);
+            rowBorder.Child = grid;
+            PanelPerifBtList.Children.Add(rowBorder);
+        }
+    }
+
+    private void BtnRefreshPerifDevices_Click(object sender, RoutedEventArgs e) => RefreshDevicesSubTab();
+
+    private void BtnOpenWindowsBt_Click(object sender, RoutedEventArgs e)
+    {
+        try
+        {
+            System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo("ms-settings:bluetooth") { UseShellExecute = true });
+        }
+        catch { }
+    }
+
+    private void BtMode_Changed(object sender, RoutedEventArgs e)
+    {
+        if (_btModeInitializing) return;
+        _settings.BluetoothManualMode = RbBtManualMode?.IsChecked == true;
+        _settings.Save();
+        RefreshDevicesSubTab();
+    }
+
+    // -------------------------------------------------------------------------
+    // REMAPEADOR DE TECLAS E ATALHOS (POWERTOYS KEYBOARD MANAGER)
+    // -------------------------------------------------------------------------
+    private int _remapCaptureTarget = 0; // 0 = inativo, 1 = origem, 2 = destino
+    private bool _remapUiInitializing = false;
+
+    private void InitKeyboardRemapperUi()
+    {
+        if (CmbRemapFromKey == null || CmbRemapToKey == null) return;
+        _remapUiInitializing = true;
+        try
+        {
+            var catalog = KeyboardRemapperService.Catalog;
+            CmbRemapFromKey.ItemsSource = catalog;
+            CmbRemapToKey.ItemsSource = catalog;
+            if (catalog.Count > 0)
+            {
+                CmbRemapFromKey.SelectedIndex = 0;
+                CmbRemapToKey.SelectedIndex = Math.Min(1, catalog.Count - 1);
+            }
+            if (ChkKeyboardRemapEnabled != null)
+                ChkKeyboardRemapEnabled.IsChecked = _settings.KeyboardRemapEnabled;
+            UpdateRemapModeVisibility();
+            RenderRemapLists();
+        }
+        finally
+        {
+            _remapUiInitializing = false;
+        }
+    }
+
+    private void UpdateRemapModeVisibility()
+    {
+        bool isShortcut = RbRemapTypeShortcut?.IsChecked == true;
+        if (PanelRemapFromMods != null)
+            PanelRemapFromMods.Visibility = isShortcut ? Visibility.Visible : Visibility.Collapsed;
+        if (PanelRemapTargetApp != null)
+            PanelRemapTargetApp.Visibility = isShortcut ? Visibility.Visible : Visibility.Collapsed;
+
+        bool isDisabled = ChkRemapToDisabled?.IsChecked == true;
+        if (CmbRemapToKey != null) CmbRemapToKey.IsEnabled = !isDisabled;
+        if (BtnCaptureToKey != null) BtnCaptureToKey.IsEnabled = !isDisabled;
+        if (ChkRemapToCtrl != null) ChkRemapToCtrl.IsEnabled = !isDisabled;
+        if (ChkRemapToAlt != null) ChkRemapToAlt.IsEnabled = !isDisabled;
+        if (ChkRemapToShift != null) ChkRemapToShift.IsEnabled = !isDisabled;
+        if (ChkRemapToWin != null) ChkRemapToWin.IsEnabled = !isDisabled;
+    }
+
+    private void ChkKeyboardRemapEnabled_Click(object sender, RoutedEventArgs e)
+    {
+        if (_remapUiInitializing) return;
+        _settings.KeyboardRemapEnabled = ChkKeyboardRemapEnabled?.IsChecked == true;
+        ApplyKeyboardRemaps();
+    }
+
+    private void RemapRuleType_Changed(object sender, RoutedEventArgs e)
+    {
+        if (_remapUiInitializing) return;
+        CancelRemapCapture();
+        UpdateRemapModeVisibility();
+    }
+
+    private void ChkRemapToDisabled_Changed(object sender, RoutedEventArgs e)
+    {
+        if (_remapUiInitializing) return;
+        UpdateRemapModeVisibility();
+    }
+
+    private void BtnCaptureFromKey_Click(object sender, RoutedEventArgs e)
+    {
+        if (_remapCaptureTarget == 1)
+        {
+            CancelRemapCapture();
+            return;
+        }
+        _remapCaptureTarget = 1;
+        KeyboardRemapperService.Instance.PauseForCapture(true);
+        if (BtnCaptureFromKey != null) BtnCaptureFromKey.Content = "Cancelar";
+        if (BtnCaptureToKey != null) BtnCaptureToKey.Content = "Digitar Tecla";
+        if (TxtRemapCaptureHint != null)
+        {
+            TxtRemapCaptureHint.Text = RbRemapTypeShortcut?.IsChecked == true
+                ? "Pressione o atalho de origem desejado (ex: Ctrl+Shift+K)..."
+                : "Pressione a tecla de origem desejada no teclado...";
+            TxtRemapCaptureHint.Visibility = Visibility.Visible;
+        }
+        Focus();
+    }
+
+    private void BtnCaptureToKey_Click(object sender, RoutedEventArgs e)
+    {
+        if (_remapCaptureTarget == 2)
+        {
+            CancelRemapCapture();
+            return;
+        }
+        _remapCaptureTarget = 2;
+        KeyboardRemapperService.Instance.PauseForCapture(true);
+        if (BtnCaptureToKey != null) BtnCaptureToKey.Content = "Cancelar";
+        if (BtnCaptureFromKey != null) BtnCaptureFromKey.Content = "Digitar Tecla";
+        if (TxtRemapCaptureHint != null)
+        {
+            TxtRemapCaptureHint.Text = "Pressione a tecla ou atalho de destino desejado...";
+            TxtRemapCaptureHint.Visibility = Visibility.Visible;
+        }
+        Focus();
+    }
+
+    private void CancelRemapCapture()
+    {
+        _remapCaptureTarget = 0;
+        KeyboardRemapperService.Instance.PauseForCapture(false);
+        if (BtnCaptureFromKey != null) BtnCaptureFromKey.Content = "Digitar Tecla";
+        if (BtnCaptureToKey != null) BtnCaptureToKey.Content = "Digitar Tecla";
+        if (TxtRemapCaptureHint != null) TxtRemapCaptureHint.Visibility = Visibility.Collapsed;
+    }
+
+    private static bool IsPureModifierVk(int vk) =>
+        vk == 0x10 || vk == 0x11 || vk == 0x12 ||
+        vk == 0xA0 || vk == 0xA1 || vk == 0xA2 || vk == 0xA3 || vk == 0xA4 || vk == 0xA5 ||
+        vk == 0x5B || vk == 0x5C;
+
+    private bool HandleRemapKeyCapture(Key k)
+    {
+        int vk = KeyInterop.VirtualKeyFromKey(k);
+        if (vk <= 0) return false;
+
+        bool isShortcutMode = RbRemapTypeShortcut?.IsChecked == true;
+        if ((_remapCaptureTarget == 2 || isShortcutMode) && IsPureModifierVk(vk))
+        {
+            return true;
+        }
+
+        ModifierKeys mods = Keyboard.Modifiers;
+        if (_remapCaptureTarget == 1)
+        {
+            if (isShortcutMode)
+            {
+                if (ChkRemapFromCtrl != null) ChkRemapFromCtrl.IsChecked = mods.HasFlag(ModifierKeys.Control);
+                if (ChkRemapFromAlt != null) ChkRemapFromAlt.IsChecked = mods.HasFlag(ModifierKeys.Alt);
+                if (ChkRemapFromShift != null) ChkRemapFromShift.IsChecked = mods.HasFlag(ModifierKeys.Shift);
+                if (ChkRemapFromWin != null) ChkRemapFromWin.IsChecked = mods.HasFlag(ModifierKeys.Windows);
+            }
+            SelectKeyInCombo(CmbRemapFromKey, vk);
+        }
+        else if (_remapCaptureTarget == 2)
+        {
+            if (ChkRemapToCtrl != null) ChkRemapToCtrl.IsChecked = mods.HasFlag(ModifierKeys.Control);
+            if (ChkRemapToAlt != null) ChkRemapToAlt.IsChecked = mods.HasFlag(ModifierKeys.Alt);
+            if (ChkRemapToShift != null) ChkRemapToShift.IsChecked = mods.HasFlag(ModifierKeys.Shift);
+            if (ChkRemapToWin != null) ChkRemapToWin.IsChecked = mods.HasFlag(ModifierKeys.Windows);
+            SelectKeyInCombo(CmbRemapToKey, vk);
+        }
+
+        CancelRemapCapture();
+        return true;
+    }
+
+    private static void SelectKeyInCombo(System.Windows.Controls.ComboBox? combo, int vk)
+    {
+        if (combo == null) return;
+        foreach (var item in combo.Items)
+        {
+            if (item is KeyOption opt && opt.Vk == vk)
+            {
+                combo.SelectedItem = opt;
+                return;
+            }
+        }
+    }
+
+    private RemapModifiers ReadModifiersFromCheckboxes(
+        System.Windows.Controls.CheckBox? ctrl,
+        System.Windows.Controls.CheckBox? alt,
+        System.Windows.Controls.CheckBox? shift,
+        System.Windows.Controls.CheckBox? win)
+    {
+        RemapModifiers mods = RemapModifiers.None;
+        if (ctrl?.IsChecked == true) mods |= RemapModifiers.Ctrl;
+        if (alt?.IsChecked == true) mods |= RemapModifiers.Alt;
+        if (shift?.IsChecked == true) mods |= RemapModifiers.Shift;
+        if (win?.IsChecked == true) mods |= RemapModifiers.Win;
+        return mods;
+    }
+
+    private void BtnAddKeyboardRemap_Click(object sender, RoutedEventArgs e)
+    {
+        CancelRemapCapture();
+        if (CmbRemapFromKey?.SelectedValue is not int fromVk || fromVk <= 0)
+        {
+            Toast("REMAPEAMENTO", "Selecione uma tecla de origem válida.", "\uE7BA");
+            return;
+        }
+
+        bool isDisabled = ChkRemapToDisabled?.IsChecked == true;
+        int toVk = 0;
+        RemapModifiers toMods = RemapModifiers.None;
+        if (!isDisabled)
+        {
+            if (CmbRemapToKey?.SelectedValue is not int selectedToVk || selectedToVk <= 0)
+            {
+                Toast("REMAPEAMENTO", "Selecione uma tecla de destino válida.", "\uE7BA");
+                return;
+            }
+            toVk = selectedToVk;
+            toMods = ReadModifiersFromCheckboxes(ChkRemapToCtrl, ChkRemapToAlt, ChkRemapToShift, ChkRemapToWin);
+        }
+
+        bool isShortcut = RbRemapTypeShortcut?.IsChecked == true;
+        if (isShortcut)
+        {
+            RemapModifiers fromMods = ReadModifiersFromCheckboxes(ChkRemapFromCtrl, ChkRemapFromAlt, ChkRemapFromShift, ChkRemapFromWin);
+            if (fromMods == RemapModifiers.None)
+            {
+                Toast("REMAPEAMENTO", "Atalhos exigem pelo menos um modificador (Ctrl, Alt, Shift ou Win).", "\uE7BA");
+                return;
+            }
+            string targetApp = (TxtRemapTargetApp?.Text ?? "").Trim();
+            _settings.ShortcutRemaps.Add(new ShortcutRemapRule
+            {
+                FromModifiers = fromMods,
+                FromVk = fromVk,
+                ToModifiers = toMods,
+                ToVk = toVk,
+                IsDisabled = isDisabled,
+                TargetApp = targetApp,
+                IsEnabled = true
+            });
+        }
+        else
+        {
+            if (!isDisabled && fromVk == toVk && toMods == RemapModifiers.None)
+            {
+                Toast("REMAPEAMENTO", "A tecla de origem e destino não podem ser idênticas.", "\uE7BA");
+                return;
+            }
+            _settings.KeyRemaps.Add(new KeyRemapRule
+            {
+                FromVk = fromVk,
+                ToModifiers = toMods,
+                ToVk = toVk,
+                IsDisabled = isDisabled,
+                IsEnabled = true
+            });
+        }
+
+        if (!_settings.KeyboardRemapEnabled)
+        {
+            _settings.KeyboardRemapEnabled = true;
+            _remapUiInitializing = true;
+            if (ChkKeyboardRemapEnabled != null) ChkKeyboardRemapEnabled.IsChecked = true;
+            _remapUiInitializing = false;
+        }
+
+        ApplyKeyboardRemaps();
+        RenderRemapLists();
+    }
+
+    private void ApplyKeyboardRemaps()
+    {
+        _settings.Save();
+        KeyboardRemapperService.Instance.UpdateRules(
+            _settings.KeyboardRemapEnabled,
+            _settings.KeyRemaps,
+            _settings.ShortcutRemaps);
+    }
+
+    private void RenderRemapLists()
+    {
+        if (PanelKeyRemapsList == null || PanelShortcutRemapsList == null) return;
+        PanelKeyRemapsList.Children.Clear();
+        PanelShortcutRemapsList.Children.Clear();
+
+        var fgBrush = TryFindResource("Fg") as Brush ?? Brushes.White;
+        var mutedBrush = TryFindResource("Muted") as Brush ?? Brushes.Gray;
+        var cardSubtleBg = TryFindResource("CardSubtleBg") as Brush ?? Brushes.Transparent;
+        var lineBrush = TryFindResource("Line") as Brush ?? Brushes.DimGray;
+
+        if (_settings.KeyRemaps.Count == 0)
+        {
+            PanelKeyRemapsList.Children.Add(new TextBlock
+            {
+                Text = "Nenhuma tecla remapeada.",
+                Foreground = mutedBrush,
+                FontSize = 11,
+                Margin = new Thickness(2, 4, 2, 4)
+            });
+        }
+        else
+        {
+            foreach (var rule in _settings.KeyRemaps.ToList())
+            {
+                string fromLabel = KeyboardRemapperService.FormatKeyName(rule.FromVk);
+                string toLabel = KeyboardRemapperService.FormatShortcut(rule.ToModifiers, rule.ToVk, rule.IsDisabled);
+                PanelKeyRemapsList.Children.Add(BuildRemapRuleRow(
+                    $"{fromLabel}  \u2192  {toLabel}",
+                    null,
+                    rule.IsEnabled,
+                    enabled => { rule.IsEnabled = enabled; ApplyKeyboardRemaps(); },
+                    () => { _settings.KeyRemaps.Remove(rule); ApplyKeyboardRemaps(); RenderRemapLists(); },
+                    fgBrush, mutedBrush, cardSubtleBg, lineBrush));
+            }
+        }
+
+        if (_settings.ShortcutRemaps.Count == 0)
+        {
+            PanelShortcutRemapsList.Children.Add(new TextBlock
+            {
+                Text = "Nenhum atalho remapeado.",
+                Foreground = mutedBrush,
+                FontSize = 11,
+                Margin = new Thickness(2, 4, 2, 4)
+            });
+        }
+        else
+        {
+            foreach (var rule in _settings.ShortcutRemaps.ToList())
+            {
+                string fromLabel = KeyboardRemapperService.FormatShortcut(rule.FromModifiers, rule.FromVk);
+                string toLabel = KeyboardRemapperService.FormatShortcut(rule.ToModifiers, rule.ToVk, rule.IsDisabled);
+                string? appNote = string.IsNullOrWhiteSpace(rule.TargetApp) ? "Global (todos os apps)" : $"App: {rule.TargetApp}";
+                PanelShortcutRemapsList.Children.Add(BuildRemapRuleRow(
+                    $"{fromLabel}  \u2192  {toLabel}",
+                    appNote,
+                    rule.IsEnabled,
+                    enabled => { rule.IsEnabled = enabled; ApplyKeyboardRemaps(); },
+                    () => { _settings.ShortcutRemaps.Remove(rule); ApplyKeyboardRemaps(); RenderRemapLists(); },
+                    fgBrush, mutedBrush, cardSubtleBg, lineBrush));
+            }
+        }
+    }
+
+    private Border BuildRemapRuleRow(
+        string title,
+        string? subtitle,
+        bool isEnabled,
+        Action<bool> onToggle,
+        Action onDelete,
+        Brush fgBrush,
+        Brush mutedBrush,
+        Brush cardSubtleBg,
+        Brush lineBrush)
+    {
+        var border = new Border
+        {
+            Background = cardSubtleBg,
+            BorderBrush = lineBrush,
+            BorderThickness = new Thickness(1),
+            CornerRadius = new CornerRadius(6),
+            Padding = new Thickness(10, 6, 10, 6),
+            Margin = new Thickness(0, 0, 0, 6)
+        };
+
+        var grid = new Grid();
+        grid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+        grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+        grid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+
+        var chk = new System.Windows.Controls.CheckBox
+        {
+            IsChecked = isEnabled,
+            VerticalAlignment = VerticalAlignment.Center,
+            Margin = new Thickness(0, 0, 8, 0)
+        };
+        chk.Click += (_, _) => onToggle(chk.IsChecked == true);
+        Grid.SetColumn(chk, 0);
+        grid.Children.Add(chk);
+
+        var stack = new StackPanel { VerticalAlignment = VerticalAlignment.Center };
+        stack.Children.Add(new TextBlock
+        {
+            Text = title,
+            Foreground = fgBrush,
+            FontSize = 12,
+            FontWeight = FontWeights.SemiBold,
+            TextTrimming = TextTrimming.CharacterEllipsis
+        });
+        if (!string.IsNullOrEmpty(subtitle))
+        {
+            stack.Children.Add(new TextBlock
+            {
+                Text = subtitle,
+                Foreground = mutedBrush,
+                FontSize = 10,
+                TextTrimming = TextTrimming.CharacterEllipsis
+            });
+        }
+        Grid.SetColumn(stack, 1);
+        grid.Children.Add(stack);
+
+        var btnDel = new System.Windows.Controls.Button
+        {
+            Content = "Remover",
+            Padding = new Thickness(8, 3, 8, 3),
+            FontSize = 11,
+            VerticalAlignment = VerticalAlignment.Center
+        };
+        if (TryFindResource("BtnGhost") is Style ghostStyle)
+            btnDel.Style = ghostStyle;
+        btnDel.Click += (_, _) => onDelete();
+        Grid.SetColumn(btnDel, 2);
+        grid.Children.Add(btnDel);
+
+        border.Child = grid;
+        return border;
     }
 }

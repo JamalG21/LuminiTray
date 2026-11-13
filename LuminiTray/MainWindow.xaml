@@ -388,9 +388,11 @@
 
                 <TextBlock Name="SideGpuLoad" Grid.Row="1" Grid.Column="2" Text="—" FontFamily="{StaticResource Mono}" FontSize="12" Foreground="{DynamicResource Muted}" Margin="0,3" />
 
-                <TextBlock Grid.Row="2" Text="TESTE" Foreground="{DynamicResource Faint}" FontSize="10.5" FontWeight="Bold" Margin="0,3" VerticalAlignment="Center" />
+                <TextBlock Grid.Row="2" Text="RAM" Foreground="{DynamicResource Faint}" FontSize="10.5" FontWeight="Bold" Margin="0,3" VerticalAlignment="Center" />
 
-                <TextBlock Name="SideStress" Grid.Row="2" Grid.Column="1" Grid.ColumnSpan="2" Text="parado" FontFamily="{StaticResource Mono}" FontSize="12" Margin="0,3" />
+                <TextBlock Name="SideRamUsed" Grid.Row="2" Grid.Column="1" Text="—" FontFamily="{StaticResource Mono}" FontSize="12" Margin="0,3" />
+
+                <TextBlock Name="SideRamPct" Grid.Row="2" Grid.Column="2" Text="—" FontFamily="{StaticResource Mono}" FontSize="12" Foreground="{DynamicResource Muted}" Margin="0,3" />
 
               </Grid>
 
@@ -696,6 +698,18 @@
 
                 </RadioButton>
 
+                <RadioButton Name="NavPerifDevices" Style="{StaticResource NavItem}" Tag="PagePerifDevices" Checked="Nav_Checked">
+
+                  <StackPanel Orientation="Horizontal">
+
+                    <TextBlock Text="&#xE88E;" FontFamily="{StaticResource Icons}" FontSize="14" Width="28" VerticalAlignment="Center" />
+
+                    <TextBlock Text="Dispositivos" VerticalAlignment="Center" />
+
+                  </StackPanel>
+
+                </RadioButton>
+
               </StackPanel>
 
               <ToggleButton Name="GrpTools" Style="{StaticResource NavGroup}" Content="LUMINI FERRAMENTAS" />
@@ -823,6 +837,18 @@
                     <TextBlock Text="" FontFamily="{StaticResource Icons}" FontSize="14" Width="28" VerticalAlignment="Center" />
 
                     <TextBlock Text="Controle de Fans" VerticalAlignment="Center" />
+
+                  </StackPanel>
+
+                </RadioButton>
+
+                <RadioButton Name="NavTweaks" Style="{StaticResource NavItem}" Tag="PageTweaks" Checked="Nav_Checked">
+
+                  <StackPanel Orientation="Horizontal">
+
+                    <TextBlock Text="&#xE90F;" FontFamily="{StaticResource Icons}" FontSize="14" Width="28" VerticalAlignment="Center" />
+
+                    <TextBlock Text="Tweaks" VerticalAlignment="Center" />
 
                   </StackPanel>
 
@@ -10452,80 +10478,6 @@
                 </Grid>
               </Border>
 
-              <Border Style="{StaticResource CardBorder}" Margin="0,0,0,16" Padding="20,18">
-
-                <StackPanel>
-
-                  <TextBlock Text="ATALHOS RÁPIDOS &amp; CONTROLES DO PROGRAMA" Style="{StaticResource Label}" Margin="0,0,0,4"/>
-
-                  <TextBlock Text="Ative ou desative rapidamente os utilitários de sistema e selecione dispositivos principais" Foreground="{DynamicResource Muted}" FontSize="12" Margin="0,0,0,14"/>
-
-
-
-                  <Grid Margin="0,0,0,6">
-
-                    <Grid.ColumnDefinitions>
-
-                      <ColumnDefinition Width="*"/>
-
-                      <ColumnDefinition Width="18"/>
-
-                      <ColumnDefinition Width="*"/>
-
-                    </Grid.ColumnDefinitions>
-
-
-
-                    <!-- Coluna 1: Volume na Taskbar, Mute Geral, Mic Mute, Noise Suppressor -->
-
-                    <StackPanel Grid.Column="0">
-
-                      <CheckBox x:Name="ChkFastMouseWheelVolume" Content="Volume na Barra de Tarefas (Scroll do Mouse)" FontWeight="SemiBold" FontSize="12.5" Click="FastMouseWheelVolume_Click"/>
-
-                      <TextBlock Text="Gire a rodinha do mouse sobre a barra de tarefas para aumentar ou diminuir o som." Foreground="{DynamicResource Faint}" FontSize="11" Margin="24,2,0,12" TextWrapping="Wrap"/>
-
-                      <CheckBox x:Name="ChkFastPlaybackMute" Content="Mutar Saída de Som (Atalho Ctrl + Alt + O)" FontWeight="SemiBold" FontSize="12.5" Click="FastPlaybackMute_Click"/>
-
-                      <TextBlock Text="Habilita a ação e o atalho para silenciar ou reativar o áudio do computador." Foreground="{DynamicResource Faint}" FontSize="11" Margin="24,2,0,12" TextWrapping="Wrap"/>
-
-                      <CheckBox x:Name="ChkFastMicMute" Content="Habilitar Atalho do Microfone (Ctrl + Shift + M)" FontWeight="SemiBold" FontSize="12.5" Click="FastMicMute_Click"/>
-
-                      <TextBlock Text="Habilita ou desabilita o atalho global de mutar/desmutar o microfone em qualquer aplicativo ou jogo." Foreground="{DynamicResource Faint}" FontSize="11" Margin="24,2,0,12" TextWrapping="Wrap"/>
-
-                      <CheckBox x:Name="ChkFastNoiseSuppressor" Content="Supressor de Ruído Neural de Microfone" FontWeight="SemiBold" FontSize="12.5" Click="FastNoiseSuppressor_Click"/>
-
-                      <TextBlock Text="Ativa o filtro de inteligência artificial em tempo real para remover ruídos de fundo." Foreground="{DynamicResource Faint}" FontSize="11" Margin="24,2,0,0" TextWrapping="Wrap"/>
-
-                    </StackPanel>
-
-                    <!-- Coluna 2: Alternar Saídas, Alternar Entradas, Overlay -->
-
-                    <StackPanel Grid.Column="2">
-
-                      <CheckBox x:Name="ChkFastPlaybackCycle" Content="Alternar Saídas de Áudio (Ctrl + Alt + F11)" FontWeight="SemiBold" FontSize="12.5" Click="FastPlaybackCycle_Click"/>
-
-                      <TextBlock Text="DISPOSITIVO DE SAÍDA ATIVO" Style="{StaticResource Label}" Margin="24,4,0,4"/>
-
-                      <ComboBox x:Name="CboFastAudioOutput" SelectionChanged="CboFastAudioOutput_SelectionChanged" Margin="24,0,0,12"/>
-
-                      <CheckBox x:Name="ChkFastRecordingCycle" Content="Alternar Microfones de Entrada (Ctrl + Alt + F7)" FontWeight="SemiBold" FontSize="12.5" Click="FastRecordingCycle_Click"/>
-
-                      <TextBlock Text="DISPOSITIVO DE ENTRADA ATIVO" Style="{StaticResource Label}" Margin="24,4,0,4"/>
-
-                      <ComboBox x:Name="CboFastAudioInput" SelectionChanged="CboFastAudioInput_SelectionChanged" Margin="24,0,0,12"/>
-
-                      <CheckBox x:Name="ChkFastOverlay" Content="Overlay de Desempenho e FPS nos Jogos" FontWeight="SemiBold" FontSize="12.5" Click="FastOverlay_Click"/>
-
-                      <TextBlock Text="Exibe métricas de FPS, sensores e hardware sobreposta na tela." Foreground="{DynamicResource Faint}" FontSize="11" Margin="24,2,0,0" TextWrapping="Wrap"/>
-
-                    </StackPanel>
-
-                  </Grid>
-
-                </StackPanel>
-
-              </Border>
-
               <Border Style="{StaticResource CardBorder}" Padding="20" Margin="0,0,0,16">
 
                 <StackPanel>
@@ -12554,6 +12506,100 @@
 
               </Border>
 
+              <!-- Remapeador de Teclas & Atalhos (Estilo PowerToys Keyboard Manager) -->
+              <Border Style="{StaticResource CardBorder}" Padding="20,18" Margin="0,16,0,0">
+                <StackPanel>
+                  <Grid Margin="0,0,0,12">
+                    <Grid.ColumnDefinitions>
+                      <ColumnDefinition Width="*" />
+                      <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <StackPanel>
+                      <TextBlock Text="REMAPEADOR DE TECLAS &amp; ATALHOS (KEYBOARD MANAGER)" Style="{StaticResource Label}" Margin="0,0,0,4" />
+                      <TextBlock Text="Remapeie teclas individuais ou atalhos globais/por aplicativo sem loop infinito. Consome 0% de CPU quando desativado." Foreground="{DynamicResource Muted}" FontSize="12" TextWrapping="Wrap" />
+                    </StackPanel>
+                    <CheckBox x:Name="ChkKeyboardRemapEnabled" Grid.Column="1" Content="Ativar Remapeamento" FontWeight="SemiBold" VerticalAlignment="Center" Click="ChkKeyboardRemapEnabled_Click" />
+                  </Grid>
+
+                  <!-- Editor de Nova Regra -->
+                  <Border Background="{DynamicResource CardSubtleBg}" BorderBrush="{DynamicResource Line}" BorderThickness="1" CornerRadius="10" Padding="14" Margin="0,0,0,14">
+                    <StackPanel>
+                      <StackPanel Orientation="Horizontal" Margin="0,0,0,10">
+                        <RadioButton x:Name="RbRemapTypeKey" GroupName="RemapRuleType" Style="{StaticResource Chip}" Content="Remapear Tecla" IsChecked="True" Margin="0,0,8,0" Checked="RemapRuleType_Changed" />
+                        <RadioButton x:Name="RbRemapTypeShortcut" GroupName="RemapRuleType" Style="{StaticResource Chip}" Content="Remapear Atalho" Checked="RemapRuleType_Changed" />
+                      </StackPanel>
+
+                      <Grid Margin="0,0,0,10">
+                        <Grid.ColumnDefinitions>
+                          <ColumnDefinition Width="*" />
+                          <ColumnDefinition Width="20" />
+                          <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+
+                        <!-- Origem -->
+                        <StackPanel Grid.Column="0">
+                          <TextBlock Text="ORIGEM (TECLA / ATALHO FÍSICO)" Style="{StaticResource Label}" Margin="0,0,0,6" />
+                          <StackPanel x:Name="PanelRemapFromMods" Orientation="Horizontal" Margin="0,0,0,6" Visibility="Collapsed">
+                            <CheckBox x:Name="ChkRemapFromCtrl" Content="Ctrl" Margin="0,0,10,0" />
+                            <CheckBox x:Name="ChkRemapFromAlt" Content="Alt" Margin="0,0,10,0" />
+                            <CheckBox x:Name="ChkRemapFromShift" Content="Shift" Margin="0,0,10,0" />
+                            <CheckBox x:Name="ChkRemapFromWin" Content="Win" />
+                          </StackPanel>
+                          <Grid>
+                            <Grid.ColumnDefinitions>
+                              <ColumnDefinition Width="*" />
+                              <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <ComboBox x:Name="CmbRemapFromKey" DisplayMemberPath="Name" SelectedValuePath="Vk" Height="30" VerticalContentAlignment="Center" />
+                            <Button x:Name="BtnCaptureFromKey" Grid.Column="1" Style="{StaticResource OutlineButton}" Content="Digitar Tecla" Padding="10,5" FontSize="11" Margin="8,0,0,0" Click="BtnCaptureFromKey_Click" />
+                          </Grid>
+                        </StackPanel>
+
+                        <!-- Destino -->
+                        <StackPanel Grid.Column="2">
+                          <TextBlock Text="DESTINO (PARA QUAL TECLA / ATALHO)" Style="{StaticResource Label}" Margin="0,0,0,6" />
+                          <StackPanel Orientation="Horizontal" Margin="0,0,0,6">
+                            <CheckBox x:Name="ChkRemapToCtrl" Content="Ctrl" Margin="0,0,10,0" />
+                            <CheckBox x:Name="ChkRemapToAlt" Content="Alt" Margin="0,0,10,0" />
+                            <CheckBox x:Name="ChkRemapToShift" Content="Shift" Margin="0,0,10,0" />
+                            <CheckBox x:Name="ChkRemapToWin" Content="Win" Margin="0,0,12,0" />
+                            <CheckBox x:Name="ChkRemapToDisabled" Content="Desativar Tecla" Foreground="{DynamicResource Muted}" Checked="ChkRemapToDisabled_Changed" Unchecked="ChkRemapToDisabled_Changed" />
+                          </StackPanel>
+                          <Grid>
+                            <Grid.ColumnDefinitions>
+                              <ColumnDefinition Width="*" />
+                              <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <ComboBox x:Name="CmbRemapToKey" DisplayMemberPath="Name" SelectedValuePath="Vk" Height="30" VerticalContentAlignment="Center" />
+                            <Button x:Name="BtnCaptureToKey" Grid.Column="1" Style="{StaticResource OutlineButton}" Content="Digitar Tecla" Padding="10,5" FontSize="11" Margin="8,0,0,0" Click="BtnCaptureToKey_Click" />
+                          </Grid>
+                        </StackPanel>
+                      </Grid>
+
+                      <Grid>
+                        <Grid.ColumnDefinitions>
+                          <ColumnDefinition Width="*" />
+                          <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <StackPanel x:Name="PanelRemapTargetApp" Orientation="Horizontal" Visibility="Collapsed" VerticalAlignment="Center">
+                          <TextBlock Text="App alvo (opcional):" Foreground="{DynamicResource Muted}" FontSize="11.5" VerticalAlignment="Center" Margin="0,0,8,0" />
+                          <TextBox x:Name="TxtRemapTargetApp" Width="180" Height="28" VerticalContentAlignment="Center" ToolTip="Ex: notepad.exe (deixe vazio para todos os aplicativos)" />
+                        </StackPanel>
+                        <TextBlock x:Name="TxtRemapCaptureHint" Text="Dica: use 'Digitar Tecla' ou selecione na lista para criar regras." Foreground="{DynamicResource Faint}" FontSize="11" VerticalAlignment="Center" />
+                        <Button x:Name="BtnAddKeyboardRemap" Grid.Column="1" Style="{StaticResource PrimaryButton}" Content="+ ADICIONAR REGRA" Padding="14,7" FontSize="11.5" Click="BtnAddKeyboardRemap_Click" />
+                      </Grid>
+                    </StackPanel>
+                  </Border>
+
+                  <!-- Listas de Regras Ativas -->
+                  <TextBlock Text="TECLAS REMAPEADAS" Style="{StaticResource Label}" Margin="0,0,0,6" />
+                  <StackPanel x:Name="PanelKeyRemapsList" Margin="0,0,0,12" />
+
+                  <TextBlock Text="ATALHOS REMAPEADOS" Style="{StaticResource Label}" Margin="0,0,0,6" />
+                  <StackPanel x:Name="PanelShortcutRemapsList" />
+                </StackPanel>
+              </Border>
+
             </StackPanel>
 
             <StackPanel Name="PanelPerifMouse" Visibility="Collapsed">
@@ -14106,6 +14152,61 @@
 
             </StackPanel>
 
+            <!-- 7. SUB-ABA: DISPOSITIVOS & BLUETOOTH -->
+            <StackPanel Name="PanelPerifDevices" Visibility="Collapsed">
+              <Grid Margin="0,0,0,18">
+                <StackPanel>
+                  <TextBlock Text="DISPOSITIVOS CONECTADOS &amp; BLUETOOTH" Style="{StaticResource H1}" />
+                  <TextBlock Text="Gerencie pen drives, HDs externos, celulares MTP e conexões Bluetooth com favoritos e ejeção segura" Style="{StaticResource Sub}" TextWrapping="Wrap" />
+                </StackPanel>
+              </Grid>
+
+              <!-- Card USB / Armazenamento / Celulares -->
+              <Border Style="{StaticResource CardBorder}" Padding="20,18" Margin="0,0,0,16">
+                <StackPanel>
+                  <Grid Margin="0,0,0,12">
+                    <Grid.ColumnDefinitions>
+                      <ColumnDefinition Width="*" />
+                      <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <StackPanel>
+                      <TextBlock Text="DISPOSITIVOS USB, PEN DRIVES &amp; CELULARES" Style="{StaticResource Label}" Margin="0,0,0,4" />
+                      <TextBlock x:Name="TxtPerifDevicesUsbStatus" Text="Escaneando dispositivos..." Foreground="{DynamicResource Muted}" FontSize="12" TextWrapping="Wrap" />
+                    </StackPanel>
+                    <Button x:Name="BtnRefreshPerifDevices" Grid.Column="1" Style="{StaticResource OutlineButton}" Content="↻ Atualizar" Padding="12,6" FontSize="11.5" VerticalAlignment="Center" Click="BtnRefreshPerifDevices_Click" />
+                  </Grid>
+                  <StackPanel x:Name="PanelPerifUsbList" />
+                </StackPanel>
+              </Border>
+
+              <!-- Card Bluetooth & Favoritos -->
+              <Border Style="{StaticResource CardBorder}" Padding="20,18">
+                <StackPanel>
+                  <Grid Margin="0,0,0,12">
+                    <Grid.ColumnDefinitions>
+                      <ColumnDefinition Width="*" />
+                      <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <StackPanel>
+                      <TextBlock Text="MÓDULO BLUETOOTH &amp; FAVORITOS" Style="{StaticResource Label}" Margin="0,0,0,4" />
+                      <TextBlock x:Name="TxtBtRadioStatus" Text="Verificando rádio Bluetooth..." Foreground="{DynamicResource Muted}" FontSize="12" TextWrapping="Wrap" />
+                    </StackPanel>
+                    <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                      <Button Style="{StaticResource OutlineButton}" Content="Abrir Windows BT" Padding="10,6" FontSize="11" Margin="0,0,8,0" Click="BtnOpenWindowsBt_Click" />
+                      <Button x:Name="BtnRefreshBtDevices" Style="{StaticResource OutlineButton}" Content="↻ Atualizar" Padding="12,6" FontSize="11.5" Click="BtnRefreshPerifDevices_Click" />
+                    </StackPanel>
+                  </Grid>
+
+                  <StackPanel Orientation="Horizontal" Margin="0,0,0,14">
+                    <RadioButton x:Name="RbBtAutoMode" GroupName="BtConnMode" Style="{StaticResource Chip}" Content="Auto-conectar Favoritos" IsChecked="True" Margin="0,0,8,0" Checked="BtMode_Changed" />
+                    <RadioButton x:Name="RbBtManualMode" GroupName="BtConnMode" Style="{StaticResource Chip}" Content="Modo Manual (Conexão Obrigatória Manual)" Checked="BtMode_Changed" />
+                  </StackPanel>
+
+                  <StackPanel x:Name="PanelPerifBtList" />
+                </StackPanel>
+              </Border>
+            </StackPanel>
+
           </StackPanel>
 
         </ScrollViewer>
@@ -14858,6 +14959,132 @@
 
           </StackPanel>
 
+        </ScrollViewer>
+
+        <ScrollViewer Name="PageTweaks" Visibility="Collapsed" VerticalScrollBarVisibility="Auto" CanContentScroll="False" HorizontalScrollBarVisibility="Disabled">
+          <StackPanel Margin="36,30,36,30">
+            <Grid Margin="0,0,0,20">
+              <StackPanel>
+                <TextBlock Text="TWEAKS EXCLUSIVOS" Style="{StaticResource H1}" />
+                <TextBlock Text="Funcionalidades exclusivas do Lumini Tray para áudio, atalhos rápidos, overlays e sistema" Style="{StaticResource Sub}" TextWrapping="Wrap" />
+              </StackPanel>
+            </Grid>
+
+            <!-- Card 1: Áudio, Microfone & Barra de Tarefas -->
+            <Border Style="{StaticResource CardBorder}" Margin="0,0,0,16" Padding="20,18">
+              <StackPanel>
+                <Grid Margin="0,0,0,14">
+                  <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                  </Grid.ColumnDefinitions>
+                  <StackPanel>
+                    <TextBlock Text="ÁUDIO, MICROFONE &amp; BARRA DE TAREFAS" Style="{StaticResource Label}" Margin="0,0,0,4" />
+                    <TextBlock Text="Controles rápidos de volume na taskbar, alternância de entrada/saída, mute e supressor neural" Foreground="{DynamicResource Muted}" FontSize="12" TextWrapping="Wrap" />
+                  </StackPanel>
+                  <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                    <Button Style="{StaticResource OutlineButton}" Content="Configurar Áudio" Padding="10,5" FontSize="11" Margin="0,0,8,0" Click="TweaksOpenAudio_Click" />
+                    <Button Style="{StaticResource OutlineButton}" Content="Supressor IA" Padding="10,5" FontSize="11" Click="TweaksOpenSuppressor_Click" />
+                  </StackPanel>
+                </Grid>
+
+                <Grid Margin="0,0,0,6">
+                  <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="18" />
+                    <ColumnDefinition Width="*" />
+                  </Grid.ColumnDefinitions>
+
+                  <StackPanel Grid.Column="0">
+                    <CheckBox x:Name="ChkFastMouseWheelVolume" Content="Volume na Barra de Tarefas (Scroll do Mouse)" FontWeight="SemiBold" FontSize="12.5" Click="FastMouseWheelVolume_Click" />
+                    <TextBlock Text="Gire a rodinha do mouse sobre a barra de tarefas para aumentar ou diminuir o som." Foreground="{DynamicResource Faint}" FontSize="11" Margin="24,2,0,12" TextWrapping="Wrap" />
+
+                    <CheckBox x:Name="ChkFastPlaybackMute" Content="Mutar Saída de Som (Atalho Ctrl + Alt + O)" FontWeight="SemiBold" FontSize="12.5" Click="FastPlaybackMute_Click" />
+                    <TextBlock Text="Habilita a ação e o atalho para silenciar ou reativar o áudio do computador." Foreground="{DynamicResource Faint}" FontSize="11" Margin="24,2,0,12" TextWrapping="Wrap" />
+
+                    <CheckBox x:Name="ChkFastMicMute" Content="Habilitar Atalho do Microfone (Ctrl + Shift + M)" FontWeight="SemiBold" FontSize="12.5" Click="FastMicMute_Click" />
+                    <TextBlock Text="Habilita ou desabilita o atalho global de mutar/desmutar o microfone em qualquer aplicativo ou jogo." Foreground="{DynamicResource Faint}" FontSize="11" Margin="24,2,0,12" TextWrapping="Wrap" />
+
+                    <CheckBox x:Name="ChkFastNoiseSuppressor" Content="Supressor de Ruído Neural de Microfone" FontWeight="SemiBold" FontSize="12.5" Click="FastNoiseSuppressor_Click" />
+                    <TextBlock Text="Ativa o filtro de inteligência artificial em tempo real para remover ruídos de fundo." Foreground="{DynamicResource Faint}" FontSize="11" Margin="24,2,0,0" TextWrapping="Wrap" />
+                  </StackPanel>
+
+                  <StackPanel Grid.Column="2">
+                    <CheckBox x:Name="ChkFastPlaybackCycle" Content="Alternar Saídas de Áudio (Ctrl + Alt + F11)" FontWeight="SemiBold" FontSize="12.5" Click="FastPlaybackCycle_Click" />
+                    <TextBlock Text="DISPOSITIVO DE SAÍDA ATIVO" Style="{StaticResource Label}" Margin="24,4,0,4" />
+                    <ComboBox x:Name="CboFastAudioOutput" SelectionChanged="CboFastAudioOutput_SelectionChanged" Margin="24,0,0,12" />
+
+                    <CheckBox x:Name="ChkFastRecordingCycle" Content="Alternar Microfones de Entrada (Ctrl + Alt + F7)" FontWeight="SemiBold" FontSize="12.5" Click="FastRecordingCycle_Click" />
+                    <TextBlock Text="DISPOSITIVO DE ENTRADA ATIVO" Style="{StaticResource Label}" Margin="24,4,0,4" />
+                    <ComboBox x:Name="CboFastAudioInput" SelectionChanged="CboFastAudioInput_SelectionChanged" Margin="24,0,0,12" />
+                  </StackPanel>
+                </Grid>
+              </StackPanel>
+            </Border>
+
+            <!-- Card 2: Overlays, Mini Tarefas & Wallpapers -->
+            <Border Style="{StaticResource CardBorder}" Margin="0,0,0,16" Padding="20,18">
+              <StackPanel>
+                <TextBlock Text="OVERLAYS, MONITORAMENTO &amp; VISUAL" Style="{StaticResource Label}" Margin="0,0,0,12" />
+
+                <Grid Margin="0,0,0,12">
+                  <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                  </Grid.ColumnDefinitions>
+                  <StackPanel>
+                    <CheckBox x:Name="ChkFastOverlay" Content="Overlay de Desempenho e FPS nos Jogos" FontWeight="SemiBold" FontSize="12.5" Click="FastOverlay_Click" />
+                    <TextBlock Text="Exibe métricas de FPS, frametime, sensores e contorno vetorial sobreposta na tela." Foreground="{DynamicResource Faint}" FontSize="11" Margin="24,2,0,0" TextWrapping="Wrap" />
+                  </StackPanel>
+                  <Button Grid.Column="1" Style="{StaticResource OutlineButton}" Content="Abrir Overlay" Padding="10,5" FontSize="11" VerticalAlignment="Center" Click="TweaksOpenOverlay_Click" />
+                </Grid>
+
+                <Grid Margin="0,0,0,12">
+                  <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                  </Grid.ColumnDefinitions>
+                  <StackPanel>
+                    <CheckBox x:Name="ChkTweaksMiniTask" Content="Mini Gerenciador de Tarefas Flutuante (Ctrl + Shift + P)" FontWeight="SemiBold" FontSize="12.5" Click="TweaksMiniTask_Click" />
+                    <TextBlock Text="Monitor flutuante com maior consumidor de CPU, GPU, RAM e Disco em tempo real." Foreground="{DynamicResource Faint}" FontSize="11" Margin="24,2,0,0" TextWrapping="Wrap" />
+                  </StackPanel>
+                </Grid>
+
+                <Grid>
+                  <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                  </Grid.ColumnDefinitions>
+                  <StackPanel>
+                    <TextBlock Text="Wallpapers Animados por Monitor (Motor MPV)" Foreground="{DynamicResource Fg}" FontWeight="SemiBold" FontSize="12.5" />
+                    <TextBlock Text="Gerencie vídeos em loop, pausa automática em jogos e playlist por monitor." Foreground="{DynamicResource Faint}" FontSize="11" Margin="0,2,0,0" TextWrapping="Wrap" />
+                  </StackPanel>
+                  <Button Grid.Column="1" Style="{StaticResource OutlineButton}" Content="Wallpapers &amp; Telas" Padding="10,5" FontSize="11" VerticalAlignment="Center" Click="TweaksOpenWallpapers_Click" />
+                </Grid>
+              </StackPanel>
+            </Border>
+
+            <!-- Card 3: Tweaks do Windows & Atalhos -->
+            <Border Style="{StaticResource CardBorder}" Padding="20,18">
+              <StackPanel>
+                <Grid Margin="0,0,0,12">
+                  <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                  </Grid.ColumnDefinitions>
+                  <StackPanel>
+                    <TextBlock Text="TWEAKS DE ATALHOS DO WINDOWS" Style="{StaticResource Label}" Margin="0,0,0,4" />
+                    <TextBlock Text="Ajustes rápidos de comportamento e atalhos nativos do sistema operacional" Foreground="{DynamicResource Muted}" FontSize="12" TextWrapping="Wrap" />
+                  </StackPanel>
+                  <Button Grid.Column="1" Style="{StaticResource OutlineButton}" Content="Windows &amp; Debloat" Padding="10,5" FontSize="11" VerticalAlignment="Center" Click="TweaksOpenDebloat_Click" />
+                </Grid>
+
+                <CheckBox x:Name="ChkTweaksDisableOfficeHotkeys" Content="Desativar Office Hotkeys (Ctrl + Shift + Alt + Win)" FontWeight="SemiBold" FontSize="12.5" Click="TweaksDisableOfficeHotkeys_Click" />
+                <TextBlock Text="Desabilita as combinações Ctrl+Shift+Alt+Win (e atalhos W/X/P/O/N/T/Y/L/D) que abrem o Microsoft Office ou navegador acidentalmente no Windows." Foreground="{DynamicResource Faint}" FontSize="11" Margin="24,2,0,4" TextWrapping="Wrap" />
+                <TextBlock x:Name="TxtTweaksOfficeHotkeysStatus" Text="Padrão do Windows" Foreground="{DynamicResource Muted}" FontSize="11" Margin="24,0,0,0" />
+              </StackPanel>
+            </Border>
+          </StackPanel>
         </ScrollViewer>
 
         <ScrollViewer Name="PageWindowsDebloat" Visibility="Collapsed" VerticalScrollBarVisibility="Auto" CanContentScroll="False" HorizontalScrollBarVisibility="Disabled">

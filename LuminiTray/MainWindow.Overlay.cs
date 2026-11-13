@@ -53,7 +53,6 @@ public partial class MainWindow
         _ovShow = keys;
         SaveOverlayItems();
         BuildOverlayPicker();
-        InitOverlayOutlineUi();
     }
 
     private void InitOverlayOutlineUi()
@@ -71,7 +70,7 @@ public partial class MainWindow
 
     private void OverlayOutlineOption_Changed(object sender, RoutedEventArgs e)
     {
-        if (ChkOverlayTextOutline == null) return;
+        if (!_overlayReady || ChkOverlayTextOutline == null) return;
         _settings.OverlayTextOutlineEnabled = ChkOverlayTextOutline.IsChecked == true;
         _settings.OverlayTextOutlineAutoOnly = ChkOverlayTextOutlineAutoOnly.IsChecked == true;
         _settings.Save();
@@ -80,7 +79,7 @@ public partial class MainWindow
 
     private void SliderOverlayOutline_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
     {
-        if (SliderOverlayOutlineThickness == null || SliderOverlayOutlineOpacity == null) return;
+        if (!_overlayReady || SliderOverlayOutlineThickness == null || SliderOverlayOutlineOpacity == null) return;
         double thick = Math.Round(SliderOverlayOutlineThickness.Value, 1);
         double op = Math.Round(SliderOverlayOutlineOpacity.Value) / 100.0;
 

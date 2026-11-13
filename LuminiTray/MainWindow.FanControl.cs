@@ -175,29 +175,26 @@ public partial class MainWindow
     // CARDS DE VENTOINHAS (CPU & Gabinete vs GPU)
     // =========================================================================
 
+    private TextBlock? _notebookThermalStatusText;
+
     private void BuildFanCards()
     {
         if (_fanControlService == null) return;
         _fanCardElements.Clear();
+        _notebookThermalStatusText = null;
 
         if (FanCardsPanelCpu != null) FanCardsPanelCpu.Children.Clear();
         if (FanCardsPanelGpu != null) FanCardsPanelGpu.Children.Clear();
 
-        var cpuChannels = _fanControlService.Channels.Where(c => c.SourceType == FanSourceType.Motherboard).ToList();
-        var gpuChannels = _fanControlService.Channels.Where(c => c.SourceType != FanSourceType.Motherboard).ToList();
+        var cpuChannels = _fanControlService.Channels.Where(c => c.SourceType is FanSourceType.Motherboard or FanSourceType.Controller).ToList();
+        var gpuChannels = _fanControlService.Channels.Where(c => c.SourceType is not (FanSourceType.Motherboard or FanSourceType.Controller)).ToList();
 
         // Cards CPU
         if (FanCardsPanelCpu != null)
         {
             if (cpuChannels.Count == 0)
             {
-                FanCardsPanelCpu.Children.Add(new TextBlock
-                {
-                    Text = "Nenhuma ventoinha de placa-mãe (Super I/O) com controle PWM encontrada. O driver PawnIO ou LibreHardwareMonitor pode exigir execução como administrador.",
-                    Foreground = (Brush)FindResource("Muted"),
-                    TextWrapping = TextWrapping.Wrap,
-                    Margin = new Thickness(0, 10, 0, 10)
-                });
+                FanCardsPanelCpu.Children.Add(CreateCpuDiagnosticCard());
             }
             else
             {
@@ -213,9 +210,13 @@ public partial class MainWindow
         {
             if (gpuChannels.Count == 0)
             {
+                string gpuMsg = _fanControlService.PlatformInfo.IsLaptop
+                    ? "GPU de notebook (Optimus / iGPU) compartilha o cooler principal da CPU via Embedded Controller (EC) e não possui ventoinha dedicada."
+                    : "Nenhuma ventoinha dedicada de GPU com controle de cooler detectada pelo driver de vídeo (NvAPI/ADL/IGCL).";
+
                 FanCardsPanelGpu.Children.Add(new TextBlock
                 {
-                    Text = "Nenhuma ventoinha dedicada de GPU com controle de cooler detectada pelo driver de vídeo (NvAPI/ADL/IGCL).",
+                    Text = gpuMsg,
                     Foreground = (Brush)FindResource("Muted"),
                     TextWrapping = TextWrapping.Wrap,
                     Margin = new Thickness(0, 10, 0, 10)
@@ -229,6 +230,89 @@ public partial class MainWindow
                 }
             }
         }
+    }
+
+    private Border CreateCpuDiagnosticCard()
+    {
+        var p = _fanControlService!.PlatformInfo;
+        var border = new Border
+        {
+            Style = (Style)FindResource("CardBorder"),
+            Margin = new Thickness(0, 4, 0, 10),
+            Padding = new Thickness(14)
+        };
+
+        var stack = new StackPanel();
+        string title = p.IsLaptop
+            ? $"Controle Térmico para Notebook · {p.Manufacturer} {p.Model}"
+            : "Nenhuma ventoinha de placa-mãe (Super I/O) com controle PWM detectada";
+
+        stack.Children.Add(new TextBlock
+        {
+            Text = title,
+            Foreground = (Brush)FindResource("Fg"),
+            FontWeight = FontWeights.SemiBold,
+            FontSize = 13,
+            TextWrapping = TextWrapping.Wrap
+        });
+
+        stack.Children.Add(new TextBlock
+        {
+            Text = $"BIOS: {p.BiosVersion} · Admin: {(p.IsAdmin ? "Sim" : "Não")} · PawnIO: {(p.IsPawnIoDetected ? "Ativo" : "Não detectado")}",
+            Foreground = (Brush)FindResource("Muted"),
+            FontSize = 11,
+            Margin = new Thickness(0, 3, 0, 8),
+            TextWrapping = TextWrapping.Wrap
+        });
+
+        string desc = p.IsLaptop
+            ? "Notebooks gerenciam o cooler pelo Embedded Controller (EC) da BIOS sem expor Super I/O PWM. Com o controle ativo, o Lumini Tray ajusta Política de Resfriamento (Passivo/Ativo) e teto de CPU no Windows seguindo a curva."
+            : "Verifique se o aplicativo foi aberto como Administrador e se o driver PawnIO está ativo para acesso ao chip Super I/O.";
+
+        stack.Children.Add(new TextBlock
+        {
+            Text = desc,
+            Foreground = (Brush)FindResource("Muted"),
+            FontSize = 12,
+            TextWrapping = TextWrapping.Wrap
+        });
+
+        if (p.IsLaptop)
+        {
+            _notebookThermalStatusText = new TextBlock
+            {
+                Text = $"Estado atual: {_fanControlService.ThermalBackend.StatusSummary}",
+                Foreground = (Brush)FindResource("Accent"),
+                FontSize = 12,
+                FontWeight = FontWeights.SemiBold,
+                Margin = new Thickness(0, 8, 0, 0),
+                TextWrapping = TextWrapping.Wrap
+            };
+            stack.Children.Add(_notebookThermalStatusText);
+        }
+
+        var btnCopy = new Button
+        {
+            Content = "COPIAR DIAGNÓSTICO DE FANS",
+            Style = (Style)FindResource("OutlineButton"),
+            Padding = new Thickness(12, 6, 12, 6),
+            FontSize = 11,
+            HorizontalAlignment = HorizontalAlignment.Left,
+            Margin = new Thickness(0, 10, 0, 0)
+        };
+        btnCopy.Click += (_, _) =>
+        {
+            try
+            {
+                Clipboard.SetText(_fanControlService.BuildDiagnosticReport());
+                btnCopy.Content = "DIAGNÓSTICO COPIADO!";
+            }
+            catch { }
+        };
+        stack.Children.Add(btnCopy);
+
+        border.Child = stack;
+        return border;
     }
 
     private Border CreateFanCard(FanChannel ch)
@@ -275,30 +359,52 @@ public partial class MainWindow
         Grid.SetColumn(titleStack, 0);
         headerGrid.Children.Add(titleStack);
 
-        // Trava de segurança (100% contínuo)
-        var lockBtn = new Button
+        if (ch.IsReadOnly)
         {
-            Content = ch.IsLocked100 ? "TRAVADO 100%" : "Travar 100%",
-            Style = (Style)FindResource(ch.IsLocked100 ? "PrimaryButton" : "OutlineButton"),
-            Padding = new Thickness(10, 4, 10, 4),
-            FontSize = 11,
-            Tag = ch
-        };
-        lockBtn.Click += (s, e) =>
-        {
-            ch.IsLocked100 = !ch.IsLocked100;
-            lockBtn.Content = ch.IsLocked100 ? "TRAVADO 100%" : "Travar 100%";
-            lockBtn.Style = (Style)FindResource(ch.IsLocked100 ? "PrimaryButton" : "OutlineButton");
-            if (ch.IsLocked100)
+            var roBadge = new Border
             {
-                ch.SetPwm(100f);
-                ch.LastPulseTime = DateTime.UtcNow;
-            }
-            UpdateFanUi();
-            SaveFanControlSettings();
-        };
-        Grid.SetColumn(lockBtn, 1);
-        headerGrid.Children.Add(lockBtn);
+                Background = (Brush)FindResource("CardSubtleBg"),
+                CornerRadius = new CornerRadius(6),
+                Padding = new Thickness(8, 4, 8, 4),
+                VerticalAlignment = VerticalAlignment.Center
+            };
+            roBadge.Child = new TextBlock
+            {
+                Text = "SOMENTE LEITURA",
+                FontSize = 10,
+                FontWeight = FontWeights.SemiBold,
+                Foreground = (Brush)FindResource("Muted")
+            };
+            Grid.SetColumn(roBadge, 1);
+            headerGrid.Children.Add(roBadge);
+        }
+        else
+        {
+            // Trava de segurança (100% contínuo)
+            var lockBtn = new Button
+            {
+                Content = ch.IsLocked100 ? "TRAVADO 100%" : "Travar 100%",
+                Style = (Style)FindResource(ch.IsLocked100 ? "PrimaryButton" : "OutlineButton"),
+                Padding = new Thickness(10, 4, 10, 4),
+                FontSize = 11,
+                Tag = ch
+            };
+            lockBtn.Click += (s, e) =>
+            {
+                ch.IsLocked100 = !ch.IsLocked100;
+                lockBtn.Content = ch.IsLocked100 ? "TRAVADO 100%" : "Travar 100%";
+                lockBtn.Style = (Style)FindResource(ch.IsLocked100 ? "PrimaryButton" : "OutlineButton");
+                if (ch.IsLocked100)
+                {
+                    ch.SetPwm(100f);
+                    ch.LastPulseTime = DateTime.UtcNow;
+                }
+                UpdateFanUi();
+                SaveFanControlSettings();
+            };
+            Grid.SetColumn(lockBtn, 1);
+            headerGrid.Children.Add(lockBtn);
+        }
 
         mainStack.Children.Add(headerGrid);
 
@@ -320,7 +426,7 @@ public partial class MainWindow
 
         var pwmBlock = new TextBlock
         {
-            Text = $"{ch.CurrentPwm:0}% PWM",
+            Text = ch.IsReadOnly ? "BIOS/EC" : $"{ch.CurrentPwm:0}% PWM",
             FontFamily = (FontFamily)FindResource("Mono"),
             FontSize = 18,
             FontWeight = FontWeights.Bold,
@@ -333,6 +439,19 @@ public partial class MainWindow
         _fanCardElements[ch.Id] = (rpmBlock, pwmBlock);
 
         mainStack.Children.Add(metricsGrid);
+
+        if (ch.IsReadOnly)
+        {
+            mainStack.Children.Add(new TextBlock
+            {
+                Text = "Controlado automaticamente pela BIOS/EC (telemetria RPM somente leitura).",
+                Foreground = (Brush)FindResource("Muted"),
+                FontSize = 11.5,
+                TextWrapping = TextWrapping.Wrap
+            });
+            border.Child = mainStack;
+            return border;
+        }
 
         // Controles: Slider manual e botões Auto / Manual
         var ctrlGrid = new Grid();
@@ -488,6 +607,11 @@ public partial class MainWindow
         // Atualiza os valores nos cards em O(1) via dicionário em cache (sem recursão de VisualTree)
         UpdateCardsPanel();
 
+        if (_notebookThermalStatusText != null && _fanControlService != null)
+        {
+            _notebookThermalStatusText.Text = $"Estado atual: {_fanControlService.ThermalBackend.StatusSummary}";
+        }
+
         // Atualiza os rótulos de RPM nos eixos verticais
         UpdateAxisRpmLabels();
 
@@ -499,7 +623,7 @@ public partial class MainWindow
         double maxCpuRpm = 2200;
         if (_fanControlService != null)
         {
-            var cpuChannels = _fanControlService.Channels.Where(c => c.SourceType == FanSourceType.Motherboard).ToList();
+            var cpuChannels = _fanControlService.Channels.Where(c => c.SourceType is FanSourceType.Motherboard or FanSourceType.Controller).ToList();
             if (cpuChannels.Count > 0)
             {
                 double maxMeasured = cpuChannels.Max(c => c.CurrentRpm);
@@ -517,7 +641,7 @@ public partial class MainWindow
         double maxGpuRpm = 3000;
         if (_fanControlService != null)
         {
-            var gpuChannels = _fanControlService.Channels.Where(c => c.SourceType != FanSourceType.Motherboard).ToList();
+            var gpuChannels = _fanControlService.Channels.Where(c => c.SourceType is not (FanSourceType.Motherboard or FanSourceType.Controller)).ToList();
             if (gpuChannels.Count > 0)
             {
                 double maxMeasured = gpuChannels.Max(c => c.CurrentRpm);
@@ -991,7 +1115,7 @@ public partial class MainWindow
     {
         if (_fanControlService == null) return;
         SetActiveFanCpuPreset(BtnFanCpuLock100);
-        foreach (var ch in _fanControlService.Channels.Where(c => c.SourceType == FanSourceType.Motherboard))
+        foreach (var ch in _fanControlService.Channels.Where(c => c.SourceType is FanSourceType.Motherboard or FanSourceType.Controller))
         {
             ch.IsLocked100 = true;
             ch.SetPwm(100f);
@@ -1143,7 +1267,7 @@ public partial class MainWindow
     {
         if (_fanControlService == null) return;
         SetActiveFanGpuPreset(BtnFanGpuLock100);
-        foreach (var ch in _fanControlService.Channels.Where(c => c.SourceType != FanSourceType.Motherboard))
+        foreach (var ch in _fanControlService.Channels.Where(c => c.SourceType is not (FanSourceType.Motherboard or FanSourceType.Controller)))
         {
             ch.IsLocked100 = true;
             ch.SetPwm(100f);

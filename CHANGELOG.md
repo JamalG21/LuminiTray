@@ -3,6 +3,38 @@
 Todas as alterações notáveis deste projeto serão documentadas neste arquivo.
 O formato é baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/), e este projeto adere ao [Semantic Versioning](https://semver.org/lang/pt-BR/).
 
+## [0.28.0] - 2026-11-12
+
+### 🚀 Adicionado & Aprimorado
+- **Remapeador de Teclas e Atalhos:**
+  - Novo painel na sub-aba **Teclado** para remapear teclas individuais (`Tecla → Tecla / Atalho / Desativada`) e atalhos (`Atalho → Atalho / Tecla / Desativado`), com suporte opcional a escopo por aplicativo (ex: `notepad.exe`).
+  - Captura interativa via botão **"Digitar Tecla"** ou seleção manual por catálogo de teclas (`Virtual-Key`).
+  - Motor global baseado em `WH_KEYBOARD_LL` + `SendInput` com proteção anti-loop e custo zero de CPU quando desativado ou sem regras ativas.
+  - Regras persistidas em `AppSettings` (desativado por padrão).
+
+## [0.27.1] - 2026-11-12
+
+### 🛠️ Correções
+- **Navegação da Sub-aba Dispositivos:**
+  - Corrigido problema em que clicar na sub-aba **Dispositivos** redirecionava para a sub-aba **Teclado**.
+- **Detecção de Armazenamento vs Celulares (MTP/WPD):**
+  - Corrigida classificação de volumes internos (`SWD\WPDBUSENUM` de HDs e SSDs) para que não sejam listados incorretamente como celulares conectados via MTP.
+
+## [0.27.0] - 2026-11-12
+
+### 🚀 Adicionado & Aprimorado
+- **Nova Sub-aba Dispositivos (em Periféricos):**
+  - Listagem em tempo real de dispositivos conectados (pen drives, HDs/SSDs externos, cartões SD, celulares MTP/WPD e periféricos USB), com ações para abrir no Explorer e **Ejetar com Segurança**.
+  - **Módulo Bluetooth:** listagem de dispositivos pareados, conectar/desconectar/desparear, sistema de **Favoritos** com auto-conexão quando o Bluetooth estiver ativo, e **Modo Manual** de conexão.
+  - Integração automática de dispositivos com armazenamento detectado às ferramentas de análise de Saúde (SMART), Benchmark, Bad Blocks e Teste de Integridade.
+
+## [0.26.0] - 2026-11-12
+
+### 🚀 Adicionado & Aprimorado
+- **Nova Aba Tweaks:**
+  - Centralização em aba dedicada de atalhos rápidos de Áudio/Microfone, Supressor Neural, Overlay de Jogos, Mini Gerenciador de Tarefas e Wallpapers Animados.
+  - Nova opção **Desativar Office Hotkeys** (`Ctrl+Shift+Alt+Win`) na seção de Tweaks de Sistema.
+
 ## [0.25.0] - 2026-11-11
 
 ### 🚀 Adicionado & Aprimorado

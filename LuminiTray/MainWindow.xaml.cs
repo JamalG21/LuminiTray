@@ -158,6 +158,7 @@ public partial class MainWindow : Window
             EnsureFanControlServiceRunning();
             EnsureSuppressorServiceRunning();
             InitializeWallpaperSlideshowOnStartup();
+            try { KeyboardRemapperService.Instance.UpdateRules(_settings.KeyboardRemapEnabled, _settings.KeyRemaps, _settings.ShortcutRemaps); } catch { }
 
             if (_isAutoStart || (_settings.AutoStartWithWindows && _isMinimized))
             {
@@ -172,6 +173,7 @@ public partial class MainWindow : Window
         };
 
         int _minimizedTicks = 0;
+        int _btAutoTicks = 0;
         _timer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(1) };
         _timer.Tick += async (_, _) =>
         {
@@ -194,7 +196,7 @@ public partial class MainWindow : Window
             else
             {
                 UpdateSensorPollingState();
-                if (fanActive)
+                if (isWindowActive || fanActive)
                 {
                     await _monitor.RefreshEssentialTempsOnlyAsync();
                 }
@@ -234,6 +236,7 @@ public partial class MainWindow : Window
             }
 
             if (_monitor.IsOpen && needsFullRead) StatusText.Text = $"{_monitor.Rows.Count} sensores · atualizado {DateTime.Now:HH:mm:ss}";
+            UpdateSidebarPanel();
             if (PageStress != null && PageStress.Visibility == Visibility.Visible) UpdateStressPanel();
             if (PageGpu != null && PageGpu.Visibility == Visibility.Visible) UpdateGpuLive();
             UpdateCpuSensorWarning();
@@ -242,6 +245,12 @@ public partial class MainWindow : Window
             if (PageBench != null && PageBench.Visibility == Visibility.Visible) UpdateBenchLive();
             if (PageOptimize != null && PageOptimize.Visibility == Visibility.Visible) UpdateRamStatus();
             if (PageFanControl != null && PageFanControl.Visibility == Visibility.Visible) UpdateFanUi();
+
+            if (!_settings.BluetoothManualMode && _settings.BluetoothFavoriteAddresses.Count > 0 && ++_btAutoTicks >= 15)
+            {
+                _btAutoTicks = 0;
+                _ = Task.Run(() => BluetoothManagerService.AutoConnectFavoritesIfNeeded(_settings));
+            }
         };
         _timer.Start();
 
@@ -341,6 +350,7 @@ public partial class MainWindow : Window
         try { SubtaskManager.UnregisterAll(); } catch { }
 
         // 4. Parar timers e serviços rápidos de UI
+        try { KeyboardRemapperService.Instance.Dispose(); } catch { }
         try { _autoOptimizeService?.Stop(); } catch { }
         try { _wallpaperFolderWatcher?.Dispose(); } catch { }
         try { _timer.Stop(); } catch { }
@@ -753,12 +763,14 @@ public partial class MainWindow : Window
                 case "PagePerifAudio":
                 case "PagePerifMic":
                 case "PagePerifGamepad":
+                case "PagePerifDevices":
                     InitPerifericosPage();
                     break;
                 case "PageSettings": InitSettingsPage(); if (TabSettingsGeneral?.IsChecked == true) ScanStartup(); break;
                 case "PageFanControl": InitFanControlPage(); break;
                 case "PageNet": InitNetworkDiagnostics(); break;
                 case "PageWindowsDebloat": InitWindowsDebloatPage(); break;
+                case "PageTweaks": InitTweaksPage(); break;
                 case "PageSuppressor": InitSuppressorPage(); break;
                 case "PageStartup": InitStartupPage(); break;
                 case "PagePostFormat": InitPostFormatPage(); break;
@@ -817,7 +829,7 @@ public partial class MainWindow : Window
                 _suppressorMeterTimer?.Stop();
             }
 
-            var pages = new FrameworkElement?[] { PageDash, PageSystem, PageSensors, PageGpu, PageGames, PageBottleneck, PageOverlay, PageBench, PageOptimize, PageOc, PageLauncher, PageDriver, PageApps, PageUninstaller, PageStartup, PageMakerPorts, PageMakerDrv, PageDisks, PageDiskTools, PageRestore, PageBackup, PageEnergy, PageNet, PageStress, PageSettings, PagePerifericos, PageFanControl, PageWindowsDebloat, PageSuppressor, PagePostFormat, PageWindowsRepair };
+            var pages = new FrameworkElement?[] { PageDash, PageSystem, PageSensors, PageGpu, PageGames, PageBottleneck, PageOverlay, PageBench, PageOptimize, PageOc, PageLauncher, PageDriver, PageApps, PageUninstaller, PageStartup, PageMakerPorts, PageMakerDrv, PageDisks, PageDiskTools, PageRestore, PageBackup, PageEnergy, PageNet, PageStress, PageSettings, PagePerifericos, PageFanControl, PageWindowsDebloat, PageTweaks, PageSuppressor, PagePostFormat, PageWindowsRepair };
             foreach (var p in pages)
             {
                 if (p != null)
@@ -1040,6 +1052,7 @@ public partial class MainWindow : Window
             {
                 _usbDebounce!.Stop();
                 DiffUsb();
+                if (PanelPerifDevices?.Visibility == Visibility.Visible) RefreshDevicesSubTab();
             }, Dispatcher);
             _usbDebounce.Stop();
             _usbDebounce.Start();
@@ -1124,16 +1137,42 @@ public partial class MainWindow : Window
         GpuExtras.ItemsSource = g.LiveExtras();
     }
 
-    private void UpdateGpuLive()
+    private void UpdateSidebarPanel()
     {
-        // Barra lateral: GPU principal (dedicada = primeira da lista).
+        float? cpuTemp = _monitor.CpuTemperature;
+        float? cpuLoad = _monitor.CpuLoad;
+        SideTemp.Text = cpuTemp == null ? "—" : $"{cpuTemp:0.0} °C";
+        SideLoad.Text = cpuLoad == null ? "—" : $"{cpuLoad:0} %";
+
         if (_gpus.Count > 0)
         {
-            var load = _monitor.Rows.FirstOrDefault(r => r.Hardware == _gpus[0].Name && r.Type == SensorType.Load
-                                                         && r.Name == "GPU Core");
-            SideGpuTemp.Text = MainGpuTemp() is float t ? $"{t:0.0} °C" : "—";
-            SideGpuLoad.Text = load?.RawValue is float l ? $"{l:0} %" : "—";
+            float? gpuTemp = MainGpuTemp();
+            float? gpuLoad = MainGpuLoad();
+            SideGpuTemp.Text = gpuTemp is float t ? $"{t:0.0} °C" : "—";
+            SideGpuLoad.Text = gpuLoad is float l ? $"{l:0} %" : "—";
         }
+        else
+        {
+            SideGpuTemp.Text = "—";
+            SideGpuLoad.Text = "—";
+        }
+
+        var (total, avail) = Optimizer.MemoryStatus();
+        if (total > 0)
+        {
+            double used = total - avail;
+            SideRamUsed.Text = $"{used / 1073741824.0:0.0} GB";
+            SideRamPct.Text = $"{(used / total) * 100:0} %";
+        }
+        else
+        {
+            SideRamUsed.Text = "—";
+            SideRamPct.Text = "—";
+        }
+    }
+
+    private void UpdateGpuLive()
+    {
         if (_gpu != null && PageGpu.IsVisible) GpuExtras.ItemsSource = _gpu.LiveExtras();
     }
 
@@ -1296,6 +1335,7 @@ public partial class MainWindow : Window
         BuildOverlayPicker();
         UpdateOverlayPositionUi();
         InitMiniTaskUi();
+        InitOverlayOutlineUi();
         _overlayReady = true;
         UpdateOverlayStatus(null);
     }
@@ -2758,6 +2798,8 @@ public partial class MainWindow : Window
             ChkMiniTaskOverlay.IsChecked = false;
     }
 
+    private DependencyPropertyChangedEventHandler? _miniTaskVisibleHandler;
+
     private void EnsureMiniTaskCreated()
     {
         var win = MiniTaskManagerWindow.Instance;
@@ -2771,6 +2813,13 @@ public partial class MainWindow : Window
         win.BackgroundOpacityChanged += MiniTask_BgOpacityChanged;
         win.OpacityChanged -= MiniTask_OpacityChanged;
         win.OpacityChanged += MiniTask_OpacityChanged;
+        _miniTaskVisibleHandler ??= (_, _) =>
+        {
+            if (MiniTaskManagerWindow.IsWindowVisible)
+                SyncOverlayOutline();
+        };
+        win.IsVisibleChanged -= _miniTaskVisibleHandler;
+        win.IsVisibleChanged += _miniTaskVisibleHandler;
     }
 
     private void MiniTask_PositionChanged(double x, double y)
@@ -3383,7 +3432,6 @@ public partial class MainWindow : Window
         RamFractionPanel.IsEnabled = !running && ChkRam.IsChecked == true;
         GpuOptions.IsEnabled = GpuTempLimit.IsEnabled = !running && ChkGpu.IsChecked == true;
         TempLimit.IsEnabled = TxtDuration.IsEnabled = !running;
-        SideStress.Text = running ? "rodando" : "parado";
     }
 
     /// <summary>Alerta = cartão invertido (branco com texto preto).</summary>
@@ -3440,9 +3488,8 @@ public partial class MainWindow : Window
             if (_gpuBurnOn && gt > _gpuMaxTemp) _gpuMaxTemp = gt;
         }
 
-        StTemp.Text = SideTemp.Text = temp == null ? "—" : $"{temp:0.0} °C";
+        StTemp.Text = temp == null ? "—" : $"{temp:0.0} °C";
         StTempMax.Text = _stressMaxTemp > 0 ? $"máx. {_stressMaxTemp:0.0} °C" : "máx. —";
-        SideLoad.Text = load == null ? "—" : $"{load:0} %";
         StLoad.Text = load == null ? "carga —" : $"carga {load:0} %";
         StPower.Text = power == null ? "—" : $"{power:0.#} W";
 

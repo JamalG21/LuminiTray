@@ -12,6 +12,7 @@ namespace LuminiTray;
 public enum FanSourceType
 {
     Motherboard,
+    Controller,
     NvidiaGpu,
     AmdGpu,
     IntelGpu
@@ -144,6 +145,7 @@ public sealed class FanChannel
     public float CurrentPwm { get; set; }
     public float TargetPwm { get; set; }
     public bool IsManual { get; set; }
+    public bool IsReadOnly { get; set; }
     public bool IsLocked100 { get; set; } // Trava de segurança para Bomba de Water Cooler (AIO)
     public DateTime LastPulseTime { get; set; } = DateTime.MinValue; // Heartbeat anti-timeout para BIOS / Super I/O
 
@@ -154,10 +156,12 @@ public sealed class FanChannel
 
     public void SetPwm(float percent)
     {
+        if (IsReadOnly) return;
+
         percent = Math.Clamp(percent, 0, 100);
         TargetPwm = percent;
 
-        if (SourceType == FanSourceType.Motherboard)
+        if (SourceType is FanSourceType.Motherboard or FanSourceType.Controller)
         {
             try
             {
@@ -203,8 +207,9 @@ public sealed class FanChannel
     {
         IsManual = false;
         IsLocked100 = false;
+        if (IsReadOnly) return;
 
-        if (SourceType == FanSourceType.Motherboard)
+        if (SourceType is FanSourceType.Motherboard or FanSourceType.Controller)
         {
             try
             {
@@ -261,6 +266,10 @@ public sealed class FanControlService : IDisposable
     public ObservableCollection<FanChannel> Channels => _channels;
     public double LastCpuTemp { get; private set; } = 40.0;
     public double LastGpuTemp { get; private set; } = 40.0;
+
+    public HardwarePlatformInfo PlatformInfo { get; private set; } = HardwarePlatformInfo.Detect();
+    public NotebookThermalBackend ThermalBackend { get; } = new();
+    public bool HasWritableCpuFans => _channels.Any(c => c.SourceType is FanSourceType.Motherboard or FanSourceType.Controller && !c.IsReadOnly);
 
     /// <summary>
     /// Indica se o controle inteligente de software está ativo.
@@ -413,8 +422,45 @@ public sealed class FanControlService : IDisposable
             }
             catch { }
 
+            // 5. Fallback WMI (Win32_Fan) caso nenhum canal de placa-mãe/controlador tenha sido exposto pelo LHM
+            if (!_channels.Any(c => c.SourceType is FanSourceType.Motherboard or FanSourceType.Controller))
+            {
+                TryDiscoverWmiFans();
+            }
+
+            PlatformInfo = HardwarePlatformInfo.Detect();
             _isInitialized = true;
         }
+    }
+
+    private void TryDiscoverWmiFans()
+    {
+        try
+        {
+            using var searcher = new System.Management.ManagementObjectSearcher("SELECT DeviceID, Name, DesiredSpeed FROM Win32_Fan");
+            int idx = 1;
+            foreach (System.Management.ManagementObject mo in searcher.Get())
+            {
+                string id = mo["DeviceID"]?.ToString() ?? $"WMI_FAN_{idx}";
+                string name = mo["Name"]?.ToString()?.Trim() ?? $"Ventoinha Sistema {idx}";
+                float rpm = 0f;
+                if (mo["DesiredSpeed"] != null && float.TryParse(mo["DesiredSpeed"].ToString(), out float parsed))
+                    rpm = parsed;
+
+                _channels.Add(new FanChannel
+                {
+                    Id = $"WMI_{id}",
+                    Name = $"{name} (BIOS)",
+                    HardwareName = "ACPI / WMI Win32_Fan",
+                    SourceType = FanSourceType.Motherboard,
+                    IsReadOnly = true,
+                    CurrentRpm = rpm,
+                    Curve = CpuCurve
+                });
+                idx++;
+            }
+        }
+        catch { }
     }
 
     private void WalkHardware(IHardware hw)
@@ -433,15 +479,22 @@ public sealed class FanControlService : IDisposable
             return;
         }
 
-        // Encontra controles e fans associados na placa-mãe (Super I/O)
+        // Encontra controles e fans associados na placa-mãe (Super I/O) ou controladores USB/HID
+        var sourceType = hw.HardwareType == HardwareType.Cooler
+            ? FanSourceType.Controller
+            : FanSourceType.Motherboard;
         var controls = hw.Sensors.Where(s => s.SensorType == SensorType.Control).ToList();
         var fans = hw.Sensors.Where(s => s.SensorType == SensorType.Fan).ToList();
+        var pairedFans = new HashSet<ISensor>();
 
         foreach (var ctrl in controls)
         {
             // Tenta parear com o sensor de RPM mais próximo pelo identificador ou nome
-            var matchedFan = fans.FirstOrDefault(f => f.Name.Contains(ctrl.Name) || ctrl.Name.Contains(f.Name))
+            var matchedFan = fans.FirstOrDefault(f => !pairedFans.Contains(f) && (f.Name.Contains(ctrl.Name) || ctrl.Name.Contains(f.Name)))
+                             ?? fans.FirstOrDefault(f => !pairedFans.Contains(f))
                              ?? fans.FirstOrDefault();
+
+            if (matchedFan != null) pairedFans.Add(matchedFan);
 
             float rpm = matchedFan?.Value ?? 0f;
             float pwm = ctrl.Value ?? 0f;
@@ -451,7 +504,7 @@ public sealed class FanControlService : IDisposable
                 Id = ctrl.Identifier.ToString(),
                 Name = ctrl.Name,
                 HardwareName = hw.Name,
-                SourceType = FanSourceType.Motherboard,
+                SourceType = sourceType,
                 LhmControlSensor = ctrl,
                 LhmRpmSensor = matchedFan,
                 CurrentRpm = rpm,
@@ -460,6 +513,24 @@ public sealed class FanControlService : IDisposable
                 Curve = CpuCurve
             };
             _channels.Add(channel);
+        }
+
+        // Sensores somente-leitura (RPM exposto pela BIOS/EC sem SensorType.Control)
+        foreach (var fan in fans)
+        {
+            if (pairedFans.Contains(fan)) continue;
+
+            _channels.Add(new FanChannel
+            {
+                Id = fan.Identifier.ToString(),
+                Name = $"{fan.Name} (Somente Leitura)",
+                HardwareName = hw.Name,
+                SourceType = sourceType,
+                LhmRpmSensor = fan,
+                IsReadOnly = true,
+                CurrentRpm = fan.Value ?? 0f,
+                Curve = CpuCurve
+            });
         }
 
         foreach (var subHw in hw.SubHardware)
@@ -495,6 +566,8 @@ public sealed class FanControlService : IDisposable
 
         foreach (var ch in _channels)
         {
+            if (ch.IsReadOnly) continue;
+
             // Se for trava de 100% contínuo (Bomba de Water Cooler / AIO)
             if (ch.IsLocked100)
             {
@@ -520,7 +593,7 @@ public sealed class FanControlService : IDisposable
             }
 
             // Define a curva ativa para este canal (CPU vs GPU)
-            var activeCurve = ch.SourceType == FanSourceType.Motherboard ? CpuCurve : GpuCurve;
+            var activeCurve = ch.SourceType is FanSourceType.Motherboard or FanSourceType.Controller ? CpuCurve : GpuCurve;
             ch.Curve = activeCurve;
 
             // Modo automático por curva com HISTERESE e TEMPO DE RESPOSTA ANTI-SPIKE
@@ -555,6 +628,12 @@ public sealed class FanControlService : IDisposable
             {
                 ch.SetPwm(targetFloat);
             }
+        }
+
+        // Fallback térmico universal para notebooks sem controle PWM exposto pelo EC/BIOS
+        if (IsControlActive && PlatformInfo.IsLaptop && !HasWritableCpuFans)
+        {
+            ThermalBackend.ApplyForTemperature(LastCpuTemp, CpuCurve);
         }
     }
 
@@ -591,7 +670,52 @@ public sealed class FanControlService : IDisposable
                 }
                 catch { }
             }
+            ThermalBackend.RestoreOriginal();
         }
+    }
+
+    public string BuildDiagnosticReport()
+    {
+        var p = PlatformInfo;
+        var sb = new System.Text.StringBuilder();
+        sb.AppendLine("=== LUMINI TRAY · DIAGNÓSTICO DE VENTOINHAS ===");
+        sb.AppendLine($"Sistema: {Environment.OSVersion} (Admin: {(p.IsAdmin ? "Sim" : "Não")})");
+        sb.AppendLine($"Equipamento: {p.Manufacturer} {p.Model} ({(p.IsLaptop ? "Notebook/Portátil" : "Desktop")})");
+        sb.AppendLine($"BIOS: {p.BiosVersion} · PawnIO: {(p.IsPawnIoDetected ? "Detectado" : "Não detectado")}");
+        sb.AppendLine($"Canais encontrados: {_channels.Count} (PWM graváveis CPU/Chassi: {(HasWritableCpuFans ? "Sim" : "Não")})");
+
+        foreach (var ch in _channels)
+        {
+            sb.AppendLine($"  - [{ch.SourceType}] {ch.Name} ({ch.HardwareName}) · RPM={ch.CurrentRpm:0} · ReadOnly={ch.IsReadOnly}");
+        }
+
+        if (p.IsLaptop && !HasWritableCpuFans)
+        {
+            sb.AppendLine($"Fallback Térmico Windows: {ThermalBackend.StatusSummary}");
+        }
+
+        sb.AppendLine("Hardwares LHM:");
+        try
+        {
+            lock (_monitor.SyncLock)
+            {
+                foreach (var hw in _computer.Hardware)
+                {
+                    int fanCount = hw.Sensors.Count(s => s.SensorType == SensorType.Fan);
+                    int ctrlCount = hw.Sensors.Count(s => s.SensorType == SensorType.Control);
+                    sb.AppendLine($"  * {hw.HardwareType}: {hw.Name} (Fans={fanCount}, Controls={ctrlCount})");
+                    foreach (var sub in hw.SubHardware)
+                    {
+                        int sf = sub.Sensors.Count(s => s.SensorType == SensorType.Fan);
+                        int sc = sub.Sensors.Count(s => s.SensorType == SensorType.Control);
+                        sb.AppendLine($"    > Sub: {sub.HardwareType} {sub.Name} (Fans={sf}, Controls={sc})");
+                    }
+                }
+            }
+        }
+        catch { }
+
+        return sb.ToString();
     }
 
     /// <summary>

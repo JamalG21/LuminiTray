@@ -10,6 +10,7 @@ Estas regras são permanentes e devem ser rigorosamente seguidas em todas as int
   - **Imutabilidade de Versões Publicadas:** Uma versão lançada jamais deve ter seu conteúdo alterado; qualquer modificação futura exige um novo incremento de versão.
   - **Sincronização nos Arquivos de Projeto:** Sempre atualizar as tags `<Version>`, `<AssemblyVersion>` e `<FileVersion>` no arquivo de projeto `LuminiTray.csproj` em conjunto com a nova versão.
 - **Registro no Changelog:** Toda alteração DEVE ser documentada e registrada no arquivo `CHANGELOG.md`, sob o novo número de versão e a data correspondente, categorizando em seções claras como `### 🚀 Adicionado & Aprimorado`, `### ⚡ Performance & Otimização` ou `### 🛠️ Correções`.
+- **Inclusão de Versões Não Publicadas no Changelog:** Ao atualizar o `CHANGELOG.md`, ignore apenas as changelogs/versões que já foram publicadas; todas as outras versões acima da última publicada devem aparecer obrigatoriamente no arquivo, mesmo que ainda não publicadas ou pulando versão.
 
 ## 2. Política de Publicação do Executável (.exe)
 - **Não publicar automaticamente:** NUNCA execute scripts de publicação como `publicar.bat` ou comandos de publicação `dotnet publish` para gerar executáveis únicos distribuíveis (`Single-File Release`) automaticamente, exceto quando o usuário solicitar expressamente (ex: *"gere o executável"*, *"publique o .exe"*, *"faça a release"*).

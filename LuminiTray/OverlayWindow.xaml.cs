@@ -4,7 +4,6 @@ using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Interop;
 using System.Windows.Media;
-using System.Windows.Media.Effects;
 using System.Windows.Shapes;
 using System.Windows.Threading;
 
@@ -47,6 +46,7 @@ public partial class OverlayWindow : Window
     public OverlayWindow()
     {
         InitializeComponent();
+        ApplyTextOutlineEffect();
         _onForeground = (_, _, hwnd, _, _, _, _) => { TrackGame(hwnd); KeepOnTop(); };
         SourceInitialized += (_, _) =>
         {
@@ -179,23 +179,19 @@ public partial class OverlayWindow : Window
 
     private void ApplyTextOutlineEffect()
     {
-        if (ContentStack == null) return;
-
         bool shouldApply = _outlineEnabled && (!_outlineAutoOnly || BackgroundOpacity < 0.50);
         if (shouldApply)
         {
-            ContentStack.Effect = new DropShadowEffect
-            {
-                ShadowDepth = 0,
-                BlurRadius = Math.Clamp(_outlineThickness, 1.0, 10.0),
-                Opacity = Math.Clamp(_outlineOpacity, 0.0, 1.0),
-                Color = Colors.Black,
-                RenderingBias = RenderingBias.Performance
-            };
+            byte alpha = (byte)Math.Clamp(Math.Round(Math.Clamp(_outlineOpacity, 0.0, 1.0) * 255), 0, 255);
+            var brush = new SolidColorBrush(Color.FromArgb(alpha, 0, 0, 0));
+            brush.Freeze();
+            Resources["OverlayStrokeBrush"] = brush;
+            Resources["OverlayStrokeThickness"] = Math.Clamp(_outlineThickness, 0.5, 10.0);
         }
         else
         {
-            ContentStack.Effect = null;
+            Resources["OverlayStrokeBrush"] = Brushes.Transparent;
+            Resources["OverlayStrokeThickness"] = 0.0;
         }
     }
 

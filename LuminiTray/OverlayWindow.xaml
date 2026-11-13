@@ -1,10 +1,16 @@
 <Window x:Class="LuminiTray.OverlayWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:controls="clr-namespace:LuminiTray.Controls"
+        xmlns:sys="clr-namespace:System;assembly=System.Runtime"
         Title="Lumini Tray - Overlay de Jogos" WindowStyle="None" AllowsTransparency="True" Background="Transparent"
         Topmost="True" ShowInTaskbar="False" ShowActivated="False" ResizeMode="CanResize" Focusable="False"
         MinWidth="140" MinHeight="60" UseLayoutRounding="True" TextOptions.TextFormattingMode="Display"
         PreviewMouseWheel="Window_PreviewMouseWheel" MouseDown="Window_MouseDown">
+    <Window.Resources>
+        <SolidColorBrush x:Key="OverlayStrokeBrush" Color="Transparent"/>
+        <sys:Double x:Key="OverlayStrokeThickness">0</sys:Double>
+    </Window.Resources>
     <Border x:Name="Box" Background="#D9000000" BorderBrush="#33FFFFFF" BorderThickness="1" CornerRadius="6" Padding="10,8"
             HorizontalAlignment="Stretch" VerticalAlignment="Stretch" ClipToBounds="True">
         <Grid>
@@ -19,11 +25,15 @@
                 </Grid.LayoutTransform>
                 <StackPanel x:Name="ContentStack" HorizontalAlignment="Left" TextElement.FontFamily="Cascadia Mono, Consolas" TextElement.FontSize="12" TextElement.Foreground="#F5F5F5">
                     <StackPanel x:Name="OFpsRow" Orientation="Horizontal">
-                        <TextBlock x:Name="OFps" Text="—" FontSize="24" FontWeight="Bold"/>
-                        <TextBlock x:Name="OFpsUnit" Text=" FPS" Foreground="#8C8C8C" VerticalAlignment="Bottom" Margin="0,0,0,4"/>
-                        <TextBlock x:Name="OFrameTime" Text="" Foreground="#8C8C8C" VerticalAlignment="Bottom" Margin="12,0,0,4"/>
+                        <controls:OutlinedTextBlock x:Name="OFps" Text="—" FontSize="24" FontWeight="Bold"
+                                                    Stroke="{DynamicResource OverlayStrokeBrush}" StrokeThickness="{DynamicResource OverlayStrokeThickness}"/>
+                        <controls:OutlinedTextBlock x:Name="OFpsUnit" Text=" FPS" Foreground="#8C8C8C" VerticalAlignment="Bottom" Margin="0,0,0,4"
+                                                    Stroke="{DynamicResource OverlayStrokeBrush}" StrokeThickness="{DynamicResource OverlayStrokeThickness}"/>
+                        <controls:OutlinedTextBlock x:Name="OFrameTime" Text="" Foreground="#8C8C8C" VerticalAlignment="Bottom" Margin="12,0,0,4"
+                                                    Stroke="{DynamicResource OverlayStrokeBrush}" StrokeThickness="{DynamicResource OverlayStrokeThickness}"/>
                     </StackPanel>
-                    <TextBlock x:Name="OLow" Text="1% low —" Foreground="#8C8C8C"/>
+                    <controls:OutlinedTextBlock x:Name="OLow" Text="1% low —" Foreground="#8C8C8C"
+                                                Stroke="{DynamicResource OverlayStrokeBrush}" StrokeThickness="{DynamicResource OverlayStrokeThickness}"/>
                     <Canvas x:Name="OGraph" Height="30" Margin="0,6,0,4" ClipToBounds="True" HorizontalAlignment="Stretch"/>
                     <ItemsControl x:Name="ORows" Margin="0,2,0,0">
                         <ItemsControl.ItemTemplate>
@@ -33,13 +43,16 @@
                                         <ColumnDefinition Width="48"/>
                                         <ColumnDefinition Width="*"/>
                                     </Grid.ColumnDefinitions>
-                                    <TextBlock Text="{Binding Label}" Foreground="#8C8C8C"/>
-                                    <TextBlock Grid.Column="1" Text="{Binding Value}" HorizontalAlignment="Right" TextAlignment="Right"/>
+                                    <controls:OutlinedTextBlock Text="{Binding Label}" Foreground="#8C8C8C"
+                                                                Stroke="{DynamicResource OverlayStrokeBrush}" StrokeThickness="{DynamicResource OverlayStrokeThickness}"/>
+                                    <controls:OutlinedTextBlock Grid.Column="1" Text="{Binding Value}" HorizontalAlignment="Right" TextAlignment="Right"
+                                                                Stroke="{DynamicResource OverlayStrokeBrush}" StrokeThickness="{DynamicResource OverlayStrokeThickness}"/>
                                 </Grid>
                             </DataTemplate>
                         </ItemsControl.ItemTemplate>
                     </ItemsControl>
-                    <TextBlock x:Name="OGame" Text="" Foreground="#5A5A5A" FontSize="10" Margin="0,5,0,0" TextTrimming="CharacterEllipsis"/>
+                    <controls:OutlinedTextBlock x:Name="OGame" Text="" Foreground="#5A5A5A" FontSize="10" Margin="0,5,0,0" TextTrimming="CharacterEllipsis"
+                                                Stroke="{DynamicResource OverlayStrokeBrush}" StrokeThickness="{DynamicResource OverlayStrokeThickness}"/>
                 </StackPanel>
             </Grid>
         </Grid>

@@ -512,4 +512,74 @@ public partial class MainWindow
             RefreshAudioUi();
         }
     }
+
+    private void InitTweaksPage()
+    {
+        InitSettingsPage();
+        _isSettingsLoading = true;
+        try
+        {
+            if (ChkTweaksMiniTask != null)
+                ChkTweaksMiniTask.IsChecked = _settings.MiniTaskVisible;
+            if (ChkTweaksDisableOfficeHotkeys != null)
+                ChkTweaksDisableOfficeHotkeys.IsChecked = WindowsDebloatService.AreOfficeHotkeysDisabled();
+            if (TxtTweaksOfficeHotkeysStatus != null)
+            {
+                bool disabled = WindowsDebloatService.AreOfficeHotkeysDisabled();
+                TxtTweaksOfficeHotkeysStatus.Text = disabled
+                    ? "Ativo: atalhos Ctrl+Shift+Alt+Win bloqueados no Windows."
+                    : "Padrão do Windows (atalhos do Office habilitados).";
+            }
+        }
+        finally
+        {
+            _isSettingsLoading = false;
+        }
+    }
+
+    private void TweaksMiniTask_Click(object sender, RoutedEventArgs e)
+    {
+        if (_isSettingsLoading) return;
+        bool enable = ChkTweaksMiniTask?.IsChecked == true;
+        if (ChkMiniTaskOverlay != null)
+        {
+            ChkMiniTaskOverlay.IsChecked = enable;
+        }
+        else
+        {
+            _settings.MiniTaskVisible = enable;
+            _settings.Save();
+        }
+    }
+
+    private void TweaksDisableOfficeHotkeys_Click(object sender, RoutedEventArgs e)
+    {
+        if (_isSettingsLoading) return;
+        bool disable = ChkTweaksDisableOfficeHotkeys?.IsChecked == true;
+        WindowsDebloatService.SetOfficeHotkeysDisabled(disable);
+        if (TxtTweaksOfficeHotkeysStatus != null)
+        {
+            TxtTweaksOfficeHotkeysStatus.Text = disable
+                ? "Ativo: atalhos Ctrl+Shift+Alt+Win bloqueados no Windows."
+                : "Padrão do Windows (atalhos do Office habilitados).";
+        }
+    }
+
+    private void TweaksOpenAudio_Click(object sender, RoutedEventArgs e) => ShowPage("PageAudio");
+    private void TweaksOpenSuppressor_Click(object sender, RoutedEventArgs e)
+    {
+        if (NavSuppressor != null) NavSuppressor.IsChecked = true;
+        else ShowPage("PageSuppressor");
+    }
+    private void TweaksOpenOverlay_Click(object sender, RoutedEventArgs e)
+    {
+        if (NavOverlay != null) NavOverlay.IsChecked = true;
+        else ShowPage("PageOverlay");
+    }
+    private void TweaksOpenWallpapers_Click(object sender, RoutedEventArgs e) => ShowPage("PageWallpapers");
+    private void TweaksOpenDebloat_Click(object sender, RoutedEventArgs e)
+    {
+        if (NavWindowsDebloat != null) NavWindowsDebloat.IsChecked = true;
+        else ShowPage("PageWindowsDebloat");
+    }
 }

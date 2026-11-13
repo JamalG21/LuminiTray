@@ -144,6 +144,7 @@ public sealed class NavigationHistoryManager
             "PageBackup" => "Central de Backup",
             "PageFanControl" => "Controle de Ventoinhas",
             "PageWindowsDebloat" => "Windows & Debloat",
+            "PageTweaks" => "Tweaks Exclusivos",
             "PageSuppressor" => "Supressor de Ruído",
             "PageSettings" => "Configurações",
             "PageWallpapers" => "Wallpapers & Visual",
@@ -157,6 +158,7 @@ public sealed class NavigationHistoryManager
             "PagePerifAudio" => "Periféricos · Áudio",
             "PagePerifMic" => "Periféricos · Microfone",
             "PagePerifGamepad" => "Periféricos · Controle",
+            "PagePerifDevices" => "Periféricos · Dispositivos",
             _ => pageTag.StartsWith("Page") ? pageTag.Substring(4) : pageTag
         };
     }

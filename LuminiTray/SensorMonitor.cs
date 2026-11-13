@@ -63,7 +63,7 @@ public sealed class SensorMonitor : IDisposable
             IsMotherboardEnabled = true,
             IsStorageEnabled = true,
             IsNetworkEnabled = false,
-            IsControllerEnabled = false
+            IsControllerEnabled = true
         };
     }
 
@@ -167,7 +167,7 @@ public sealed class SensorMonitor : IDisposable
 
         foreach (var s in hw.Sensors)
         {
-            if (s.SensorType is SensorType.Temperature or SensorType.Fan or SensorType.Control)
+            if (s.SensorType is SensorType.Temperature or SensorType.Load or SensorType.Fan or SensorType.Control)
             {
                 if (s.SensorType == SensorType.Temperature &&
                     s.Name.Contains("Distance to TjMax", StringComparison.OrdinalIgnoreCase))

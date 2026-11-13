@@ -1030,7 +1030,11 @@ public sealed class LivelyWallpaperService : IDisposable
 
     private void UpdateRotationTimer()
     {
-        Application.Current?.Dispatcher?.Invoke(() =>
+        var dispatcher = Application.Current?.Dispatcher;
+        if (dispatcher == null || dispatcher.HasShutdownStarted || dispatcher.HasShutdownFinished || !dispatcher.Thread.IsAlive)
+            return;
+
+        dispatcher.Invoke(() =>
         {
             _rotationTimer?.Stop();
             _rotationTimer = null;

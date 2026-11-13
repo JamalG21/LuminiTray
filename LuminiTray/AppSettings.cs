@@ -247,6 +247,14 @@ public sealed class AppSettings
         return new AppSettings();
     }
 
+    public List<string> BluetoothFavoriteAddresses { get; set; } = new();
+    public bool BluetoothManualMode { get; set; } = false;
+
+    // Remapeamento de Teclado (estilo PowerToys Keyboard Manager)
+    public bool KeyboardRemapEnabled { get; set; } = false;
+    public List<KeyRemapRule> KeyRemaps { get; set; } = new();
+    public List<ShortcutRemapRule> ShortcutRemaps { get; set; } = new();
+
     public void Save()
     {
         Directory.CreateDirectory(Folder);
