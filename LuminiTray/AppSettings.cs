@@ -250,10 +250,11 @@ public sealed class AppSettings
     public List<string> BluetoothFavoriteAddresses { get; set; } = new();
     public bool BluetoothManualMode { get; set; } = false;
 
-    // Remapeamento de Teclado (estilo PowerToys Keyboard Manager)
+    // Remapeamento de Teclado
     public bool KeyboardRemapEnabled { get; set; } = false;
     public List<KeyRemapRule> KeyRemaps { get; set; } = new();
     public List<ShortcutRemapRule> ShortcutRemaps { get; set; } = new();
+    public List<string> KeyboardRemapExcludedApps { get; set; } = new();
 
     public void Save()
     {

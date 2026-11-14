@@ -439,17 +439,37 @@ public class OverlayAndAppsTests
         var resChrome = KeyboardRemapperService.TryResolveRemap(0x43, RemapModifiers.Ctrl, "chrome.exe", keyRules, shortcutRules);
         Assert.IsFalse(resChrome.Matched);
 
-        // 4. Serialização em AppSettings (padrão desativado e preservação de regras)
+        // 3b. Escopo por aplicativo em tecla única
+        var scopedKeyRules = new List<KeyRemapRule>
+        {
+            new KeyRemapRule { FromVk = 0x70, ToVk = 0x71, TargetApp = "code.exe", IsEnabled = true } // F1 -> F2 apenas no VS Code
+        };
+        var resF1Code = KeyboardRemapperService.TryResolveRemap(0x70, RemapModifiers.None, "code", scopedKeyRules, shortcutRules);
+        Assert.IsTrue(resF1Code.Matched);
+        Assert.AreEqual(0x71, resF1Code.TargetVk);
+        var resF1Other = KeyboardRemapperService.TryResolveRemap(0x70, RemapModifiers.None, "notepad.exe", scopedKeyRules, shortcutRules);
+        Assert.IsFalse(resF1Other.Matched);
+
+        // 3c. Lista de exclusão bloqueia regras globais e específicas
+        var excludedApps = new[] { "valorant.exe", "notepad" };
+        var resExcludedKey = KeyboardRemapperService.TryResolveRemap(0x41, RemapModifiers.None, "valorant", keyRules, shortcutRules, excludedApps);
+        Assert.IsFalse(resExcludedKey.Matched);
+        var resExcludedShortcut = KeyboardRemapperService.TryResolveRemap(0x43, RemapModifiers.Ctrl, "notepad.exe", keyRules, shortcutRules, excludedApps);
+        Assert.IsFalse(resExcludedShortcut.Matched);
+
+        // 4. Serialização em AppSettings (padrão desativado e preservação de regras + exclusões)
         var settings = new AppSettings();
         Assert.IsFalse(settings.KeyboardRemapEnabled);
         settings.KeyboardRemapEnabled = true;
         settings.KeyRemaps = keyRules;
         settings.ShortcutRemaps = shortcutRules;
+        settings.KeyboardRemapExcludedApps = new List<string> { "valorant.exe" };
         string json = JsonSerializer.Serialize(settings);
         var restored = JsonSerializer.Deserialize<AppSettings>(json)!;
         Assert.IsTrue(restored.KeyboardRemapEnabled);
         Assert.AreEqual(3, restored.KeyRemaps.Count);
         Assert.AreEqual(1, restored.ShortcutRemaps.Count);
         Assert.AreEqual("notepad.exe", restored.ShortcutRemaps[0].TargetApp);
+        CollectionAssert.Contains(restored.KeyboardRemapExcludedApps, "valorant.exe");
     }
 }

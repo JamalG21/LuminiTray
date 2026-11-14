@@ -158,7 +158,7 @@ public partial class MainWindow : Window
             EnsureFanControlServiceRunning();
             EnsureSuppressorServiceRunning();
             InitializeWallpaperSlideshowOnStartup();
-            try { KeyboardRemapperService.Instance.UpdateRules(_settings.KeyboardRemapEnabled, _settings.KeyRemaps, _settings.ShortcutRemaps); } catch { }
+            try { KeyboardRemapperService.Instance.UpdateRules(_settings.KeyboardRemapEnabled, _settings.KeyRemaps, _settings.ShortcutRemaps, _settings.KeyboardRemapExcludedApps); } catch { }
 
             if (_isAutoStart || (_settings.AutoStartWithWindows && _isMinimized))
             {

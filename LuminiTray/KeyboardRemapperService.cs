@@ -23,6 +23,7 @@ public sealed class KeyRemapRule
     public int ToVk { get; set; }
     public RemapModifiers ToModifiers { get; set; } = RemapModifiers.None;
     public bool IsDisabled { get; set; }
+    public string TargetApp { get; set; } = "";
     public bool IsEnabled { get; set; } = true;
 }
 
@@ -63,6 +64,7 @@ public sealed class KeyboardRemapperService : IDisposable
     private readonly object _lock = new();
     private List<KeyRemapRule> _keyRules = new();
     private List<ShortcutRemapRule> _shortcutRules = new();
+    private HashSet<string> _excludedApps = new(StringComparer.OrdinalIgnoreCase);
     private bool _enabled;
     private volatile bool _pausedForCapture;
 
@@ -176,13 +178,39 @@ public sealed class KeyboardRemapperService : IDisposable
 
     public void PauseForCapture(bool paused) => _pausedForCapture = paused;
 
-    public void UpdateRules(bool enabled, IEnumerable<KeyRemapRule>? keyRules, IEnumerable<ShortcutRemapRule>? shortcutRules)
+    public static string NormalizeProcessName(string? name)
+    {
+        if (string.IsNullOrWhiteSpace(name)) return "";
+        string clean = name.Trim();
+        if (clean.EndsWith(".exe", StringComparison.OrdinalIgnoreCase))
+            clean = clean[..^4];
+        return clean;
+    }
+
+    public static bool IsTargetAppMatch(string? targetApp, string? activeProcessName)
+    {
+        if (string.IsNullOrWhiteSpace(targetApp)) return true;
+        string target = NormalizeProcessName(targetApp);
+        string proc = NormalizeProcessName(activeProcessName);
+        return !string.IsNullOrEmpty(proc) && proc.Equals(target, StringComparison.OrdinalIgnoreCase);
+    }
+
+    public void UpdateRules(
+        bool enabled,
+        IEnumerable<KeyRemapRule>? keyRules,
+        IEnumerable<ShortcutRemapRule>? shortcutRules,
+        IEnumerable<string>? excludedApps = null)
     {
         lock (_lock)
         {
             _enabled = enabled;
             _keyRules = keyRules?.Where(r => r != null).ToList() ?? new List<KeyRemapRule>();
             _shortcutRules = shortcutRules?.Where(r => r != null).ToList() ?? new List<ShortcutRemapRule>();
+            _excludedApps = new HashSet<string>(
+                (excludedApps ?? Enumerable.Empty<string>())
+                .Select(NormalizeProcessName)
+                .Where(n => !string.IsNullOrEmpty(n)),
+                StringComparer.OrdinalIgnoreCase);
 
             bool shouldRun = _enabled && (_keyRules.Any(r => r.IsEnabled) || _shortcutRules.Any(r => r.IsEnabled));
             if (shouldRun)
@@ -201,11 +229,25 @@ public sealed class KeyboardRemapperService : IDisposable
         RemapModifiers currentModifiers,
         string? activeProcessName,
         IReadOnlyList<KeyRemapRule> keyRules,
-        IReadOnlyList<ShortcutRemapRule> shortcutRules)
+        IReadOnlyList<ShortcutRemapRule> shortcutRules,
+        IReadOnlyCollection<string>? excludedApps = null)
     {
+        if (excludedApps != null && excludedApps.Count > 0)
+        {
+            string proc = NormalizeProcessName(activeProcessName);
+            if (!string.IsNullOrEmpty(proc))
+            {
+                foreach (var ex in excludedApps)
+                {
+                    if (proc.Equals(NormalizeProcessName(ex), StringComparison.OrdinalIgnoreCase))
+                        return new RemapResolution(false, false, RemapModifiers.None, 0);
+                }
+            }
+        }
+
         int normalizedVk = NormalizeSideModifier(vk);
 
-        // 1. Atalhos têm precedência sobre remapeamento de tecla única (como no PowerToys Keyboard Manager)
+        // 1. Atalhos têm precedência sobre remapeamento de tecla única
         if (currentModifiers != RemapModifiers.None)
         {
             foreach (var sr in shortcutRules)
@@ -213,19 +255,7 @@ public sealed class KeyboardRemapperService : IDisposable
                 if (!sr.IsEnabled) continue;
                 if (sr.FromModifiers != currentModifiers) continue;
                 if (sr.FromVk != vk && sr.FromVk != normalizedVk) continue;
-
-                if (!string.IsNullOrWhiteSpace(sr.TargetApp))
-                {
-                    string proc = activeProcessName ?? "";
-                    string target = sr.TargetApp.Trim();
-                    if (target.EndsWith(".exe", StringComparison.OrdinalIgnoreCase))
-                        target = target[..^4];
-                    if (proc.EndsWith(".exe", StringComparison.OrdinalIgnoreCase))
-                        proc = proc[..^4];
-
-                    if (!proc.Equals(target, StringComparison.OrdinalIgnoreCase))
-                        continue;
-                }
+                if (!IsTargetAppMatch(sr.TargetApp, activeProcessName)) continue;
 
                 return new RemapResolution(true, sr.IsDisabled || sr.ToVk <= 0, sr.ToModifiers, sr.ToVk);
             }
@@ -235,10 +265,10 @@ public sealed class KeyboardRemapperService : IDisposable
         foreach (var kr in keyRules)
         {
             if (!kr.IsEnabled) continue;
-            if (kr.FromVk == vk)
-            {
-                return new RemapResolution(true, kr.IsDisabled || kr.ToVk <= 0, kr.ToModifiers, kr.ToVk);
-            }
+            if (kr.FromVk != vk) continue;
+            if (!IsTargetAppMatch(kr.TargetApp, activeProcessName)) continue;
+
+            return new RemapResolution(true, kr.IsDisabled || kr.ToVk <= 0, kr.ToModifiers, kr.ToVk);
         }
 
         return new RemapResolution(false, false, RemapModifiers.None, 0);
@@ -297,14 +327,19 @@ public sealed class KeyboardRemapperService : IDisposable
                 }
 
                 var mods = GetCurrentModifiers(vk);
-                string? fgProc = _shortcutRules.Any(s => s.IsEnabled && !string.IsNullOrWhiteSpace(s.TargetApp))
-                    ? GetForegroundProcessName()
-                    : null;
+                bool needsFgProc;
+                lock (_lock)
+                {
+                    needsFgProc = _excludedApps.Count > 0
+                        || _keyRules.Any(k => k.IsEnabled && !string.IsNullOrWhiteSpace(k.TargetApp))
+                        || _shortcutRules.Any(s => s.IsEnabled && !string.IsNullOrWhiteSpace(s.TargetApp));
+                }
+                string? fgProc = needsFgProc ? GetForegroundProcessName() : null;
 
                 RemapResolution res;
                 lock (_lock)
                 {
-                    res = TryResolveRemap(vk, mods, fgProc, _keyRules, _shortcutRules);
+                    res = TryResolveRemap(vk, mods, fgProc, _keyRules, _shortcutRules, _excludedApps);
                 }
 
                 if (res.Matched)

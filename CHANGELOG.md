@@ -3,6 +3,14 @@
 Todas as alterações notáveis deste projeto serão documentadas neste arquivo.
 O formato é baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/), e este projeto adere ao [Semantic Versioning](https://semver.org/lang/pt-BR/).
 
+## [0.28.1] - 2026-11-13
+
+### 🛠️ Correções
+- **Campo App Alvo & Escopo no Remapeador de Teclado:**
+  - Corrigida sobreposição de `TxtRemapCaptureHint` sobre `PanelRemapTargetApp` na mesma célula do `Grid` em `MainWindow.xaml`, que impedia clicar na caixa `TxtRemapTargetApp`.
+  - Habilitado **App alvo (opcional)** também para **Tecla Única** (além de **Atalho**), com botão **"🔍 Escolher..."** integrado ao seletor de aplicativos (`AppPickerWindow`) e botão rápido de limpeza.
+  - Adicionada **Lista de Exclusão de Aplicativos** como complemento de controle do escopo (com seletor `AppPickerWindow`, entrada manual e chips removíveis), ignorando o remapeamento quando o aplicativo excluído estiver em foco.
+
 ## [0.28.0] - 2026-11-12
 
 ### 🚀 Adicionado & Aprimorado

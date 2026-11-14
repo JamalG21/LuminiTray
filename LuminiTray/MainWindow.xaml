@@ -12576,16 +12576,19 @@
                         </StackPanel>
                       </Grid>
 
+                      <TextBlock x:Name="TxtRemapCaptureHint" Text="Dica: use 'Digitar Tecla' ou selecione na lista para criar regras." Foreground="{DynamicResource Faint}" FontSize="11" Margin="0,0,0,8" TextWrapping="Wrap" />
+
                       <Grid>
                         <Grid.ColumnDefinitions>
                           <ColumnDefinition Width="*" />
                           <ColumnDefinition Width="Auto" />
                         </Grid.ColumnDefinitions>
-                        <StackPanel x:Name="PanelRemapTargetApp" Orientation="Horizontal" Visibility="Collapsed" VerticalAlignment="Center">
+                        <StackPanel x:Name="PanelRemapTargetApp" Orientation="Horizontal" VerticalAlignment="Center">
                           <TextBlock Text="App alvo (opcional):" Foreground="{DynamicResource Muted}" FontSize="11.5" VerticalAlignment="Center" Margin="0,0,8,0" />
-                          <TextBox x:Name="TxtRemapTargetApp" Width="180" Height="28" VerticalContentAlignment="Center" ToolTip="Ex: notepad.exe (deixe vazio para todos os aplicativos)" />
+                          <TextBox x:Name="TxtRemapTargetApp" Width="170" Height="28" VerticalContentAlignment="Center" ToolTip="Ex: notepad.exe (deixe vazio para todos os aplicativos)" />
+                          <Button x:Name="BtnPickRemapTargetApp" Style="{StaticResource OutlineButton}" Content="🔍 Escolher..." Padding="10,4" Height="28" FontSize="11" Margin="6,0,0,0" ToolTip="Pesquisar programa instalado, em execução ou jogo" Click="BtnPickRemapTargetApp_Click" />
+                          <Button x:Name="BtnClearRemapTargetApp" Style="{StaticResource GhostButton}" Content="✕" Padding="8,4" Height="28" FontSize="11" Margin="4,0,0,0" ToolTip="Limpar programa alvo (aplicar em todos os aplicativos)" Click="BtnClearRemapTargetApp_Click" />
                         </StackPanel>
-                        <TextBlock x:Name="TxtRemapCaptureHint" Text="Dica: use 'Digitar Tecla' ou selecione na lista para criar regras." Foreground="{DynamicResource Faint}" FontSize="11" VerticalAlignment="Center" />
                         <Button x:Name="BtnAddKeyboardRemap" Grid.Column="1" Style="{StaticResource PrimaryButton}" Content="+ ADICIONAR REGRA" Padding="14,7" FontSize="11.5" Click="BtnAddKeyboardRemap_Click" />
                       </Grid>
                     </StackPanel>
@@ -12596,7 +12599,33 @@
                   <StackPanel x:Name="PanelKeyRemapsList" Margin="0,0,0,12" />
 
                   <TextBlock Text="ATALHOS REMAPEADOS" Style="{StaticResource Label}" Margin="0,0,0,6" />
-                  <StackPanel x:Name="PanelShortcutRemapsList" />
+                  <StackPanel x:Name="PanelShortcutRemapsList" Margin="0,0,0,14" />
+
+                  <!-- Lista de Exclusão de Aplicativos -->
+                  <Border Background="{DynamicResource CardSubtleBg}" BorderBrush="{DynamicResource Line}" BorderThickness="1" CornerRadius="8" Padding="12">
+                    <StackPanel>
+                      <TextBlock Text="LISTA DE EXCLUSÃO DE APLICATIVOS (NÃO REMAPEAR NESTES PROGRAMAS)" Style="{StaticResource Label}" Margin="0,0,0,4" />
+                      <TextBlock Text="Quando algum destes aplicativos estiver em foco, o remapeamento de teclas e atalhos será ignorado automaticamente." Foreground="{DynamicResource Faint}" FontSize="11" Margin="0,0,0,10" TextWrapping="Wrap" />
+
+                      <Grid Margin="0,0,0,10">
+                        <Grid.ColumnDefinitions>
+                          <ColumnDefinition Width="Auto" />
+                          <ColumnDefinition Width="*" />
+                          <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <Button x:Name="BtnOpenRemapExclusionPicker" Grid.Column="0" Style="{StaticResource PrimaryButton}" Content="🔍 Escolher da Lista..." Padding="12,5" Height="30" FontSize="11" FontWeight="SemiBold" Margin="0,0,8,0" ToolTip="Pesquisar programas instalados, jogos ou processos em execução" Click="BtnOpenRemapExclusionPicker_Click" />
+                        <TextBox x:Name="TxtNewRemapExclusion" Grid.Column="1" Height="30" VerticalContentAlignment="Center" ToolTip="Digite o executável (ex: valorant.exe) e pressione Enter" KeyDown="TxtNewRemapExclusion_KeyDown" />
+                        <Button x:Name="BtnAddRemapExclusion" Grid.Column="2" Style="{StaticResource OutlineButton}" Content="+ Adicionar" Padding="12,5" Height="30" FontSize="11" Margin="6,0,0,0" Click="BtnAddRemapExclusion_Click" />
+                      </Grid>
+
+                      <Border Background="{DynamicResource Bg}" BorderBrush="{DynamicResource Line}" BorderThickness="1" CornerRadius="6" Padding="8" MinHeight="40">
+                        <StackPanel>
+                          <WrapPanel x:Name="PanelRemapExcludedAppChips" Orientation="Horizontal" />
+                          <TextBlock x:Name="TxtNoRemapExcludedApps" Text="Nenhum aplicativo na lista de exclusão. As regras globais funcionam em todos os programas." Foreground="{DynamicResource Muted}" FontSize="11" FontStyle="Italic" VerticalAlignment="Center" Margin="2,4" />
+                        </StackPanel>
+                      </Border>
+                    </StackPanel>
+                  </Border>
                 </StackPanel>
               </Border>
 

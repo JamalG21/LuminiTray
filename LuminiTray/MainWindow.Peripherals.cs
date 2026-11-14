@@ -1883,6 +1883,7 @@ public partial class MainWindow
                 ChkKeyboardRemapEnabled.IsChecked = _settings.KeyboardRemapEnabled;
             UpdateRemapModeVisibility();
             RenderRemapLists();
+            RefreshRemapExcludedAppsChips();
         }
         finally
         {
@@ -1896,7 +1897,7 @@ public partial class MainWindow
         if (PanelRemapFromMods != null)
             PanelRemapFromMods.Visibility = isShortcut ? Visibility.Visible : Visibility.Collapsed;
         if (PanelRemapTargetApp != null)
-            PanelRemapTargetApp.Visibility = isShortcut ? Visibility.Visible : Visibility.Collapsed;
+            PanelRemapTargetApp.Visibility = Visibility.Visible;
 
         bool isDisabled = ChkRemapToDisabled?.IsChecked == true;
         if (CmbRemapToKey != null) CmbRemapToKey.IsEnabled = !isDisabled;
@@ -2067,6 +2068,7 @@ public partial class MainWindow
             toMods = ReadModifiersFromCheckboxes(ChkRemapToCtrl, ChkRemapToAlt, ChkRemapToShift, ChkRemapToWin);
         }
 
+        string targetApp = (TxtRemapTargetApp?.Text ?? "").Trim();
         bool isShortcut = RbRemapTypeShortcut?.IsChecked == true;
         if (isShortcut)
         {
@@ -2076,7 +2078,6 @@ public partial class MainWindow
                 Toast("REMAPEAMENTO", "Atalhos exigem pelo menos um modificador (Ctrl, Alt, Shift ou Win).", "\uE7BA");
                 return;
             }
-            string targetApp = (TxtRemapTargetApp?.Text ?? "").Trim();
             _settings.ShortcutRemaps.Add(new ShortcutRemapRule
             {
                 FromModifiers = fromMods,
@@ -2101,6 +2102,7 @@ public partial class MainWindow
                 ToModifiers = toMods,
                 ToVk = toVk,
                 IsDisabled = isDisabled,
+                TargetApp = targetApp,
                 IsEnabled = true
             });
         }
@@ -2123,7 +2125,8 @@ public partial class MainWindow
         KeyboardRemapperService.Instance.UpdateRules(
             _settings.KeyboardRemapEnabled,
             _settings.KeyRemaps,
-            _settings.ShortcutRemaps);
+            _settings.ShortcutRemaps,
+            _settings.KeyboardRemapExcludedApps);
     }
 
     private void RenderRemapLists()
@@ -2153,9 +2156,10 @@ public partial class MainWindow
             {
                 string fromLabel = KeyboardRemapperService.FormatKeyName(rule.FromVk);
                 string toLabel = KeyboardRemapperService.FormatShortcut(rule.ToModifiers, rule.ToVk, rule.IsDisabled);
+                string appNote = string.IsNullOrWhiteSpace(rule.TargetApp) ? "Global (todos os apps)" : $"App: {rule.TargetApp}";
                 PanelKeyRemapsList.Children.Add(BuildRemapRuleRow(
                     $"{fromLabel}  \u2192  {toLabel}",
-                    null,
+                    appNote,
                     rule.IsEnabled,
                     enabled => { rule.IsEnabled = enabled; ApplyKeyboardRemaps(); },
                     () => { _settings.KeyRemaps.Remove(rule); ApplyKeyboardRemaps(); RenderRemapLists(); },
@@ -2256,7 +2260,7 @@ public partial class MainWindow
             FontSize = 11,
             VerticalAlignment = VerticalAlignment.Center
         };
-        if (TryFindResource("BtnGhost") is Style ghostStyle)
+        if (TryFindResource("GhostButton") is Style ghostStyle)
             btnDel.Style = ghostStyle;
         btnDel.Click += (_, _) => onDelete();
         Grid.SetColumn(btnDel, 2);
@@ -2264,5 +2268,177 @@ public partial class MainWindow
 
         border.Child = grid;
         return border;
+    }
+
+    private void BtnPickRemapTargetApp_Click(object sender, RoutedEventArgs e)
+    {
+        try
+        {
+            var picker = new AppPickerWindow { Owner = this };
+            if (picker.ShowDialog() == true && picker.SelectedExecutables.Count > 0)
+            {
+                if (TxtRemapTargetApp != null)
+                {
+                    TxtRemapTargetApp.Text = picker.SelectedExecutables[0];
+                    TxtRemapTargetApp.Focus();
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show($"Não foi possível abrir o seletor de programas: {ex.Message}", "Lumini Tray", MessageBoxButton.OK, MessageBoxImage.Warning);
+        }
+    }
+
+    private void BtnClearRemapTargetApp_Click(object sender, RoutedEventArgs e)
+    {
+        if (TxtRemapTargetApp != null)
+        {
+            TxtRemapTargetApp.Text = "";
+            TxtRemapTargetApp.Focus();
+        }
+    }
+
+    private void BtnOpenRemapExclusionPicker_Click(object sender, RoutedEventArgs e)
+    {
+        try
+        {
+            var picker = new AppPickerWindow(_settings.KeyboardRemapExcludedApps) { Owner = this };
+            if (picker.ShowDialog() == true && picker.SelectedExecutables.Count > 0)
+            {
+                int added = 0;
+                foreach (var exe in picker.SelectedExecutables)
+                {
+                    if (AddRemapExclusionExe(exe, saveAndApply: false))
+                        added++;
+                }
+
+                if (added > 0)
+                {
+                    ApplyKeyboardRemaps();
+                    RefreshRemapExcludedAppsChips();
+                    Toast("Remapeamento de Teclado", $"{added} aplicativo(s) adicionado(s) à lista de exclusão.", "\uE765");
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show($"Não foi possível abrir o seletor de programas: {ex.Message}", "Lumini Tray", MessageBoxButton.OK, MessageBoxImage.Warning);
+        }
+    }
+
+    private void BtnAddRemapExclusion_Click(object sender, RoutedEventArgs e)
+    {
+        string exe = TxtNewRemapExclusion?.Text?.Trim() ?? "";
+        if (string.IsNullOrEmpty(exe)) return;
+
+        if (AddRemapExclusionExe(exe, saveAndApply: true))
+        {
+            RefreshRemapExcludedAppsChips();
+            Toast("Remapeamento de Teclado", $"'{exe}' adicionado à lista de exclusão.", "\uE765");
+        }
+        else
+        {
+            Toast("Remapeamento de Teclado", $"'{exe}' já está na lista de exclusão.", "\uE7BA");
+        }
+
+        if (TxtNewRemapExclusion != null) TxtNewRemapExclusion.Text = "";
+    }
+
+    private void TxtNewRemapExclusion_KeyDown(object sender, System.Windows.Input.KeyEventArgs e)
+    {
+        if (e.Key == System.Windows.Input.Key.Enter)
+        {
+            BtnAddRemapExclusion_Click(sender, e);
+            e.Handled = true;
+        }
+    }
+
+    private bool AddRemapExclusionExe(string exe, bool saveAndApply)
+    {
+        string clean = exe.Trim();
+        string normalized = KeyboardRemapperService.NormalizeProcessName(clean);
+        if (string.IsNullOrEmpty(normalized)) return false;
+
+        bool exists = _settings.KeyboardRemapExcludedApps.Any(a =>
+            KeyboardRemapperService.NormalizeProcessName(a).Equals(normalized, StringComparison.OrdinalIgnoreCase));
+        if (exists) return false;
+
+        _settings.KeyboardRemapExcludedApps.Add(clean);
+        if (saveAndApply)
+            ApplyKeyboardRemaps();
+        return true;
+    }
+
+    private void RefreshRemapExcludedAppsChips()
+    {
+        if (PanelRemapExcludedAppChips == null || TxtNoRemapExcludedApps == null) return;
+        PanelRemapExcludedAppChips.Children.Clear();
+
+        var apps = _settings.KeyboardRemapExcludedApps;
+        TxtNoRemapExcludedApps.Visibility = apps.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
+
+        var chipBg = TryFindResource("CardSubtleBg") as Brush ?? Brushes.Transparent;
+        var chipBorder = TryFindResource("LineStrong") as Brush ?? Brushes.Gray;
+        var fgBrush = TryFindResource("Fg") as Brush ?? Brushes.White;
+        var mutedBrush = TryFindResource("Muted") as Brush ?? Brushes.Gray;
+        var accentBrush = TryFindResource("Accent") as Brush ?? Brushes.DeepSkyBlue;
+
+        foreach (var app in apps.ToList())
+        {
+            var chip = new Border
+            {
+                Background = chipBg,
+                BorderBrush = chipBorder,
+                BorderThickness = new Thickness(1),
+                CornerRadius = new CornerRadius(12),
+                Padding = new Thickness(10, 4, 6, 4),
+                Margin = new Thickness(0, 0, 6, 6)
+            };
+
+            var sp = new StackPanel { Orientation = Orientation.Horizontal, VerticalAlignment = VerticalAlignment.Center };
+            sp.Children.Add(new TextBlock
+            {
+                Text = "\uE765",
+                FontFamily = TryFindResource("Icons") as FontFamily ?? new FontFamily("Segoe MDL2 Assets"),
+                FontSize = 11,
+                Foreground = accentBrush,
+                Margin = new Thickness(0, 0, 5, 0),
+                VerticalAlignment = VerticalAlignment.Center
+            });
+            sp.Children.Add(new TextBlock
+            {
+                Text = app,
+                Foreground = fgBrush,
+                FontSize = 11.5,
+                FontWeight = FontWeights.SemiBold,
+                VerticalAlignment = VerticalAlignment.Center,
+                Margin = new Thickness(0, 0, 6, 0)
+            });
+
+            var btnRemove = new System.Windows.Controls.Button
+            {
+                Content = "✕",
+                FontSize = 10,
+                Foreground = mutedBrush,
+                Background = Brushes.Transparent,
+                BorderThickness = new Thickness(0),
+                Padding = new Thickness(4, 0, 4, 0),
+                Cursor = System.Windows.Input.Cursors.Hand,
+                VerticalAlignment = VerticalAlignment.Center,
+                ToolTip = $"Remover {app} da lista de exclusão"
+            };
+            string target = app;
+            btnRemove.Click += (_, _) =>
+            {
+                _settings.KeyboardRemapExcludedApps.RemoveAll(a => string.Equals(a, target, StringComparison.OrdinalIgnoreCase));
+                ApplyKeyboardRemaps();
+                RefreshRemapExcludedAppsChips();
+            };
+
+            sp.Children.Add(btnRemove);
+            chip.Child = sp;
+            PanelRemapExcludedAppChips.Children.Add(chip);
+        }
     }
 }
