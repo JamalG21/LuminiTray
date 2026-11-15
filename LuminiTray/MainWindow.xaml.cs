@@ -159,6 +159,7 @@ public partial class MainWindow : Window
             EnsureSuppressorServiceRunning();
             InitializeWallpaperSlideshowOnStartup();
             try { KeyboardRemapperService.Instance.UpdateRules(_settings.KeyboardRemapEnabled, _settings.KeyRemaps, _settings.ShortcutRemaps, _settings.KeyboardRemapExcludedApps); } catch { }
+            if (!_isMinimized && !_settings.StartMinimizedToTray) TriggerAutoUpdateCheck();
 
             if (_isAutoStart || (_settings.AutoStartWithWindows && _isMinimized))
             {
@@ -276,7 +277,9 @@ public partial class MainWindow : Window
                 if (!_timer.IsEnabled) _timer.Start();
                 UpdateSensorPollingState();
                 _ = _monitor.RefreshAsync(updateUi: true);
+                if (_wasMinimizedForUpdate) TriggerAutoUpdateCheck();
             }
+            _wasMinimizedForUpdate = WindowState == WindowState.Minimized;
         };
         Closing += (sender, e) =>
         {
@@ -1335,6 +1338,7 @@ public partial class MainWindow : Window
         BuildOverlayPicker();
         UpdateOverlayPositionUi();
         InitMiniTaskUi();
+        InitOverlayUnitsUi();
         InitOverlayOutlineUi();
         _overlayReady = true;
         UpdateOverlayStatus(null);

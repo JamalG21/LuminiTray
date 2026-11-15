@@ -29,6 +29,7 @@ public partial class MainWindow
             if (ChkSettingsShowMicTray != null) ChkSettingsShowMicTray.IsChecked = _settings.ShowMicTrayIcon;
             if (ChkSettingsShowAudioTray != null) ChkSettingsShowAudioTray.IsChecked = _settings.ShowAudioTrayIcon;
             if (ChkSettingsShowMiniTaskTray != null) ChkSettingsShowMiniTaskTray.IsChecked = _settings.ShowMiniTaskTrayIcon;
+            if (ChkSettingsAutoCheckUpdates != null) ChkSettingsAutoCheckUpdates.IsChecked = _settings.AutoCheckUpdates;
 
             // 3. Taxa dos Sensores
             if (CmbSettingsSensorRate != null)

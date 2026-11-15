@@ -181,6 +181,8 @@ public sealed class AppSettings
     public double OverlayCustomX { get; set; } = 20;
     public double OverlayCustomY { get; set; } = 20;
     public bool OverlayLocked { get; set; } = false; // Padrão livre para arrastar
+    public string OverlayTempUnit { get; set; } = "C";      // C, F ou K
+    public string OverlayClockUnit { get; set; } = "Auto";  // Auto, MHz ou GHz
 
     // Contorno das Letras das Overlays (Legibilidade com fundo transparente)
     public bool OverlayTextOutlineEnabled { get; set; } = true;
@@ -246,6 +248,9 @@ public sealed class AppSettings
         catch { }
         return new AppSettings();
     }
+
+    // Atualizações (pesquisa só ao iniciar e ao abrir o launcher; nunca em segundo plano)
+    public bool AutoCheckUpdates { get; set; } = true;
 
     public List<string> BluetoothFavoriteAddresses { get; set; } = new();
     public bool BluetoothManualMode { get; set; } = false;

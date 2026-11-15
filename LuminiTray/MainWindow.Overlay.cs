@@ -55,6 +55,25 @@ public partial class MainWindow
         BuildOverlayPicker();
     }
 
+    private void InitOverlayUnitsUi()
+    {
+        if (CmbOverlayTempUnit != null)
+            CmbOverlayTempUnit.SelectedValue = string.IsNullOrWhiteSpace(_settings.OverlayTempUnit) ? "C" : _settings.OverlayTempUnit;
+        if (CmbOverlayClockUnit != null)
+            CmbOverlayClockUnit.SelectedValue = string.IsNullOrWhiteSpace(_settings.OverlayClockUnit) ? "Auto" : _settings.OverlayClockUnit;
+    }
+
+    private void OverlayUnit_Changed(object sender, SelectionChangedEventArgs e)
+    {
+        if (!_overlayReady) return;
+        if (CmbOverlayTempUnit?.SelectedValue is string tu)
+            _settings.OverlayTempUnit = tu;
+        if (CmbOverlayClockUnit?.SelectedValue is string cu)
+            _settings.OverlayClockUnit = cu;
+        _settings.Save();
+        UpdateOverlay();
+    }
+
     private void InitOverlayOutlineUi()
     {
         if (ChkOverlayTextOutline == null) return;
@@ -148,7 +167,9 @@ public partial class MainWindow
         var show = OvShow;
         var s = BottleneckAnalyzer.Sample(_monitor, _gpus.FirstOrDefault(), f);
         var lines = new List<OverlayLine>();
-        string T(float? v) => v is float x ? $"{x:0.0} °C" : "—";
+        string tempUnit = _settings.OverlayTempUnit;
+        string clockUnit = _settings.OverlayClockUnit;
+        string T(float? v) => OverlayMetrics.FormatTemperature(v, tempUnit);
         string P(double? v) => v is double x ? $"{x:0}%" : "—";
         void Line(string label, List<string> parts) { if (parts.Count > 0) lines.Add(new OverlayLine(label, string.Join("  ", parts))); }
 
@@ -156,8 +177,7 @@ public partial class MainWindow
         if (show.Contains("gpu_load")) gpu.Add(P(s.GpuLoad));
         if (show.Contains("gpu_temp")) gpu.Add(T(s.GpuTemp));
         if (show.Contains("gpu_hotspot")) gpu.Add("HS " + T(GpuRow(SensorType.Temperature, "GPU Hot Spot")?.RawValue));
-        if (show.Contains("gpu_clock")) gpu.Add(MainGpuClock(Nvml.ClockGraphics, "GPU Core") is uint c ? $"{c} MHz" : "— MHz");
-        if (show.Contains("gpu_memclock")) gpu.Add(MainGpuClock(Nvml.ClockMem, "GPU Memory") is uint mc ? $"mem {mc} MHz" : "mem —");
+        if (show.Contains("gpu_clock")) gpu.Add(OverlayMetrics.FormatClock(MainGpuClock(Nvml.ClockGraphics, "GPU Core"), clockUnit, defaultGHz: false));
         if (show.Contains("gpu_power")) gpu.Add(MainGpuPower() is float w ? $"{w:0} W" : "— W");
         if (show.Contains("gpu_volt")) gpu.Add(GpuRow(SensorType.Voltage, "GPU Core")?.RawValue is float v ? $"{v:0.000} V" : "— V");
         if (show.Contains("gpu_fan"))
@@ -171,6 +191,7 @@ public partial class MainWindow
         if (show.Contains("vram_used")) vram.Add(vr is { } a ? $"{a.Used:0.0} GB" : "—");
         if (show.Contains("vram_pct")) vram.Add(P(s.VramPct));
         if (show.Contains("vram_temp")) vram.Add(T(GpuRow(SensorType.Temperature, "GPU Memory")?.RawValue));
+        if (show.Contains("gpu_memclock")) vram.Add(OverlayMetrics.FormatClock(MainGpuClock(Nvml.ClockMem, "GPU Memory"), clockUnit, defaultGHz: false));
         Line("VRAM", vram);
 
         var cpu = new List<string>();
@@ -178,8 +199,8 @@ public partial class MainWindow
         if (show.Contains("cpu_load")) cpu.Add(P(s.CpuTotal));
         if (show.Contains("cpu_maxcore")) cpu.Add(s.CpuMaxCore is float mx ? $"núcleo {mx:0}%" : "núcleo —");
         if (show.Contains("cpu_temp")) cpu.Add(T(s.CpuTemp));
-        if (show.Contains("cpu_clock")) cpu.Add(avg is float ca ? $"{ca / 1000:0.00} GHz" : "— GHz");
-        if (show.Contains("cpu_clockmax")) cpu.Add(max is float cm ? $"pico {cm / 1000:0.00} GHz" : "pico —");
+        if (show.Contains("cpu_clock")) cpu.Add(OverlayMetrics.FormatClock(avg, clockUnit, defaultGHz: true));
+        if (show.Contains("cpu_clockmax")) cpu.Add("pico " + OverlayMetrics.FormatClock(max, clockUnit, defaultGHz: true));
         if (show.Contains("cpu_power")) cpu.Add(_monitor.CpuPower is float cw && cw > 0 ? $"{cw:0} W" : "— W"); // 0 = sem leitura (precisa de administrador)
         Line("CPU", cpu);
 

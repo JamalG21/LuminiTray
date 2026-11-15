@@ -27,13 +27,29 @@ jobs:
         shell: pwsh
         run: |
           dotnet publish LuminiTray/LuminiTray.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -p:DebugType=None -o dist -nologo
+          dotnet publish LuminiTray.Installer/LuminiTray.Installer.csproj -c Release -o dist-installer -nologo
 
-      - name: Montar pacote
+      - name: Assinar digitalmente (Lumini Tray)
+        shell: pwsh
+        run: |
+          $cert = New-SelfSignedCertificate -Type CodeSigningCert -Subject "CN=Lumini Tray, O=Lumini Tray" -KeyAlgorithm RSA -KeyLength 3072 -HashAlgorithm SHA256 -CertStoreLocation Cert:\CurrentUser\My -NotAfter (Get-Date).AddYears(3)
+          foreach ($f in @('dist/LuminiTray.exe', 'dist-installer/LuminiTray-Installer.exe')) {
+            $sig = $null
+            try { $sig = Set-AuthenticodeSignature -FilePath $f -Certificate $cert -HashAlgorithm SHA256 -TimestampServer 'http://timestamp.digicert.com' } catch {}
+            if (-not $sig -or $sig.Status -eq 'HashMismatch' -or -not $sig.SignerCertificate) {
+              $sig = Set-AuthenticodeSignature -FilePath $f -Certificate $cert -HashAlgorithm SHA256
+            }
+            Write-Host "Assinatura de ${f}: $($sig.Status) ($($sig.SignerCertificate.Subject))"
+          }
+
+      - name: Montar pacotes
         shell: pwsh
         run: |
           if (Test-Path LuminiTray/LEIA-ME.txt) { Copy-Item LuminiTray/LEIA-ME.txt dist/LEIA-ME.txt }
           if (Test-Path LuminiTray/Assets/Plugins) { Copy-Item -Recurse LuminiTray/Assets/Plugins dist/Assets/Plugins }
-          Compress-Archive -Path dist/* -DestinationPath LuminiTray.zip
+          Compress-Archive -Path dist/* -DestinationPath LuminiTray-Portable.zip
+          Copy-Item dist/LuminiTray.exe LuminiTray-Portable.exe
+          Copy-Item dist-installer/LuminiTray-Installer.exe LuminiTray-Installer.exe
 
           # Preparar notas da release contendo todas as changelogs acima da última versão publicada
           if (Test-Path CHANGELOG.md) {
@@ -49,7 +65,7 @@ jobs:
             } else {
               $notes = $raw
             }
-            [System.IO.File]::WriteAllText("release-notes.md", $notes, [System.Text.Encoding]::UTF8)
+            $table = "## Downloads`n`n| Arquivo | Tipo | Descrição |`n|---|---|---|`n| ``LuminiTray-Installer.exe`` | **Instalador** | Instalador web leve: baixa a versão mais recente e instala com atalhos e desinstalador |`n| ``LuminiTray-Portable.exe`` | **Portátil (único)** | Executável único, roda direto sem instalar |`n| ``LuminiTray-Portable.zip`` | **Portátil (completo)** | Executável + plugins de papel de parede + LEIA-ME |`n`n---`n`n"; [System.IO.File]::WriteAllText("release-notes.md", $table + $notes, [System.Text.Encoding]::UTF8)
           } else {
             [System.IO.File]::WriteAllText("release-notes.md", "Release Lumini Tray", [System.Text.Encoding]::UTF8)
           }
@@ -63,7 +79,7 @@ jobs:
           $ErrorActionPreference = 'Continue'
           gh release delete latest --cleanup-tag --yes 2>$null
           $ErrorActionPreference = 'Stop'
-          gh release create latest LuminiTray.zip dist/LuminiTray.exe --target $env:GITHUB_SHA --latest --title "Lumini Tray (versão mais recente)" --notes-file release-notes.md
+          gh release create latest LuminiTray-Installer.exe LuminiTray-Portable.exe LuminiTray-Portable.zip --target $env:GITHUB_SHA --latest --title "Lumini Tray (versão mais recente)" --notes-file release-notes.md
 
       - name: Release da versão (tag)
         if: startsWith(github.ref, 'refs/tags/')
@@ -74,4 +90,4 @@ jobs:
           $ErrorActionPreference = 'Continue'
           gh release delete $env:GITHUB_REF_NAME --yes 2>$null
           $ErrorActionPreference = 'Stop'
-          gh release create $env:GITHUB_REF_NAME LuminiTray.zip dist/LuminiTray.exe --title "Lumini Tray $env:GITHUB_REF_NAME" --notes-file release-notes.md --latest=true
+          gh release create $env:GITHUB_REF_NAME LuminiTray-Installer.exe LuminiTray-Portable.exe LuminiTray-Portable.zip --title "Lumini Tray $env:GITHUB_REF_NAME" --notes-file release-notes.md --latest=true

@@ -1,0 +1,31 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- Instalador Web leve: .NET Framework 4.8 já vem no Windows 10/11, então o .exe tem poucos KB e não exige runtime extra. -->
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net48</TargetFramework>
+    <LangVersion>latest</LangVersion>
+    <Nullable>disable</Nullable>
+    <UseWindowsForms>true</UseWindowsForms>
+    <AssemblyName>LuminiTray-Installer</AssemblyName>
+    <RootNamespace>LuminiTray.Installer</RootNamespace>
+    <Product>Lumini Tray</Product>
+    <Company>Lumini Tray</Company>
+    <Title>Lumini Tray - Instalador</Title>
+    <Description>Lumini Tray - Instalador</Description>
+    <AssemblyTitle>Lumini Tray - Instalador</AssemblyTitle>
+    <Version>1.0.0</Version>
+    <ApplicationIcon>..\LuminiTray\Assets\app.ico</ApplicationIcon>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+    <GenerateAssemblyInfo>true</GenerateAssemblyInfo>
+    <DebugType>None</DebugType>
+    <Optimize>true</Optimize>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Reference Include="System.IO.Compression" />
+    <Reference Include="System.IO.Compression.FileSystem" />
+    <Reference Include="System.Net.Http" />
+  </ItemGroup>
+
+</Project>

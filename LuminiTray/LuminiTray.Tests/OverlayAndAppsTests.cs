@@ -472,4 +472,55 @@ public class OverlayAndAppsTests
         Assert.AreEqual("notepad.exe", restored.ShortcutRemaps[0].TargetApp);
         CollectionAssert.Contains(restored.KeyboardRemapExcludedApps, "valorant.exe");
     }
-}
+
+    [TestMethod]
+    public void TestAppUpdater_VersionParsingAssetSelectionAndSettings()
+    {
+        Assert.IsTrue(AppUpdaterService.TryParseTag("v0.29.0", out var v1));
+        Assert.AreEqual(new Version(0, 29, 0), v1);
+        Assert.IsFalse(AppUpdaterService.TryParseTag("latest", out _));
+        Assert.IsTrue(AppUpdaterService.IsNewer(new Version(0, 29, 0), new Version(0, 28, 1, 0)));
+        Assert.IsFalse(AppUpdaterService.IsNewer(new Version(0, 28, 1), new Version(0, 28, 1, 0)));
+
+        string json = @"[
+          {""tag_name"":""latest"",""draft"":false,""prerelease"":false,""body"":""rolante"",""assets"":[]},
+          {""tag_name"":""v0.28.1"",""body"":""antiga"",""assets"":[]},
+          {""tag_name"":""v0.29.0"",""body"":""nova"",""html_url"":""https://x"",""assets"":[
+            {""name"":""LuminiTray-Installer.exe"",""browser_download_url"":""https://h/i.exe""},
+            {""name"":""LuminiTray-Portable.exe"",""browser_download_url"":""https://h/p.exe""},
+            {""name"":""LuminiTray-Portable.zip"",""browser_download_url"":""https://h/p.zip""}]}]";
+        var info = AppUpdaterService.ParseReleaseList(json);
+        Assert.IsNotNull(info);
+        Assert.AreEqual(new Version(0, 29, 0), info.Version);
+        Assert.AreEqual("https://h/i.exe", info.InstallerUrl);
+        Assert.AreEqual("https://h/p.zip", AppUpdaterService.SelectAssetUrl(info, hasAssetsFolder: true));
+        Assert.AreEqual("https://h/p.exe", AppUpdaterService.SelectAssetUrl(info, hasAssetsFolder: false));
+
+        var settings = new AppSettings();
+        Assert.IsTrue(settings.AutoCheckUpdates);
+        settings.AutoCheckUpdates = false;
+        var restored = JsonSerializer.Deserialize<AppSettings>(JsonSerializer.Serialize(settings))!;
+        Assert.IsFalse(restored.AutoCheckUpdates);
+    }
+    [TestMethod]
+    public void TestOverlay_VramClockGroupAndTemperatureClockUnits()
+    {
+        var memClock = OverlayMetrics.All.First(m => m.Key == "gpu_memclock");
+        Assert.AreEqual("VRAM", memClock.Group);
+
+        Assert.AreEqual($"{65f:0.0} °C", OverlayMetrics.FormatTemperature(65f, "C"));
+        Assert.AreEqual($"{149f:0.0} °F", OverlayMetrics.FormatTemperature(65f, "F"));
+        Assert.AreEqual($"{338.15:0.0} K", OverlayMetrics.FormatTemperature(65f, "K"));
+        Assert.AreEqual("— °F", OverlayMetrics.FormatTemperature(null, "F"));
+
+        Assert.AreEqual("2790 MHz", OverlayMetrics.FormatClock(2790, "Auto", defaultGHz: false));
+        Assert.AreEqual($"{4.5:0.00} GHz", OverlayMetrics.FormatClock(4500, "Auto", defaultGHz: true));
+        Assert.AreEqual("4500 MHz", OverlayMetrics.FormatClock(4500, "MHz", defaultGHz: true));
+        Assert.AreEqual($"{2.79:0.00} GHz", OverlayMetrics.FormatClock(2790, "GHz", defaultGHz: false));
+        Assert.AreEqual("— GHz", OverlayMetrics.FormatClock(null, "GHz", defaultGHz: false));
+
+        var settings = new AppSettings { OverlayTempUnit = "K", OverlayClockUnit = "GHz" };
+        var restored = JsonSerializer.Deserialize<AppSettings>(JsonSerializer.Serialize(settings))!;
+        Assert.AreEqual("K", restored.OverlayTempUnit);
+        Assert.AreEqual("GHz", restored.OverlayClockUnit);
+    }}

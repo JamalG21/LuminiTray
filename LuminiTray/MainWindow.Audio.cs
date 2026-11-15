@@ -146,6 +146,7 @@ public partial class MainWindow
             if (!_timer.IsEnabled) _timer.Start();
         }
         UpdateSensorPollingState();
+        TriggerAutoUpdateCheck();
     }
 
     private void ExitApplication()

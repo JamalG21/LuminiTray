@@ -3,6 +3,21 @@
 Todas as alterações notáveis deste projeto serão documentadas neste arquivo.
 O formato é baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/), e este projeto adere ao [Semantic Versioning](https://semver.org/lang/pt-BR/).
 
+## [0.29.0] - 2026-11-15
+
+### 🚀 Adicionado & Aprimorado
+- **Sistema de Atualização do Programa:**
+  - Novo ícone de notificação no canto superior direito da janela (ao lado do botão de tema), com indicador visual quando há nova versão no GitHub e painel com versão, novidades e botão **"Atualizar Agora"** (download com barra de progresso e reinício automático).
+  - Nova opção em **Configurações → Geral** para pesquisar atualizações automaticamente. A pesquisa ocorre somente ao iniciar com a janela visível e a cada abertura do launcher; em segundo plano na bandeja o programa nunca pesquisa.
+  - Atualização funciona tanto na versão **instalada** quanto na **portátil**, preservando as configurações do usuário.
+- **Instalador Web Leve (`LuminiTray-Installer.exe`):** baixa a versão mais recente direto do GitHub, instala em `%LocalAppData%\Programs\LuminiTray`, cria atalhos (Área de Trabalho e Menu Iniciar) e registra o desinstalador no Windows.
+- **Assinatura Digital:** executáveis publicados passam a ser assinados digitalmente com o nome **Lumini Tray**.
+- **Downloads Identificados no GitHub:** a release agora publica `LuminiTray-Installer.exe` (instalador), `LuminiTray-Portable.exe` (portátil único) e `LuminiTray-Portable.zip` (portátil completo), com tabela de identificação nas notas.
+- **Unidades de Medida na Overlay:** nova opção na aba **Overlay** para alternar a exibição de temperatura entre **°C (Celsius)**, **°F (Fahrenheit)** e **K (Kelvin)**, e de clock entre **Padrão**, **MHz** e **GHz**.
+
+### 🛠️ Correções
+- **Clock da Memória da GPU na Linha VRAM:** o item **Clock da memória** (`gpu_memclock`) foi movido do grupo/linha **GPU** para o grupo/linha **VRAM** da overlay.
+
 ## [0.28.1] - 2026-11-13
 
 ### 🛠️ Correções

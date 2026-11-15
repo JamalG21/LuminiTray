@@ -20,7 +20,6 @@ public static class OverlayMetrics
         new("gpu_temp", "GPU", "Temperatura", true),
         new("gpu_hotspot", "GPU", "Hotspot", false),
         new("gpu_clock", "GPU", "Clock do núcleo", true),
-        new("gpu_memclock", "GPU", "Clock da memória", false),
         new("gpu_power", "GPU", "Consumo", true),
         new("gpu_volt", "GPU", "Tensão do núcleo", false),
         new("gpu_fan", "GPU", "Ventoinha", false),
@@ -29,6 +28,7 @@ public static class OverlayMetrics
         new("vram_used", "VRAM", "Usada (GB)", true),
         new("vram_pct", "VRAM", "Uso (%)", false),
         new("vram_temp", "VRAM", "Temperatura", false),
+        new("gpu_memclock", "VRAM", "Clock da memória", false),
 
         new("cpu_load", "CPU", "Uso total", true),
         new("cpu_maxcore", "CPU", "Núcleo mais ocupado", false),
@@ -48,4 +48,29 @@ public static class OverlayMetrics
     };
 
     public static HashSet<string> Defaults() => All.Where(m => m.Default).Select(m => m.Key).ToHashSet();
+
+    /// <summary>Formata temperatura em °C, °F ou K.</summary>
+    public static string FormatTemperature(float? celsius, string? unit)
+    {
+        string u = (unit ?? "C").Trim().ToUpperInvariant();
+        if (celsius is not float c) return u switch { "F" => "— °F", "K" => "— K", _ => "— °C" };
+        return u switch
+        {
+            "F" => $"{c * 9.0 / 5.0 + 32.0:0.0} °F",
+            "K" => $"{c + 273.15:0.0} K",
+            _ => $"{c:0.0} °C"
+        };
+    }
+
+    /// <summary>Formata clock em MHz ou GHz (respeitando padrão do componente quando unit == "Auto").</summary>
+    public static string FormatClock(double? mhz, string? unit, bool defaultGHz = false)
+    {
+        bool useGHz = string.Equals(unit, "GHz", StringComparison.OrdinalIgnoreCase)
+            || (!string.Equals(unit, "MHz", StringComparison.OrdinalIgnoreCase) && defaultGHz);
+
+        if (mhz is not double v || v <= 0)
+            return useGHz ? "— GHz" : "— MHz";
+
+        return useGHz ? $"{v / 1000.0:0.00} GHz" : $"{v:0} MHz";
+    }
 }

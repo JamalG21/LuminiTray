@@ -322,6 +322,32 @@
 
       <StackPanel Grid.Column="1" Orientation="Horizontal" HorizontalAlignment="Right" WindowChrome.IsHitTestVisibleInChrome="True">
 
+        <Grid>
+          <Button Name="BtnUpdateNotify" Style="{StaticResource CaptionButton}" Content="&#xE895;" ToolTip="Atualizações do programa" Click="BtnUpdateNotify_Click" />
+          <Ellipse Name="BadgeUpdateDot" Width="8" Height="8" Fill="#10B981" HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,11,12,0" Visibility="Collapsed" IsHitTestVisible="False" />
+          <Popup Name="PopupUpdateNotify" PlacementTarget="{Binding ElementName=BtnUpdateNotify}" Placement="Bottom" StaysOpen="False" AllowsTransparency="True" HorizontalOffset="-270">
+            <Border Width="320" Margin="8" Padding="16,14" Background="{DynamicResource Card}" BorderBrush="{DynamicResource LineStrong}" BorderThickness="1" CornerRadius="12">
+              <Border.Effect>
+                <DropShadowEffect BlurRadius="16" ShadowDepth="3" Opacity="0.4" Color="#000000" />
+              </Border.Effect>
+              <StackPanel>
+                <TextBlock Text="ATUALIZAÇÕES" Style="{StaticResource Label}" Margin="0,0,0,6" />
+                <TextBlock Name="TxtUpdateStatus" Text="Verificando..." Foreground="{DynamicResource Fg}" FontSize="13" FontWeight="SemiBold" TextWrapping="Wrap" />
+                <TextBlock Name="TxtUpdateMode" Text="" Foreground="{DynamicResource Accent}" FontSize="10.5" Margin="0,2,0,8" />
+                <ScrollViewer MaxHeight="120" VerticalScrollBarVisibility="Auto" Margin="0,0,0,10">
+                  <TextBlock Name="TxtUpdateNotesPreview" Text="" Foreground="{DynamicResource Muted}" FontSize="11" TextWrapping="Wrap" />
+                </ScrollViewer>
+                <ProgressBar Name="PbUpdateProgress" Height="6" Minimum="0" Maximum="100" Visibility="Collapsed" Margin="0,0,0,4" />
+                <TextBlock Name="TxtUpdateProgress" Text="" Foreground="{DynamicResource Muted}" FontSize="10.5" Visibility="Collapsed" Margin="0,0,0,8" />
+                <StackPanel Orientation="Horizontal">
+                  <Button Name="BtnApplyUpdateNow" Style="{StaticResource PrimaryButton}" Content="⬇ ATUALIZAR AGORA" Padding="12,6" FontSize="11" Visibility="Collapsed" Click="BtnApplyUpdateNow_Click" />
+                  <Button Name="BtnCheckUpdateManual" Style="{StaticResource OutlineButton}" Content="↻ Verificar Agora" Padding="12,6" FontSize="11" Margin="6,0,0,0" Click="BtnCheckUpdateManual_Click" />
+                </StackPanel>
+              </StackPanel>
+            </Border>
+          </Popup>
+        </Grid>
+
         <Button Name="BtnTheme" Style="{StaticResource CaptionButton}" Content="" ToolTip="Modo claro" Click="Theme_Click" />
 
         <Button Style="{StaticResource CaptionButton}" Content="" ToolTip="Minimizar" Click="Min_Click" />
@@ -6184,6 +6210,28 @@
 
                   <TextBlock Foreground="{DynamicResource Faint}" FontSize="11" TextWrapping="Wrap" Margin="0,4,0,0">Marque o que quer ver por cima do jogo; a mudança vale na hora e fica salva. Cada componente vira uma linha (GPU, VRAM, CPU, RAM) só com os itens escolhidos. Clock da memória, hotspot e ventoinha dependem da placa; o limitador (PerfCap) é só NVIDIA. Clock e temperatura da CPU precisam do app como administrador.</TextBlock>
 
+                  <Grid Margin="0,10,0,8">
+                    <Grid.ColumnDefinitions>
+                      <ColumnDefinition Width="Auto" />
+                      <ColumnDefinition Width="170" />
+                      <ColumnDefinition Width="24" />
+                      <ColumnDefinition Width="Auto" />
+                      <ColumnDefinition Width="230" />
+                    </Grid.ColumnDefinitions>
+                    <TextBlock Text="Temperatura:" VerticalAlignment="Center" Foreground="{DynamicResource Muted}" FontSize="11.5" Margin="0,0,8,0" />
+                    <ComboBox Name="CmbOverlayTempUnit" Grid.Column="1" SelectedValuePath="Tag" SelectionChanged="OverlayUnit_Changed">
+                      <ComboBoxItem Content="°C (Celsius)" Tag="C" IsSelected="True" />
+                      <ComboBoxItem Content="°F (Fahrenheit)" Tag="F" />
+                      <ComboBoxItem Content="K (Kelvin)" Tag="K" />
+                    </ComboBox>
+                    <TextBlock Grid.Column="3" Text="Clock:" VerticalAlignment="Center" Foreground="{DynamicResource Muted}" FontSize="11.5" Margin="0,0,8,0" />
+                    <ComboBox Name="CmbOverlayClockUnit" Grid.Column="4" SelectedValuePath="Tag" SelectionChanged="OverlayUnit_Changed">
+                      <ComboBoxItem Content="Padrão (GPU MHz / CPU GHz)" Tag="Auto" IsSelected="True" />
+                      <ComboBoxItem Content="MHz (Tudo em MHz)" Tag="MHz" />
+                      <ComboBoxItem Content="GHz (Tudo em GHz)" Tag="GHz" />
+                    </ComboBox>
+                  </Grid>
+
                   <StackPanel Name="OvItemsPanel" />
 
                 </StackPanel>
@@ -10507,6 +10555,25 @@
                   <CheckBox Name="ChkSettingsShowMiniTaskTray" Content="Exibir Mini Gerenciador de Tarefas na bandeja" Margin="0,0,0,4" Checked="SettingsOption_Changed" Unchecked="SettingsOption_Changed" />
 
                   <TextBlock Text="Ícone de monitoramento em tempo real (CPU, GPU, RAM e Disco). Clique para abrir a janela flutuante e histórico de atividade." Foreground="{DynamicResource Muted}" FontSize="10.5" TextWrapping="Wrap" Margin="48,0,0,0" />
+
+                </StackPanel>
+
+              </Border>
+
+              <Border Style="{StaticResource CardBorder}" Padding="20" Margin="0,0,0,16">
+
+                <StackPanel>
+
+                  <TextBlock Text="ATUALIZAÇÕES DO PROGRAMA" Style="{StaticResource Label}" Margin="0,0,0,12" />
+
+                  <CheckBox Name="ChkSettingsAutoCheckUpdates" Content="Pesquisar atualizações automaticamente ao iniciar e ao abrir o launcher" Margin="0,0,0,4" Checked="SettingsAutoCheckUpdates_Changed" Unchecked="SettingsAutoCheckUpdates_Changed" />
+
+                  <TextBlock Text="A pesquisa acontece somente ao iniciar com a janela visível e a cada vez que você abre o launcher. Em segundo plano na bandeja o programa nunca pesquisa." Foreground="{DynamicResource Muted}" FontSize="10.5" TextWrapping="Wrap" Margin="48,0,0,10" />
+
+                  <StackPanel Orientation="Horizontal" Margin="0,0,0,0">
+                    <Button Content="↻ Verificar atualizações agora" Style="{StaticResource OutlineButton}" Padding="12,6" FontSize="11" Click="BtnCheckUpdateManual_Click" />
+                    <TextBlock Name="TxtSettingsUpdateInfo" Foreground="{DynamicResource Muted}" FontSize="11" VerticalAlignment="Center" Margin="12,0,0,0" />
+                  </StackPanel>
 
                 </StackPanel>
 
