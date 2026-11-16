@@ -523,4 +523,26 @@ public class OverlayAndAppsTests
         var restored = JsonSerializer.Deserialize<AppSettings>(JsonSerializer.Serialize(settings))!;
         Assert.AreEqual("K", restored.OverlayTempUnit);
         Assert.AreEqual("GHz", restored.OverlayClockUnit);
+    }
+    [TestMethod]
+    public void TestTaskbarTrayTweaks_BuildOperationsAndRestartDetection()
+    {
+        var baseState = new TaskbarTrayTweaksState();
+        Assert.IsFalse(baseState.HasAnyActiveXamlTweak);
+
+        var modified = baseState with
+        {
+            HideVolume = true,
+            GrayscaleBattery = true,
+            HideBellMode = TaskbarBellHideMode.WhenInactive,
+            ShowDesktopWidth = 0
+        };
+        Assert.IsTrue(modified.HasAnyActiveXamlTweak);
+
+        var ops = TaskbarTrayTweaksService.BuildOperations(baseState, modified);
+        Assert.AreEqual(4, ops.Count);
+        Assert.AreEqual(0, TaskbarTrayTweaksService.BuildOperations(baseState, baseState).Count);
+        CollectionAssert.AreEqual(
+            new[] { "VisualDiagConnection1", "VisualDiagConnection2" },
+            TaskbarTrayTweaksService.DiagEndpointNames);
     }}

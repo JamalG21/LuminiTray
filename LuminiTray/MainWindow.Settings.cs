@@ -531,11 +531,100 @@ public partial class MainWindow
                     ? "Ativo: atalhos Ctrl+Shift+Alt+Win bloqueados no Windows."
                     : "Padrão do Windows (atalhos do Office habilitados).";
             }
+            InitTaskbarTrayTweaksUi();
         }
         finally
         {
             _isSettingsLoading = false;
         }
+    }
+
+    private void InitTaskbarTrayTweaksUi()
+    {
+        var st = TaskbarTrayTweaksService.LoadCurrentFromRegistry();
+        if (ChkTbHideVolume != null) ChkTbHideVolume.IsChecked = st.HideVolume;
+        if (ChkTbHideNetwork != null) ChkTbHideNetwork.IsChecked = st.HideNetwork;
+        if (ChkTbHideBattery != null) ChkTbHideBattery.IsChecked = st.HideBattery;
+        if (ChkTbGrayscaleBattery != null) ChkTbGrayscaleBattery.IsChecked = st.GrayscaleBattery;
+        if (ChkTbHideMicrophone != null) ChkTbHideMicrophone.IsChecked = st.HideMicrophone;
+        if (ChkTbHideGeolocation != null) ChkTbHideGeolocation.IsChecked = st.HideGeolocation;
+        if (ChkTbHideStudioEffects != null) ChkTbHideStudioEffects.IsChecked = st.HideStudioEffects;
+        if (ChkTbHideRecall != null) ChkTbHideRecall.IsChecked = st.HideRecall;
+        if (ChkTbHideLanguage != null) ChkTbHideLanguage.IsChecked = st.HideLanguageBar;
+        if (ChkTbHideLanguageSupp != null) ChkTbHideLanguageSupp.IsChecked = st.HideLanguageSupplementary;
+        if (ChkTbHideShowDesktop != null) ChkTbHideShowDesktop.IsChecked = st.ShowDesktopWidth == 0;
+        if (ChkTbHideTaskView != null) ChkTbHideTaskView.IsChecked = st.HideTaskView;
+        if (ChkTbHideWidgets != null) ChkTbHideWidgets.IsChecked = st.HideWidgets;
+        if (CmbTbHideBellMode != null) CmbTbHideBellMode.SelectedValue = ((int)st.HideBellMode).ToString();
+    }
+
+    private TaskbarTrayTweaksState ReadTaskbarTrayTweaksFromUi()
+    {
+        int bell = 0;
+        if (CmbTbHideBellMode?.SelectedValue is string s && int.TryParse(s, out int parsed))
+            bell = parsed;
+        return new()
+        {
+            HideVolume = ChkTbHideVolume?.IsChecked == true,
+            HideNetwork = ChkTbHideNetwork?.IsChecked == true,
+            HideBattery = ChkTbHideBattery?.IsChecked == true,
+            GrayscaleBattery = ChkTbGrayscaleBattery?.IsChecked == true,
+            HideMicrophone = ChkTbHideMicrophone?.IsChecked == true,
+            HideGeolocation = ChkTbHideGeolocation?.IsChecked == true,
+            HideStudioEffects = ChkTbHideStudioEffects?.IsChecked == true,
+            HideRecall = ChkTbHideRecall?.IsChecked == true,
+            HideLanguageBar = ChkTbHideLanguage?.IsChecked == true,
+            HideLanguageSupplementary = ChkTbHideLanguageSupp?.IsChecked == true,
+            ShowDesktopWidth = ChkTbHideShowDesktop?.IsChecked == true ? 0 : -1,
+            HideBellMode = (TaskbarBellHideMode)Math.Clamp(bell, 0, 3),
+            HideTaskView = ChkTbHideTaskView?.IsChecked == true,
+            HideWidgets = ChkTbHideWidgets?.IsChecked == true
+        };
+    }
+
+    private async void BtnApplyTaskbarTweaks_Click(object sender, RoutedEventArgs e)
+    {
+        try
+        {
+            var desired = ReadTaskbarTrayTweaksFromUi();
+            var result = await System.Threading.Tasks.Task.Run(() => TaskbarTrayTweaksService.Apply(desired));
+            ShowTaskbarTweaksResult(result, restored: false);
+        }
+        catch (Exception ex)
+        {
+            Toast("Barra de Tarefas", $"Falha ao aplicar: {ex.Message}", "\uE7BA");
+        }
+        InitTaskbarTrayTweaksUi();
+    }
+
+    private async void BtnRestoreTaskbarTweaks_Click(object sender, RoutedEventArgs e)
+    {
+        try
+        {
+            var result = await System.Threading.Tasks.Task.Run(TaskbarTrayTweaksService.RestoreDefaults);
+            ShowTaskbarTweaksResult(result, restored: true);
+        }
+        catch (Exception ex)
+        {
+            Toast("Barra de Tarefas", $"Falha ao restaurar: {ex.Message}", "\uE7BA");
+        }
+        InitTaskbarTrayTweaksUi();
+    }
+
+    private void ShowTaskbarTweaksResult(TaskbarApplyResult result, bool restored)
+    {
+        if (result.FailedValues is { Count: > 0 } failed)
+        {
+            string names = string.Join(", ", failed.Select(n => n == "TaskbarDa" ? "Widgets" : n == "ShowTaskViewButton" ? "Visão de Tarefas" : n));
+            Toast("Barra de Tarefas", $"O Windows bloqueou a alteração de: {names}. Os demais ajustes foram aplicados.", "\uE7BA");
+            return;
+        }
+        if (!result.HookConnected)
+            Toast("Barra de Tarefas", "Ajustes salvos, mas não foi possível conectar ao explorer.exe.", "\uE7BA");
+        else if (result.ChangedCount == 0)
+            Toast("Barra de Tarefas", restored ? "Configurações já estavam no padrão." : "Nenhuma alteração pendente.", "\uE946");
+        else
+            Toast("Barra de Tarefas", restored ? "Ícones da barra de tarefas restaurados ao padrão." : $"{result.ChangedCount} ajuste(s) aplicados na barra de tarefas.", "\uE73E");
     }
 
     private void TweaksMiniTask_Click(object sender, RoutedEventArgs e)

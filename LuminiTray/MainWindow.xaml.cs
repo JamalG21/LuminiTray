@@ -159,6 +159,7 @@ public partial class MainWindow : Window
             EnsureSuppressorServiceRunning();
             InitializeWallpaperSlideshowOnStartup();
             try { KeyboardRemapperService.Instance.UpdateRules(_settings.KeyboardRemapEnabled, _settings.KeyRemaps, _settings.ShortcutRemaps, _settings.KeyboardRemapExcludedApps); } catch { }
+            _ = Task.Run(() => { try { TaskbarTrayTweaksService.ApplyOnStartupIfActive(); } catch { } });
             if (!_isMinimized && !_settings.StartMinimizedToTray) TriggerAutoUpdateCheck();
 
             if (_isAutoStart || (_settings.AutoStartWithWindows && _isMinimized))

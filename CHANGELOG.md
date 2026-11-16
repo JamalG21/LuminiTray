@@ -3,6 +3,47 @@
 Todas as alterações notáveis deste projeto serão documentadas neste arquivo.
 O formato é baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/), e este projeto adere ao [Semantic Versioning](https://semver.org/lang/pt-BR/).
 
+## [0.30.5] - 2026-11-15
+
+### 🛠️ Correções
+- **Endpoint Oficial de Diagnóstico XAML (`VisualDiagConnection1` / `VisualDiagConnection2`):**
+  - Corrigida falha introduzida na `0.30.3` onde o endpoint customizado `LuminiDiagV2` retornava `0x80070490` (`ERROR_NOT_FOUND`) em `Windows.UI.Xaml.dll`, impedindo o carregamento do hook no `explorer.exe`. Agora utiliza exclusivamente os endpoints válidos `VisualDiagConnection1` e `VisualDiagConnection2`.
+  - Aprimorado o hook `LuminiTray.TaskbarHook.v3.dll` para rastrear múltiplos ícones em `MainStack` (Microfone, GPS, Studio Effects e Recall) e desregistrar callback do Sino quando definido como `Nunca ocultar`.
+
+## [0.30.4] - 2026-11-15
+
+### 🛠️ Correções
+- **Erro "Attempted to perform an unauthorized operation" e Reversão dos Ícones:**
+  - No Windows 11 24H2+, a chave `TaskbarDa` (Widgets) é protegida pelo sistema e lançava exceção, abortando a aplicação **antes** de sinalizar o hook — por isso desmarcar opções ou **Restaurar Padrão** não revertiam Volume, Rede e demais ícones.
+  - Cada valor do Registro agora é gravado de forma isolada; falhas em chaves protegidas não interrompem os demais ajustes e o hook é sempre sinalizado. O usuário recebe um aviso indicando qual ajuste o Windows bloqueou, sem caixa de erro.
+
+## [0.30.3] - 2026-11-15
+
+### 🛠️ Correções
+- **Atualização Sem Travamento da DLL do Hook (`LuminiTray.TaskbarHook.v2.dll`):**
+  - Alterados o nome do arquivo extraído, o endpoint de diagnóstico (`LuminiDiagV2`) e o evento de atualização (`LuminiTrayTaskbarTweaksRefresh_v2`) para evitar conflito com instâncias antigas da DLL mantidas em memória pelo `explorer.exe`.
+
+## [0.30.2] - 2026-11-15
+
+### 🛠️ Correções
+- **Reversão e Restauração Padrão dos Ícones da Barra de Tarefas:**
+  - Corrigida falha no `LuminiTray.TaskbarHook.dll` em que a thread de atualização (`RefreshWatcherProc`) acessava `XamlRoot.Content()` fora da thread de UI do `explorer.exe`, impedindo que desmarcar opções ou clicar em **"Restaurar Padrão"** revertesse os ícones ocultos. Agora o `CoreDispatcher` é capturado em `winrt::agile_ref` na thread de UI.
+
+## [0.30.1] - 2026-11-15
+
+### 🛠️ Correções
+- **Correção Real dos Ícones da Bandeja & Barra de Tarefas no Windows 11:**
+  - Substituído o mecanismo anterior baseado apenas em políticas legadas (ignoradas pelo Windows 11 22H2+) pelo hook nativo embutido `LuminiTray.TaskbarHook.dll` via API oficial `InitializeXamlDiagnosticsEx` (`Windows.UI.Xaml.dll`), manipulando em tempo real a árvore WinUI XAML do `explorer.exe` sem downloads adicionais e sem reiniciar o Explorer.
+  - Adicionados os controles faltantes do módulo: **Bateria em escala de cinza**, **Microfone (Windows)**, **Localização / GPS**, **Studio Effects**, **Ícones suplementares de idioma** e os 4 modos do **Ícone do Sino** (`Nunca`, `Sem novas notificações`, `Sem notificações e Não Perturbe off`, `Sempre`), com reaplicação automática ao iniciar.
+
+## [0.30.0] - 2026-11-15
+
+### 🚀 Adicionado & Aprimorado
+- **Ocultar Ícones da Bandeja & Barra de Tarefas (Tweaks Exclusivos):**
+  - Novo card **BARRA DE TAREFAS & ÍCONES DO SISTEMA** na aba **Tweaks Exclusivos** com manipulação direta em tempo real da árvore WinUI XAML do `explorer.exe` via `LuminiTray.TaskbarHook.dll` embutida (`InitializeXamlDiagnosticsEx`), sem precisar baixar Windhawk, símbolos PDB ou dependências externas.
+  - Suporta: **Volume**, **Rede / Wi-Fi**, **Bateria**, **Bateria em escala de cinza**, **Microfone (Windows)**, **Localização / GPS**, **Studio Effects**, **Windows Recall**, **Barra de Idiomas**, **Ícones suplementares de idioma**, **Ícone do Sino** (`Nunca`, `Sem novas notificações`, `Sem notificações e Não Perturbe off`, `Sempre`), **Mostrar área de trabalho**, **Visão de Tarefas** e **Widgets**.
+  - Botão único **"Aplicar Alterações"** (sem reiniciar o `explorer.exe`) e botão **"Restaurar Padrão"**.
+
 ## [0.29.0] - 2026-11-15
 
 ### 🚀 Adicionado & Aprimorado

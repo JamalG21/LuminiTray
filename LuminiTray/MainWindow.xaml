@@ -15118,6 +15118,56 @@
               </StackPanel>
             </Border>
 
+            <!-- Card 1.5: Barra de Tarefas & Ícones do Sistema -->
+            <Border Style="{StaticResource CardBorder}" Margin="0,0,0,16" Padding="20,18">
+              <StackPanel>
+                <TextBlock Text="BARRA DE TAREFAS &amp; ÍCONES DO SISTEMA" Style="{StaticResource Label}" Margin="0,0,0,4" />
+                <TextBlock Text="Oculte ou personalize os ícones do sistema na bandeja do Windows 11 em tempo real (sem downloads externos)." Foreground="{DynamicResource Muted}" FontSize="12" TextWrapping="Wrap" Margin="0,0,0,14" />
+
+                <Grid Margin="0,0,0,12">
+                  <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="18" />
+                    <ColumnDefinition Width="*" />
+                  </Grid.ColumnDefinitions>
+
+                  <StackPanel Grid.Column="0">
+                    <CheckBox x:Name="ChkTbHideVolume" Content="Ocultar ícone de Volume" FontWeight="SemiBold" FontSize="12.5" Margin="0,0,0,8" />
+                    <CheckBox x:Name="ChkTbHideNetwork" Content="Ocultar ícone de Rede / Wi-Fi" FontWeight="SemiBold" FontSize="12.5" Margin="0,0,0,8" />
+                    <CheckBox x:Name="ChkTbHideBattery" Content="Ocultar ícone de Bateria" FontWeight="SemiBold" FontSize="12.5" Margin="0,0,0,8" />
+                    <CheckBox x:Name="ChkTbGrayscaleBattery" Content="Ícone de Bateria em escala de cinza" FontWeight="SemiBold" FontSize="12.5" Margin="0,0,0,8" />
+                    <CheckBox x:Name="ChkTbHideMicrophone" Content="Ocultar ícone de Microfone (Windows)" FontWeight="SemiBold" FontSize="12.5" Margin="0,0,0,8" />
+                    <CheckBox x:Name="ChkTbHideGeolocation" Content="Ocultar ícone de Localização / GPS" FontWeight="SemiBold" FontSize="12.5" Margin="0,0,0,8" />
+                    <CheckBox x:Name="ChkTbHideStudioEffects" Content="Ocultar ícone do Studio Effects" FontWeight="SemiBold" FontSize="12.5" />
+                  </StackPanel>
+
+                  <StackPanel Grid.Column="2">
+                    <CheckBox x:Name="ChkTbHideRecall" Content="Ocultar ícone do Windows Recall" FontWeight="SemiBold" FontSize="12.5" Margin="0,0,0,8" />
+                    <CheckBox x:Name="ChkTbHideLanguage" Content="Ocultar Barra de Idiomas" FontWeight="SemiBold" FontSize="12.5" Margin="0,0,0,8" />
+                    <CheckBox x:Name="ChkTbHideLanguageSupp" Content="Ocultar ícones suplementares de idioma" FontWeight="SemiBold" FontSize="12.5" Margin="0,0,0,8" />
+                    <CheckBox x:Name="ChkTbHideShowDesktop" Content="Ocultar botão &quot;Mostrar área de trabalho&quot;" FontWeight="SemiBold" FontSize="12.5" Margin="0,0,0,8" />
+                    <CheckBox x:Name="ChkTbHideTaskView" Content="Ocultar botão Visão de Tarefas" FontWeight="SemiBold" FontSize="12.5" Margin="0,0,0,8" />
+                    <CheckBox x:Name="ChkTbHideWidgets" Content="Ocultar Widgets da Barra de Tarefas" FontWeight="SemiBold" FontSize="12.5" Margin="0,0,0,10" />
+
+                    <StackPanel Orientation="Horizontal">
+                      <TextBlock Text="Ícone do Sino:" Foreground="{DynamicResource Muted}" FontSize="12" VerticalAlignment="Center" Margin="0,0,8,0" />
+                      <ComboBox x:Name="CmbTbHideBellMode" Width="210" SelectedValuePath="Tag">
+                        <ComboBoxItem Content="Nunca ocultar" Tag="0" IsSelected="True" />
+                        <ComboBoxItem Content="Sem novas notificações" Tag="1" />
+                        <ComboBoxItem Content="Sem notificações e Não Perturbe off" Tag="2" />
+                        <ComboBoxItem Content="Sempre ocultar" Tag="3" />
+                      </ComboBox>
+                    </StackPanel>
+                  </StackPanel>
+                </Grid>
+
+                <StackPanel Orientation="Horizontal">
+                  <Button x:Name="BtnApplyTaskbarTweaks" Style="{StaticResource PrimaryButton}" Content="Aplicar Alterações" Padding="14,7" FontSize="12" Margin="0,0,10,0" Click="BtnApplyTaskbarTweaks_Click" />
+                  <Button x:Name="BtnRestoreTaskbarTweaks" Style="{StaticResource OutlineButton}" Content="Restaurar Padrão" Padding="14,7" FontSize="12" Click="BtnRestoreTaskbarTweaks_Click" />
+                </StackPanel>
+              </StackPanel>
+            </Border>
+
             <!-- Card 2: Overlays, Mini Tarefas & Wallpapers -->
             <Border Style="{StaticResource CardBorder}" Margin="0,0,0,16" Padding="20,18">
               <StackPanel>

@@ -1,0 +1,4 @@
+LIBRARY LuminiTray.TaskbarHook
+EXPORTS
+    DllGetClassObject PRIVATE
+    DllCanUnloadNow PRIVATE
