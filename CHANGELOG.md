@@ -3,6 +3,14 @@
 Todas as alterações notáveis deste projeto serão documentadas neste arquivo.
 O formato é baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/), e este projeto adere ao [Semantic Versioning](https://semver.org/lang/pt-BR/).
 
+## [0.31.0] - 2026-11-17
+
+### 🚀 Adicionado & Aprimorado
+- **Módulo de Bateria de Periféricos Sem Fio (Aba Dispositivos):**
+  - Novo card **BATERIA DE PERIFÉRICOS SEM FIO** no topo da sub-aba **Periféricos → Dispositivos** (baseado no HaloBattery, 100% nativo em C# sem Python ou dependências externas).
+  - Suporte nativo a **Bluetooth / BLE** (`DEVPKEY_Bluetooth_Battery` via PnP), **Controles Xbox / XInput** (`xinput1_4.dll`), e protocolos diretos **HID 2.4 GHz / USB** (**Logitech HID++ 2.0/1.0**, **Razer**, **PlayStation DualShock 4 / DualSense**, **Corsair Slipstream/Void Elite**, **SteelSeries Arctis/Nova**, **HyperX Cloud**, **Keychron**, **JBL Quantum**, **Glorious / Pulsar / Lamzu / WLmouse / ATK / Mchose / Endgame**).
+  - Atualização automática a cada **30s** somente enquanto a sub-aba **Dispositivos** estiver aberta (**0% CPU** em segundo plano), alerta Toast opcional para bateria baixa (`< 20%`) e opção de **ícone circular na bandeja** (estilo HaloBattery, desativado por padrão).
+
 ## [0.30.5] - 2026-11-15
 
 ### 🛠️ Correções

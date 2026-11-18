@@ -20,6 +20,7 @@ public sealed class SystemTrayManager : IDisposable
     private Forms.NotifyIcon? _audioTray;
     private Forms.NotifyIcon? _miniTaskTray;
     private Forms.NotifyIcon? _wallpaperTray;
+    private Forms.NotifyIcon? _peripheralBatteryTray;
     private Drawing.Icon? _cachedWallpaperPlayingIcon;
     private Drawing.Icon? _cachedWallpaperPausedIcon;
     private bool? _lastAppliedWallpaperPausedState;
@@ -44,6 +45,10 @@ public sealed class SystemTrayManager : IDisposable
     public bool ShowMicIcon { get; set; } = true;
     public bool ShowAudioIcon { get; set; } = true;
     public bool ShowMiniTaskIcon { get; set; } = true;
+    public bool ShowPeripheralBatteryIcon { get; set; } = false;
+    private Action? _onRefreshPeripheralBattery;
+    private Action? _onOpenDevicesTab;
+    private List<PeripheralBatteryInfo> _lastPeripheralBatteries = new();
 
     private bool _lastMicMuted = false;
     private string _lastMicName = "Microfone";
@@ -256,6 +261,19 @@ public sealed class SystemTrayManager : IDisposable
             };
             _wallpaperTray.DoubleClick += (_, _) => _onOpenApp?.Invoke();
             UpdateWallpaper(_lastWallpaperPaused, _lastWallpaperName);
+
+            // 6. Ícone Opcional de Bateria de Periféricos Sem Fio (estilo HaloBattery)
+            _peripheralBatteryTray = new Forms.NotifyIcon
+            {
+                Text = "Baterias de Periféricos",
+                Visible = ShowPeripheralBatteryIcon
+            };
+            _peripheralBatteryTray.MouseClick += (_, e) =>
+            {
+                if (e.Button == Forms.MouseButtons.Left)
+                    (_onOpenDevicesTab ?? _onOpenApp)?.Invoke();
+            };
+            UpdatePeripheralBattery(_lastPeripheralBatteries);
         }
         catch { }
     }
@@ -903,6 +921,103 @@ public sealed class SystemTrayManager : IDisposable
         return bmp.GetHicon();
     }
 
+    public void ConfigurePeripheralBatteryCallbacks(Action? onRefresh, Action? onOpenDevices)
+    {
+        _onRefreshPeripheralBattery = onRefresh;
+        _onOpenDevicesTab = onOpenDevices;
+    }
+
+    public void UpdatePeripheralBattery(IReadOnlyList<PeripheralBatteryInfo>? devices)
+    {
+        _lastPeripheralBatteries = devices?.ToList() ?? new List<PeripheralBatteryInfo>();
+        if (_peripheralBatteryTray == null) return;
+
+        _peripheralBatteryTray.Visible = ShowPeripheralBatteryIcon;
+        if (!ShowPeripheralBatteryIcon) return;
+
+        int? minLevel = _lastPeripheralBatteries.Where(d => d.IsOnline && d.Level.HasValue).Select(d => d.Level).OrderBy(v => v).FirstOrDefault();
+        bool anyCharging = _lastPeripheralBatteries.Any(d => d.IsOnline && d.IsCharging);
+
+        var oldIcon = _peripheralBatteryTray.Icon;
+        IntPtr h = CreatePeripheralBatteryIcon(minLevel, anyCharging);
+        try
+        {
+            using var temp = Drawing.Icon.FromHandle(h);
+            _peripheralBatteryTray.Icon = (Drawing.Icon)temp.Clone();
+        }
+        finally { DestroyIcon(h); }
+        try { oldIcon?.Dispose(); } catch { }
+
+        _peripheralBatteryTray.Text = PeripheralBatteryService.FormatTrayTooltip(_lastPeripheralBatteries);
+        BuildPeripheralBatteryContextMenu();
+    }
+
+    private void BuildPeripheralBatteryContextMenu()
+    {
+        if (_peripheralBatteryTray == null) return;
+        var menu = new Forms.ContextMenuStrip();
+
+        if (_lastPeripheralBatteries.Count == 0)
+        {
+            var empty = new Forms.ToolStripMenuItem("Nenhum periférico sem fio detectado") { Enabled = false };
+            menu.Items.Add(empty);
+        }
+        else
+        {
+            foreach (var d in _lastPeripheralBatteries)
+            {
+                string chg = d.IsCharging ? " ⚡" : "";
+                string itemText = $"{d.Name} — {d.DisplayLevel}{chg} ({d.Source})";
+                var mi = new Forms.ToolStripMenuItem(itemText) { Enabled = false };
+                menu.Items.Add(mi);
+            }
+        }
+
+        menu.Items.Add(new Forms.ToolStripSeparator());
+        menu.Items.Add(new Forms.ToolStripMenuItem("↻ Atualizar Agora", null, (_, _) => _onRefreshPeripheralBattery?.Invoke()));
+        menu.Items.Add(new Forms.ToolStripMenuItem("🔋 Abrir Aba Dispositivos", null, (_, _) => (_onOpenDevicesTab ?? _onOpenApp)?.Invoke()));
+        _peripheralBatteryTray.ContextMenuStrip = menu;
+    }
+
+    public static IntPtr CreatePeripheralBatteryIcon(int? minLevel, bool anyCharging)
+    {
+        using var bmp = new Drawing.Bitmap(32, 32, Drawing.Imaging.PixelFormat.Format32bppArgb);
+        using (var g = Drawing.Graphics.FromImage(bmp))
+        {
+            g.SmoothingMode = SmoothingMode.AntiAlias;
+            g.TextRenderingHint = TextRenderingHint.AntiAliasGridFit;
+            g.Clear(Drawing.Color.Transparent);
+
+            Drawing.Color ringColor = anyCharging
+                ? Drawing.Color.FromArgb(56, 189, 248)
+                : minLevel switch
+                {
+                    null => Drawing.Color.FromArgb(148, 163, 184),
+                    < 20 => Drawing.Color.FromArgb(239, 68, 68),
+                    < 50 => Drawing.Color.FromArgb(245, 158, 11),
+                    _ => Drawing.Color.FromArgb(16, 185, 129)
+                };
+
+            using (var bgBrush = new Drawing.SolidBrush(Drawing.Color.FromArgb(235, 22, 24, 29)))
+                g.FillEllipse(bgBrush, 2, 2, 28, 28);
+
+            using (var trackPen = new Drawing.Pen(Drawing.Color.FromArgb(65, 255, 255, 255), 3.2f))
+                g.DrawArc(trackPen, 3.5f, 3.5f, 25f, 25f, 0, 360);
+
+            float sweep = minLevel is int lv ? Math.Clamp(lv, 0, 100) * 3.6f : 360f;
+            using (var arcPen = new Drawing.Pen(ringColor, 3.4f) { StartCap = LineCap.Round, EndCap = LineCap.Round })
+                g.DrawArc(arcPen, 3.5f, 3.5f, 25f, 25f, -90f, sweep);
+
+            string txt = minLevel is int l ? (l == 100 ? "100" : l.ToString()) : "--";
+            float fontSize = txt.Length >= 3 ? 7.2f : 8.5f;
+            using var font = new Drawing.Font("Segoe UI", fontSize, Drawing.FontStyle.Bold);
+            using var fgBrush = new Drawing.SolidBrush(Drawing.Color.White);
+            var sf = new Drawing.StringFormat { Alignment = Drawing.StringAlignment.Center, LineAlignment = Drawing.StringAlignment.Center };
+            g.DrawString(txt, font, fgBrush, new Drawing.RectangleF(0, 0.5f, 32, 32), sf);
+        }
+        return bmp.GetHicon();
+    }
+
     public void Dispose()
     {
         if (_mainAppTray != null)
@@ -933,6 +1048,12 @@ public sealed class SystemTrayManager : IDisposable
         {
             try { _wallpaperTray.Visible = false; _wallpaperTray.Icon = null; _wallpaperTray.Dispose(); } catch { }
             _wallpaperTray = null;
+        }
+
+        if (_peripheralBatteryTray != null)
+        {
+            try { _peripheralBatteryTray.Visible = false; _peripheralBatteryTray.Icon = null; _peripheralBatteryTray.Dispose(); } catch { }
+            _peripheralBatteryTray = null;
         }
 
         try { _cachedWallpaperPlayingIcon?.Dispose(); } catch { }

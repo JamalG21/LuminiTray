@@ -14257,6 +14257,30 @@
                 </StackPanel>
               </Grid>
 
+              <!-- Card Bateria de Periféricos Sem Fio (baseado no HaloBattery) -->
+              <Border Style="{StaticResource CardBorder}" Padding="20,18" Margin="0,0,0,16">
+                <StackPanel>
+                  <Grid Margin="0,0,0,10">
+                    <Grid.ColumnDefinitions>
+                      <ColumnDefinition Width="*" />
+                      <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <StackPanel>
+                      <TextBlock Text="BATERIA DE PERIFÉRICOS SEM FIO" Style="{StaticResource Label}" Margin="0,0,0,4" />
+                      <TextBlock x:Name="TxtPerifBatteryStatus" Text="Verificando periféricos sem fio (Bluetooth, 2.4 GHz HID e controles)..." Foreground="{DynamicResource Muted}" FontSize="12" TextWrapping="Wrap" />
+                    </StackPanel>
+                    <Button x:Name="BtnRefreshPerifBattery" Grid.Column="1" Style="{StaticResource OutlineButton}" Content="↻ Atualizar" Padding="12,6" FontSize="11.5" VerticalAlignment="Center" Click="BtnRefreshPerifBattery_Click" />
+                  </Grid>
+
+                  <WrapPanel Margin="0,0,0,12">
+                    <CheckBox x:Name="ChkPerifBatteryTrayIcon" Content="Exibir ícone circular de bateria na bandeja" Margin="0,0,22,4" Click="ChkPerifBatteryTrayIcon_Click" />
+                    <CheckBox x:Name="ChkPerifBatteryLowAlert" Content="Alertar quando bateria cair abaixo de 20%" Margin="0,0,0,4" Click="ChkPerifBatteryLowAlert_Click" />
+                  </WrapPanel>
+
+                  <StackPanel x:Name="PanelPerifBatteryList" />
+                </StackPanel>
+              </Border>
+
               <!-- Card USB / Armazenamento / Celulares -->
               <Border Style="{StaticResource CardBorder}" Padding="20,18" Margin="0,0,0,16">
                 <StackPanel>

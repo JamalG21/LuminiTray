@@ -341,6 +341,7 @@ public partial class MainWindow : Window
         try { _audioSettings?.Save(); } catch { }
 
         // 2. Remover ícones da bandeja imediatamente e bombear mensagens para o Explorer
+        try { StopPeripheralBatteryTimers(); } catch { }
         try 
         { 
             _trayManager?.Dispose(); 

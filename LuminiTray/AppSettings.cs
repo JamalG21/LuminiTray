@@ -255,6 +255,11 @@ public sealed class AppSettings
     public List<string> BluetoothFavoriteAddresses { get; set; } = new();
     public bool BluetoothManualMode { get; set; } = false;
 
+    // Bateria de Periféricos Sem Fio (baseado no HaloBattery)
+    public bool ShowPeripheralBatteryTrayIcon { get; set; } = false;
+    public bool PeripheralBatteryLowAlertEnabled { get; set; } = true;
+    public int PeripheralBatteryLowThreshold { get; set; } = 20;
+
     // Remapeamento de Teclado
     public bool KeyboardRemapEnabled { get; set; } = false;
     public List<KeyRemapRule> KeyRemaps { get; set; } = new();

@@ -85,7 +85,8 @@ public partial class MainWindow
             {
                 ShowMicIcon = _settings.ShowMicTrayIcon,
                 ShowAudioIcon = _settings.ShowAudioTrayIcon,
-                ShowMiniTaskIcon = _settings.ShowMiniTaskTrayIcon
+                ShowMiniTaskIcon = _settings.ShowMiniTaskTrayIcon,
+                ShowPeripheralBatteryIcon = _settings.ShowPeripheralBatteryTrayIcon
             };
             _trayManager.Initialize(
                 hwnd,
@@ -95,6 +96,16 @@ public partial class MainWindow
                 () => Dispatcher.BeginInvoke(ExitApplication),
                 () => AudioCore.GetDevices(AudioInterop.EDataFlow.Render, _audioSettings.PlaybackCycleDeviceIds, _audioSettings.DisabledPlaybackDeviceIds).Where(d => d.IsEnabled).ToList(),
                 (id) => Dispatcher.Invoke(() => SelectPlaybackDeviceById(id)));
+
+            _trayManager.ConfigurePeripheralBatteryCallbacks(
+                () => Dispatcher.Invoke(() => _ = RefreshPeripheralBatteriesAsync()),
+                () => Dispatcher.Invoke(() =>
+                {
+                    ShowAndRestoreWindow();
+                    if (NavPerifDevices != null) NavPerifDevices.IsChecked = true;
+                    else ShowPage("PagePerifDevices");
+                }));
+            UpdatePeripheralBatteryTrayPolling();
 
             MiniTaskManagerService.Instance.OnMetricsUpdated += (snap) =>
             {

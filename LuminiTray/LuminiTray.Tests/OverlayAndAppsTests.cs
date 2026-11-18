@@ -545,4 +545,41 @@ public class OverlayAndAppsTests
         CollectionAssert.AreEqual(
             new[] { "VisualDiagConnection1", "VisualDiagConnection2" },
             TaskbarTrayTweaksService.DiagEndpointNames);
+    }
+    [TestMethod]
+    public void TestPeripheralBattery_ParsersAndSettingsDefaults()
+    {
+        // Parsers de protocolos HaloBattery
+        var (xLvl, _, xChg) = PeripheralBatteryService.ParseXboxXInputLevel(0x02, 2);
+        Assert.AreEqual(55, xLvl);
+        Assert.IsFalse(xChg);
+        Assert.AreEqual((100, "Cabeado", true), PeripheralBatteryService.ParseXboxXInputLevel(0x01, 0));
+
+        var rz = new byte[90]; rz[0] = 0x02; rz[9] = 204;
+        Assert.AreEqual(80, PeripheralBatteryService.ParseRazerBatteryResponse(rz));
+
+        var (logiLvl, logiChg) = PeripheralBatteryService.ParseLogitechHidPp2Unified(new byte[] { 0x11, 1, 5, 0x1A, 74, 0, 1 });
+        Assert.AreEqual(74, logiLvl);
+        Assert.IsTrue(logiChg);
+
+        Assert.AreEqual((80, true), PeripheralBatteryService.ParsePlayStationDs4(0x18));
+        Assert.AreEqual((65, true), PeripheralBatteryService.ParsePlayStationDualSense(0x16));
+        Assert.AreEqual(81, PeripheralBatteryService.ParseCorsairBragi(new byte[] { 0x01, 0x02, 0x00, 0x2A, 0x03 }));
+        Assert.AreEqual((92, true, true), PeripheralBatteryService.ParseSteelSeriesNova7(new byte[] { 0xB0, 0x03, 92, 0x01 }));
+        var kc = new byte[24]; kc[0] = 0xB4; kc[1] = 0x06; kc[20] = 88;
+        Assert.AreEqual(88, PeripheralBatteryService.ParseKeychronLevel(kc));
+
+        Assert.IsTrue(PeripheralHidTransport.TryExtractVidPid(@"\\?\hid#vid_046d&pid_c548&mi_02#...", out ushort vid, out ushort pid));
+        Assert.AreEqual((ushort)0x046D, vid);
+        Assert.AreEqual((ushort)0xC548, pid);
+        Assert.AreEqual("AABBCCDDEEFF", PeripheralHidTransport.ExtractMacFromInstanceId(@"BTHLE\DEV_AABBCCDDEEFF\8&1234"));
+
+        // Padrão de fábrica e serialização
+        var settings = new AppSettings();
+        Assert.IsFalse(settings.ShowPeripheralBatteryTrayIcon);
+        Assert.IsTrue(settings.PeripheralBatteryLowAlertEnabled);
+        Assert.AreEqual(20, settings.PeripheralBatteryLowThreshold);
+        settings.ShowPeripheralBatteryTrayIcon = true;
+        var restored = JsonSerializer.Deserialize<AppSettings>(JsonSerializer.Serialize(settings))!;
+        Assert.IsTrue(restored.ShowPeripheralBatteryTrayIcon);
     }}
