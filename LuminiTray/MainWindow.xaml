@@ -130,7 +130,7 @@
 
               <TextBlock Foreground="{DynamicResource Muted}" TextWrapping="Wrap" Margin="0,0,16,0" Text="{Binding Header}" />
 
-              <TextBlock Grid.Column="1" TextWrapping="Wrap" Text="{Binding Value}" />
+              <TextBlock Grid.Column="1" TextWrapping="Wrap" Text="{Binding MaskedValue}" />
 
             </Grid>
 
@@ -348,6 +348,8 @@
           </Popup>
         </Grid>
 
+        <Button Name="BtnPrivacyMode" Style="{StaticResource CaptionButton}" Content="&#xE7B3;" ToolTip="Modo Privacidade: ocultar dados sensíveis (IP, MAC, Serial, Nome do PC/Usuário)" Click="BtnPrivacyMode_Click" />
+
         <Button Name="BtnTheme" Style="{StaticResource CaptionButton}" Content="" ToolTip="Modo claro" Click="Theme_Click" />
 
         <Button Style="{StaticResource CaptionButton}" Content="" ToolTip="Minimizar" Click="Min_Click" />
@@ -485,6 +487,18 @@
                     <TextBlock Text="" FontFamily="{StaticResource Icons}" FontSize="14" Width="28" VerticalAlignment="Center" />
 
                     <TextBlock Text="Sensores" VerticalAlignment="Center" />
+
+                  </StackPanel>
+
+                </RadioButton>
+
+                <RadioButton Name="NavMonitoring" Style="{StaticResource NavItem}" Tag="PageMonitoring" Checked="Nav_Checked">
+
+                  <StackPanel Orientation="Horizontal">
+
+                    <TextBlock Text="&#xE9D9;" FontFamily="{StaticResource Icons}" FontSize="14" Width="28" VerticalAlignment="Center" />
+
+                    <TextBlock Text="Monitoramento" VerticalAlignment="Center" />
 
                   </StackPanel>
 
@@ -5519,6 +5533,220 @@
               </DataGrid.Columns>
 
             </DataGrid>
+
+          </Border>
+
+        </Grid>
+
+        <Grid Name="PageMonitoring" Margin="36,30,36,30" Visibility="Collapsed">
+
+          <Grid.RowDefinitions>
+
+            <RowDefinition Height="Auto" />
+
+            <RowDefinition Height="Auto" />
+
+            <RowDefinition Height="Auto" />
+
+            <RowDefinition Height="*" />
+
+            <RowDefinition Height="Auto" />
+
+          </Grid.RowDefinitions>
+
+          <Grid Margin="0,0,0,14">
+
+            <StackPanel Margin="0,0,360,0">
+
+              <TextBlock Text="Monitoramento" Style="{StaticResource H1}" />
+
+              <TextBlock Name="TxtMonitoringStatus" Text="Visualização estilo HWMonitor com horários de Mín/Máx e gravação programada." Style="{StaticResource Sub}" TextWrapping="Wrap" />
+
+            </StackPanel>
+
+            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center">
+
+              <Button Name="BtnMonitoringResetMinMax" Style="{StaticResource OutlineButton}" Content="↺ Zerar Mín/Máx" Padding="12,6" FontSize="11.5" Margin="0,0,10,0" ToolTip="Reiniciar valores mínimos, máximos e horários de todos os sensores" Click="BtnMonitoringResetMinMax_Click" />
+
+              <TextBox Name="MonitoringSearch" Width="220" Tag="Buscar sensor ou hardware…" TextChanged="MonitoringSearch_Changed" />
+
+            </StackPanel>
+
+          </Grid>
+
+          <!-- Controle de Monitoramento Registrado -->
+          <Border Grid.Row="1" Style="{StaticResource CardBorder}" Padding="16,12" Margin="0,0,0,12">
+
+            <StackPanel>
+
+              <Grid>
+
+                <Grid.ColumnDefinitions>
+
+                  <ColumnDefinition Width="*" />
+
+                  <ColumnDefinition Width="Auto" />
+
+                </Grid.ColumnDefinitions>
+
+                <WrapPanel VerticalAlignment="Center">
+
+                  <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,16,6">
+                    <TextBlock Text="Intervalo:" Foreground="{DynamicResource Muted}" FontSize="12" VerticalAlignment="Center" Margin="0,0,6,0" />
+                    <TextBox Name="TxtMonIntervalValue" Text="1" Width="54" VerticalAlignment="Center" Margin="0,0,4,0" />
+                    <ComboBox Name="CmbMonIntervalUnit" Width="105" SelectedIndex="1" Margin="0,0,6,0" VerticalAlignment="Center">
+                      <ComboBoxItem Content="Segundos" />
+                      <ComboBoxItem Content="Minutos" />
+                    </ComboBox>
+                    <Button Style="{StaticResource OutlineButton}" Content="10s" Padding="8,4" FontSize="11" Margin="0,0,4,0" Click="BtnMonPreset10s_Click" />
+                    <Button Style="{StaticResource OutlineButton}" Content="1m" Padding="8,4" FontSize="11" Margin="0,0,4,0" Click="BtnMonPreset1m_Click" />
+                    <Button Style="{StaticResource OutlineButton}" Content="5m" Padding="8,4" FontSize="11" Click="BtnMonPreset5m_Click" />
+                  </StackPanel>
+
+                  <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,16,6">
+                    <TextBlock Text="Duração:" Foreground="{DynamicResource Muted}" FontSize="12" VerticalAlignment="Center" Margin="0,0,6,0" />
+                    <TextBox Name="TxtMonDurationValue" Text="30" Width="54" VerticalAlignment="Center" Margin="0,0,4,0" />
+                    <ComboBox Name="CmbMonDurationUnit" Width="105" SelectedIndex="0" Margin="0,0,6,0" VerticalAlignment="Center">
+                      <ComboBoxItem Content="Minutos" />
+                      <ComboBoxItem Content="Horas" />
+                    </ComboBox>
+                    <Button Style="{StaticResource OutlineButton}" Content="15m" Padding="8,4" FontSize="11" Margin="0,0,4,0" Click="BtnMonDur15m_Click" />
+                    <Button Style="{StaticResource OutlineButton}" Content="30m" Padding="8,4" FontSize="11" Margin="0,0,4,0" Click="BtnMonDur30m_Click" />
+                    <Button Style="{StaticResource OutlineButton}" Content="1h" Padding="8,4" FontSize="11" Click="BtnMonDur1h_Click" />
+                  </StackPanel>
+
+                  <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,8,6">
+                    <Button Style="{StaticResource OutlineButton}" Content="★ Principais" Padding="10,4" FontSize="11" Margin="0,0,4,0" ToolTip="Selecionar sensores principais (Temp/Clock/Carga/Consumo de CPU e GPU)" Click="BtnMonSelectEssentials_Click" />
+                    <Button Style="{StaticResource OutlineButton}" Content="☑ Todos" Padding="10,4" FontSize="11" Margin="0,0,4,0" Click="BtnMonSelectAll_Click" />
+                    <Button Style="{StaticResource OutlineButton}" Content="☐ Limpar" Padding="10,4" FontSize="11" Click="BtnMonSelectNone_Click" />
+                  </StackPanel>
+
+                </WrapPanel>
+
+                <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center" Margin="12,0,0,4">
+                  <Button Name="BtnMonStartStop" Style="{StaticResource PrimaryButton}" Content="▶ INICIAR MONITORAMENTO" Padding="16,8" FontSize="12" Click="BtnMonStartStop_Click" />
+                  <Button Name="BtnMonClearSummary" Style="{StaticResource OutlineButton}" Content="🗑 Limpar Resumo" Padding="12,8" FontSize="11.5" Margin="8,0,0,0" Click="BtnMonClearSummary_Click" />
+                </StackPanel>
+
+              </Grid>
+
+              <ProgressBar Name="PbMonSession" Height="4" Minimum="0" Maximum="100" Value="0" Foreground="{DynamicResource Accent}" Background="{DynamicResource Line}" Margin="0,8,0,0" Visibility="Collapsed" />
+
+            </StackPanel>
+
+          </Border>
+
+          <WrapPanel Name="MonitoringCategoryChips" Grid.Row="2" Margin="0,0,0,10" />
+
+          <!-- Tabela Detalhada Estilo HWMonitor -->
+          <Border Grid.Row="3" Style="{StaticResource CardBorder}" Padding="6,10,6,6">
+
+            <DataGrid Name="MonitoringGrid" AutoGenerateColumns="False" CanUserResizeColumns="True">
+
+              <ItemsControl.GroupStyle>
+
+                <GroupStyle>
+
+                  <GroupStyle.HeaderTemplate>
+
+                    <DataTemplate>
+
+                      <DockPanel Margin="10,16,10,6">
+
+                        <Button DockPanel.Dock="Right" Style="{StaticResource OutlineButton}" Content="Alternar Hardware" Padding="8,2" FontSize="10.5" Tag="{Binding Name}" Click="BtnMonToggleHardwareGroup_Click" />
+
+                        <TextBlock FontSize="14" FontWeight="SemiBold" Foreground="{DynamicResource Fg}" VerticalAlignment="Center" Text="{Binding Name}" />
+
+                      </DockPanel>
+
+                    </DataTemplate>
+
+                  </GroupStyle.HeaderTemplate>
+
+                </GroupStyle>
+
+              </ItemsControl.GroupStyle>
+
+              <DataGrid.Columns>
+
+                <DataGridTemplateColumn Header="REG." Width="48">
+                  <DataGridTemplateColumn.CellTemplate>
+                    <DataTemplate>
+                      <CheckBox HorizontalAlignment="Center" VerticalAlignment="Center" IsChecked="{Binding IsSelectedForMonitoring, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                    </DataTemplate>
+                  </DataGridTemplateColumn.CellTemplate>
+                </DataGridTemplateColumn>
+
+                <DataGridTextColumn Header="SENSOR" Width="*" IsReadOnly="True" Binding="{Binding Name}" />
+
+                <DataGridTextColumn Header="TIPO" Width="115" IsReadOnly="True" ElementStyle="{StaticResource MutedCell}" Binding="{Binding Category}" />
+
+                <DataGridTextColumn Header="ATUAL" Width="110" IsReadOnly="True" ElementStyle="{StaticResource MonoCell}" Binding="{Binding Value}" />
+
+                <DataGridTextColumn Header="MÍN. (HORÁRIO)" Width="165" IsReadOnly="True" ElementStyle="{StaticResource MutedMonoCell}" Binding="{Binding MinWithTime}" />
+
+                <DataGridTextColumn Header="MÁX. (HORÁRIO)" Width="165" IsReadOnly="True" ElementStyle="{StaticResource MutedMonoCell}" Binding="{Binding MaxWithTime}" />
+
+              </DataGrid.Columns>
+
+            </DataGrid>
+
+          </Border>
+
+          <!-- Card de Resumo & Gráfico do Monitoramento Registrado -->
+          <Border Name="CardMonChartSummary" Grid.Row="4" Style="{StaticResource CardBorder}" Padding="16,12" Margin="0,12,0,0" Visibility="Collapsed">
+
+            <StackPanel>
+
+              <Grid Margin="0,0,0,10">
+
+                <StackPanel VerticalAlignment="Center" Margin="0,0,340,0">
+                  <TextBlock Text="RESULTADO &amp; GRÁFICO DO MONITORAMENTO REGISTRADO" Style="{StaticResource Label}" Margin="0,0,0,2" />
+                  <TextBlock Name="TxtMonSummaryHeader" Text="Nenhuma leitura registrada ainda." Foreground="{DynamicResource Fg}" FontSize="12.5" FontWeight="SemiBold" TextWrapping="Wrap" />
+                </StackPanel>
+
+                <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center">
+                  <TextBlock Text="Sensor no gráfico:" Foreground="{DynamicResource Muted}" FontSize="12" VerticalAlignment="Center" Margin="0,0,8,0" />
+                  <ComboBox Name="CmbMonChartSensor" Width="320" SelectionChanged="CmbMonChartSensor_SelectionChanged" />
+                </StackPanel>
+
+              </Grid>
+
+              <UniformGrid Columns="4" Margin="0,0,0,10">
+                <Border Background="{DynamicResource CardSubtleBg}" BorderBrush="{DynamicResource Line}" BorderThickness="1" CornerRadius="8" Padding="10,6" Margin="0,0,8,0">
+                  <StackPanel>
+                    <TextBlock Text="MÍNIMO" Foreground="{DynamicResource Muted}" FontSize="10" FontWeight="SemiBold" />
+                    <TextBlock Name="TxtMonStatMin" Text="—" Foreground="{DynamicResource Fg}" FontFamily="{StaticResource Mono}" FontSize="13" FontWeight="Bold" />
+                  </StackPanel>
+                </Border>
+                <Border Background="{DynamicResource CardSubtleBg}" BorderBrush="{DynamicResource Line}" BorderThickness="1" CornerRadius="8" Padding="10,6" Margin="0,0,8,0">
+                  <StackPanel>
+                    <TextBlock Text="MÉDIA" Foreground="{DynamicResource Muted}" FontSize="10" FontWeight="SemiBold" />
+                    <TextBlock Name="TxtMonStatAvg" Text="—" Foreground="{DynamicResource Accent}" FontFamily="{StaticResource Mono}" FontSize="13" FontWeight="Bold" />
+                  </StackPanel>
+                </Border>
+                <Border Background="{DynamicResource CardSubtleBg}" BorderBrush="{DynamicResource Line}" BorderThickness="1" CornerRadius="8" Padding="10,6" Margin="0,0,8,0">
+                  <StackPanel>
+                    <TextBlock Text="MÁXIMO" Foreground="{DynamicResource Muted}" FontSize="10" FontWeight="SemiBold" />
+                    <TextBlock Name="TxtMonStatMax" Text="—" Foreground="{DynamicResource Fg}" FontFamily="{StaticResource Mono}" FontSize="13" FontWeight="Bold" />
+                  </StackPanel>
+                </Border>
+                <Border Background="{DynamicResource CardSubtleBg}" BorderBrush="{DynamicResource Line}" BorderThickness="1" CornerRadius="8" Padding="10,6">
+                  <StackPanel>
+                    <TextBlock Text="LEITURAS" Foreground="{DynamicResource Muted}" FontSize="10" FontWeight="SemiBold" />
+                    <TextBlock Name="TxtMonStatSamples" Text="0" Foreground="{DynamicResource Fg}" FontFamily="{StaticResource Mono}" FontSize="13" FontWeight="Bold" />
+                  </StackPanel>
+                </Border>
+              </UniformGrid>
+
+              <Grid Height="175" Background="{DynamicResource CardSubtleBg}">
+                <Canvas Name="CanvasMonChart" Background="Transparent" ClipToBounds="True" SizeChanged="CanvasMonChart_SizeChanged" MouseMove="CanvasMonChart_MouseMove" MouseLeave="CanvasMonChart_MouseLeave" />
+                <Border Name="BorderMonChartTooltip" Visibility="Collapsed" HorizontalAlignment="Left" VerticalAlignment="Top" IsHitTestVisible="False" Background="{DynamicResource Card}" BorderBrush="{DynamicResource LineStrong}" BorderThickness="1" CornerRadius="6" Padding="8,4">
+                  <TextBlock Name="TxtMonChartTooltip" Foreground="{DynamicResource Fg}" FontFamily="{StaticResource Mono}" FontSize="11" Text="" />
+                </Border>
+              </Grid>
+
+            </StackPanel>
 
           </Border>
 
@@ -15600,6 +15828,22 @@
                         <TextBlock Text="🛡️ TELEMETRIA, PRIVACIDADE &amp; SISTEMA" Style="{StaticResource Label}" />
 
                       </Grid>
+
+                      <WrapPanel Margin="0,0,0,10">
+
+                        <RadioButton Content="Todos" Tag="Todos" GroupName="SysTweakFilter" Style="{StaticResource Chip}" IsChecked="True" Margin="0,0,6,6" Checked="SystemTweakFilter_Checked" />
+
+                        <RadioButton Content="Telemetria &amp; Privacidade" Tag="Telemetria &amp; Privacidade" GroupName="SysTweakFilter" Style="{StaticResource Chip}" Margin="0,0,6,6" Checked="SystemTweakFilter_Checked" />
+
+                        <RadioButton Content="IA &amp; Navegadores" Tag="IA &amp; Navegadores" GroupName="SysTweakFilter" Style="{StaticResource Chip}" Margin="0,0,6,6" Checked="SystemTweakFilter_Checked" />
+
+                        <RadioButton Content="Explorador &amp; Menu" Tag="Explorador &amp; Menu" GroupName="SysTweakFilter" Style="{StaticResource Chip}" Margin="0,0,6,6" Checked="SystemTweakFilter_Checked" />
+
+                        <RadioButton Content="Barra &amp; Multitarefa" Tag="Barra &amp; Multitarefa" GroupName="SysTweakFilter" Style="{StaticResource Chip}" Margin="0,0,6,6" Checked="SystemTweakFilter_Checked" />
+
+                        <RadioButton Content="Sistema &amp; Updates" Tag="Sistema &amp; Updates" GroupName="SysTweakFilter" Style="{StaticResource Chip}" Margin="0,0,6,6" Checked="SystemTweakFilter_Checked" />
+
+                      </WrapPanel>
 
                       <ItemsControl Name="ItemsTweaksSystem">
 

@@ -17,6 +17,14 @@ public class WindowsDebloatTests
         Assert.IsNotNull(catalog, "O catálogo de bloatwares não deve ser nulo.");
         Assert.AreEqual(162, catalog.Count, "O catálogo deve conter exatamente os 162 identificadores de Win11Debloat.");
 
+        var pcManager = catalog.FirstOrDefault(a => a.AppId == "Microsoft.PCManager");
+        Assert.IsNotNull(pcManager, "Microsoft PC Manager deve estar no catálogo.");
+        Assert.AreEqual("safe", pcManager.Recommendation.ToLowerInvariant());
+
+        var edge = catalog.FirstOrDefault(a => a.AppId == "Microsoft.Edge");
+        Assert.IsNotNull(edge, "Microsoft Edge deve estar no catálogo.");
+        Assert.AreEqual("unsafe", edge.Recommendation.ToLowerInvariant());
+
         var clipchamp = catalog.FirstOrDefault(a => a.AppId == "Clipchamp.Clipchamp");
         Assert.IsNotNull(clipchamp, "Clipchamp deve estar no catálogo.");
         Assert.IsTrue(clipchamp.FriendlyName.Contains("Clipchamp", StringComparison.OrdinalIgnoreCase));
@@ -325,5 +333,35 @@ public class WindowsDebloatTests
 
         // Deve executar sem lançar exceção
         classicTweak.Restore(settings);
+    }
+
+    [TestMethod]
+    public void TestTweaks_Win11DebloatExpansionAndProfileSafety()
+    {
+        var tweaks = WindowsDebloatService.GetAllTweaks();
+        Assert.IsTrue(tweaks.Count >= 65, $"Esperado >= 65 tweaks após expansão Win11Debloat, obtido {tweaks.Count}.");
+
+        // Todos os IDs devem ser únicos e SubGroups preenchidos
+        var ids = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        foreach (var t in tweaks)
+        {
+            Assert.IsTrue(ids.Add(t.Id), $"ID duplicado: {t.Id}");
+            Assert.IsFalse(string.IsNullOrWhiteSpace(t.Title), $"Título vazio em {t.Id}");
+            Assert.IsFalse(string.IsNullOrWhiteSpace(t.SubGroup), $"SubGroup vazio em {t.Id}");
+        }
+
+        // Novos subgrupos presentes
+        var subGroups = tweaks.Select(t => t.SubGroup).Distinct().ToHashSet(StringComparer.Ordinal);
+        CollectionAssert.Contains(subGroups.ToList(), "IA & Navegadores");
+        CollectionAssert.Contains(subGroups.ToList(), "Explorador & Menu");
+        CollectionAssert.Contains(subGroups.ToList(), "Barra & Multitarefa");
+        CollectionAssert.Contains(subGroups.ToList(), "Sistema & Updates");
+
+        // Ajustes visuais/pessoais não devem entrar no perfil automático
+        var profile = WindowsDebloatService.CalculateProfile("AMD Ryzen 7 5700X3D", 8, 16, "NVIDIA GeForce RTX 4060", 16.0);
+        Assert.IsFalse(profile.RecommendedTweakIds.Contains("explorer_hide_home"));
+        Assert.IsFalse(profile.RecommendedTweakIds.Contains("taskbar_end_task"));
+        Assert.IsFalse(profile.RecommendedTweakIds.Contains("update_disable_drivers"));
+        Assert.IsFalse(profile.RecommendedTweakIds.Contains("gpu_disable_animations"));
     }
 }

@@ -17,18 +17,21 @@ public partial class MainWindow
     private DiskSpaceItem? _diskSpaceRoot;
     private DiskSpaceItem? _diskSpaceCurrentFolder;
     private readonly Stack<DiskSpaceItem> _diskSpaceNavHistory = new();
+    private readonly Dictionary<string, DiskScanResult> _diskScanCache = new(StringComparer.OrdinalIgnoreCase);
     private List<QuickCleanCategory> _quickCleanCategories = new();
     private CancellationTokenSource? _diskSpaceCts;
     private bool _diskSpaceScanning;
+    private int _diskScanGeneration;
     private string? _selectedDrivePath;
 
     private void InitDiskSpaceAnalyzer()
     {
         PopulateDriveCards();
 
-        if (_diskSpaceRoot == null && !string.IsNullOrEmpty(_selectedDrivePath))
+        if (_diskSpaceRoot == null && !_diskSpaceScanning && TxtTreemapEmpty != null)
         {
-            ScanDiskPathAsync(_selectedDrivePath);
+            TxtTreemapEmpty.Text = "Selecione um disco acima ou escolha uma pasta para analisar.";
+            TxtTreemapEmpty.Visibility = Visibility.Visible;
         }
     }
 
@@ -36,12 +39,6 @@ public partial class MainWindow
     {
         PnlDiskDrives.Children.Clear();
         var drives = DriveInfo.GetDrives().Where(d => d.IsReady && (d.DriveType == DriveType.Fixed || d.DriveType == DriveType.Removable)).ToList();
-
-        if (string.IsNullOrEmpty(_selectedDrivePath) && drives.Count > 0)
-        {
-            var cDrive = drives.FirstOrDefault(d => d.Name.StartsWith("C", StringComparison.OrdinalIgnoreCase)) ?? drives[0];
-            _selectedDrivePath = cDrive.RootDirectory.FullName;
-        }
 
         foreach (var d in drives)
         {
@@ -162,16 +159,57 @@ public partial class MainWindow
         }
     }
 
+    private void ReleaseDiskSpaceCache()
+    {
+        if (_diskScanCache.Count == 0 && _diskSpaceRoot == null && !_diskSpaceScanning && _selectedDrivePath == null)
+            return;
+
+        _diskSpaceCts?.Cancel();
+        _diskSpaceCts?.Dispose();
+        _diskSpaceCts = null;
+        _diskScanGeneration++;
+        _diskSpaceScanning = false;
+        _diskScanCache.Clear();
+        _diskScanResult = null;
+        _diskSpaceRoot = null;
+        _diskSpaceCurrentFolder = null;
+        _diskSpaceNavHistory.Clear();
+        _selectedDrivePath = null;
+        if (PgbDiskSpaceScan != null) PgbDiskSpaceScan.Visibility = Visibility.Collapsed;
+    }
+
+    private void ApplyDiskScanResult(DiskScanResult result, bool fromCache = false)
+    {
+        _diskScanResult = result;
+        _diskSpaceRoot = result.Root;
+        _diskSpaceCurrentFolder = result.Root;
+        _diskSpaceNavHistory.Clear();
+
+        UpdateDiskSpaceFolderView(result.Root);
+
+        string cacheTag = fromCache ? " · em cache" : "";
+        TxtDiskScanStats.Text = $"{result.Root.FileCount:N0} arquivos · {result.Root.FolderCount:N0} pastas · lido em {result.Elapsed.TotalSeconds:N1} s{cacheTag} · {result.AccessDeniedCount} pastas sem acesso · {result.ReparseCount} atalhos de pasta não seguidos";
+    }
+
     private async void ScanDiskPathAsync(string rootPath)
     {
-        if (_diskSpaceScanning)
+        _diskSpaceCts?.Cancel();
+        _diskSpaceCts?.Dispose();
+        _diskSpaceCts = null;
+        int gen = ++_diskScanGeneration;
+
+        if (_diskScanCache.TryGetValue(rootPath, out var cached))
         {
-            _diskSpaceCts?.Cancel();
+            _diskSpaceScanning = false;
+            PgbDiskSpaceScan.Visibility = Visibility.Collapsed;
+            ApplyDiskScanResult(cached, fromCache: true);
             return;
         }
 
+        var cts = new CancellationTokenSource();
+        _diskSpaceCts = cts;
+
         _diskSpaceScanning = true;
-        _diskSpaceCts = new CancellationTokenSource();
         PgbDiskSpaceScan.Visibility = Visibility.Visible;
         TxtDiskFolderTotalSize.Text = "Lendo…";
         TxtDiskSpaceBreadcrumb.Text = $"Varrendo {rootPath}…";
@@ -184,36 +222,43 @@ public partial class MainWindow
                 rootPath,
                 (currentPath, count) =>
                 {
-                    Dispatcher.Invoke(() =>
+                    if (gen != _diskScanGeneration) return;
+                    Dispatcher.BeginInvoke(() =>
                     {
-                        TxtDiskSpaceBreadcrumb.Text = $"Analisando ({count:N0} itens): {currentPath}";
+                        if (gen == _diskScanGeneration)
+                            TxtDiskSpaceBreadcrumb.Text = $"Analisando ({count:N0} itens): {currentPath}";
                     });
                 },
-                _diskSpaceCts.Token);
+                cts.Token);
 
-            _diskScanResult = result;
-            _diskSpaceRoot = result.Root;
-            _diskSpaceCurrentFolder = result.Root;
-            _diskSpaceNavHistory.Clear();
+            if (gen != _diskScanGeneration) return;
 
-            UpdateDiskSpaceFolderView(result.Root);
-
-            TxtDiskScanStats.Text = $"{result.Root.FileCount:N0} arquivos · {result.Root.FolderCount:N0} pastas · lido em {result.Elapsed.TotalSeconds:N1} s · {result.AccessDeniedCount} pastas sem acesso · {result.ReparseCount} atalhos de pasta não seguidos";
+            _diskScanCache[rootPath] = result;
+            ApplyDiskScanResult(result, fromCache: false);
         }
         catch (OperationCanceledException)
         {
-            TxtDiskSpaceBreadcrumb.Text = "Varredura interrompida pelo usuário.";
-            TxtTreemapEmpty.Text = "Varredura cancelada.";
+            if (gen == _diskScanGeneration)
+            {
+                TxtDiskSpaceBreadcrumb.Text = "Varredura interrompida pelo usuário.";
+                TxtTreemapEmpty.Text = "Varredura cancelada.";
+            }
         }
         catch (Exception ex)
         {
-            TxtDiskSpaceBreadcrumb.Text = $"Erro na varredura: {ex.Message}";
-            TxtTreemapEmpty.Text = $"Erro: {ex.Message}";
+            if (gen == _diskScanGeneration)
+            {
+                TxtDiskSpaceBreadcrumb.Text = $"Erro na varredura: {ex.Message}";
+                TxtTreemapEmpty.Text = $"Erro: {ex.Message}";
+            }
         }
         finally
         {
-            _diskSpaceScanning = false;
-            PgbDiskSpaceScan.Visibility = Visibility.Collapsed;
+            if (gen == _diskScanGeneration)
+            {
+                _diskSpaceScanning = false;
+                PgbDiskSpaceScan.Visibility = Visibility.Collapsed;
+            }
         }
     }
 

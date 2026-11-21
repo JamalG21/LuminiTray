@@ -1720,8 +1720,19 @@ public partial class MainWindow
         }
     }
 
+    private bool _lastBtRadioActive;
+    private List<BluetoothDeviceModel> _lastBtDevices = new();
+
+    public void RefreshPeripheralsPrivacyDisplay()
+    {
+        if (_lastBtDevices.Count > 0)
+            RenderBluetoothDevicesList(_lastBtRadioActive, _lastBtDevices);
+    }
+
     private void RenderBluetoothDevicesList(bool radioActive, List<BluetoothDeviceModel> devices)
     {
+        _lastBtRadioActive = radioActive;
+        _lastBtDevices = devices.ToList();
         if (PanelPerifBtList == null) return;
         PanelPerifBtList.Children.Clear();
 
@@ -1766,15 +1777,16 @@ public partial class MainWindow
             var infoStack = new StackPanel { VerticalAlignment = VerticalAlignment.Center };
             infoStack.Children.Add(new TextBlock
             {
-                Text = $"{dev.Name} {(dev.IsFavorite ? "★" : "")}",
+                Text = $"{PrivacyModeService.MaskSensitivePatterns(dev.Name)} {(dev.IsFavorite ? "★" : "")}",
                 Foreground = (Brush)FindResource(dev.IsConnected ? "Accent" : "Fg"),
                 FontWeight = FontWeights.SemiBold,
                 FontSize = 13,
                 TextWrapping = TextWrapping.Wrap
             });
+            string maskedAddr = PrivacyModeService.MaskIfSensitiveField("MAC", dev.AddressText);
             infoStack.Children.Add(new TextBlock
             {
-                Text = $"{dev.DeviceTypeLabel} · {dev.AddressText} · {(dev.IsConnected ? "Conectado" : "Pareado (Desconectado)")}",
+                Text = $"{dev.DeviceTypeLabel} · {maskedAddr} · {(dev.IsConnected ? "Conectado" : "Pareado (Desconectado)")}",
                 Foreground = (Brush)FindResource("Muted"),
                 FontSize = 11.5,
                 Margin = new Thickness(0, 2, 0, 0),
@@ -2399,9 +2411,12 @@ public partial class MainWindow
             StopPeripheralBatteryUiTimer();
     }
 
+    private List<PeripheralBatteryInfo> _lastBatteryDevices = new();
+
     private void UpdatePeripheralBatteryTrayPolling()
     {
-        if (_settings.ShowPeripheralBatteryTrayIcon)
+        bool anyTrayActive = _settings.ShowPeripheralBatteryTrayIcon || _settings.PeripheralBatteryTrayKeys.Count > 0;
+        if (anyTrayActive)
         {
             if (_periphBatteryTrayTimer == null)
             {
@@ -2417,7 +2432,7 @@ public partial class MainWindow
             if (_trayManager != null)
             {
                 _trayManager.ShowPeripheralBatteryIcon = false;
-                _trayManager.UpdatePeripheralBattery(null);
+                _trayManager.UpdatePeripheralBattery(null, Array.Empty<string>(), null);
             }
         }
     }
@@ -2440,6 +2455,7 @@ public partial class MainWindow
                 TxtPerifBatteryStatus.Text = "Consultando Bluetooth, XInput e dispositivos HID 2.4 GHz/USB...";
 
             var devices = await Task.Run(PeripheralBatteryService.PollAll);
+            _lastBatteryDevices = devices;
 
             if (PanelPerifDevices?.Visibility == Visibility.Visible)
                 RenderPeripheralBatteriesList(devices);
@@ -2447,7 +2463,7 @@ public partial class MainWindow
             if (_trayManager != null)
             {
                 _trayManager.ShowPeripheralBatteryIcon = _settings.ShowPeripheralBatteryTrayIcon;
-                _trayManager.UpdatePeripheralBattery(devices);
+                _trayManager.UpdatePeripheralBattery(devices, _settings.PeripheralBatteryTrayKeys, _settings.PeripheralBatterySelectedTrayKey);
             }
 
             if (_settings.PeripheralBatteryLowAlertEnabled)
@@ -2478,16 +2494,18 @@ public partial class MainWindow
 
         if (TxtPerifBatteryStatus != null)
         {
+            int dongleCount = devices.Count(x => x.IsDongle);
+            string dongleSuffix = dongleCount > 0 ? $" · {dongleCount} via Dongle 2.4 GHz" : "";
             TxtPerifBatteryStatus.Text = devices.Count == 0
-                ? "Nenhum periférico sem fio com leitura de bateria detectado no momento."
-                : $"{devices.Count} periférico(s) detectado(s) com leitura de bateria (atualiza a cada 30s com a aba aberta).";
+                ? "Nenhum periférico sem fio ou dongle 2.4 GHz detectado no momento."
+                : $"{devices.Count} periférico(s) detectado(s){dongleSuffix} (atualiza a cada 30s com a aba aberta).";
         }
 
         if (devices.Count == 0)
         {
             PanelPerifBatteryList.Children.Add(new TextBlock
             {
-                Text = "Conecte um mouse, teclado, headset ou controle Bluetooth / 2.4 GHz / Xbox / PlayStation para visualizar a bateria aqui.",
+                Text = "Conecte um mouse, teclado, headset ou controle Bluetooth / Dongle 2.4 GHz / Xbox / PlayStation / Switch para visualizar a bateria e o tipo de conexão aqui.",
                 Foreground = (Brush)FindResource("Muted"),
                 FontSize = 12,
                 TextWrapping = TextWrapping.Wrap
@@ -2499,18 +2517,22 @@ public partial class MainWindow
         var mutedBrush = TryFindResource("Muted") as Brush ?? Brushes.Gray;
         var cardSubtleBg = TryFindResource("CardSubtleBg") as Brush ?? Brushes.Transparent;
         var lineBrush = TryFindResource("Line") as Brush ?? Brushes.DimGray;
+        var accentBrush = TryFindResource("Accent") as Brush ?? new SolidColorBrush(Color.FromRgb(56, 189, 248));
 
         foreach (var d in devices)
         {
+            bool hasLevel = d.Level.HasValue;
             int pct = Math.Clamp(d.Level ?? 0, 0, 100);
-            Brush levelBrush = d.IsCharging
-                ? new SolidColorBrush(Color.FromRgb(56, 189, 248))
-                : pct switch
-                {
-                    < 20 => new SolidColorBrush(Color.FromRgb(239, 68, 68)),
-                    < 50 => new SolidColorBrush(Color.FromRgb(245, 158, 11)),
-                    _ => new SolidColorBrush(Color.FromRgb(16, 185, 129))
-                };
+            Brush levelBrush = !hasLevel
+                ? accentBrush
+                : d.IsCharging
+                    ? new SolidColorBrush(Color.FromRgb(56, 189, 248))
+                    : pct switch
+                    {
+                        < 20 => new SolidColorBrush(Color.FromRgb(239, 68, 68)),
+                        < 50 => new SolidColorBrush(Color.FromRgb(245, 158, 11)),
+                        _ => new SolidColorBrush(Color.FromRgb(16, 185, 129))
+                    };
 
             var border = new Border
             {
@@ -2525,7 +2547,8 @@ public partial class MainWindow
             var grid = new Grid();
             grid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
             grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
-            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(170) });
+            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(165) });
 
             var icon = new TextBlock
             {
@@ -2540,24 +2563,80 @@ public partial class MainWindow
             grid.Children.Add(icon);
 
             var infoStack = new StackPanel { VerticalAlignment = VerticalAlignment.Center };
-            infoStack.Children.Add(new TextBlock
+            var titleRow = new StackPanel { Orientation = Orientation.Horizontal, VerticalAlignment = VerticalAlignment.Center };
+            titleRow.Children.Add(new TextBlock
             {
                 Text = d.Name,
                 Foreground = fgBrush,
                 FontSize = 13,
                 FontWeight = FontWeights.SemiBold,
-                TextTrimming = TextTrimming.CharacterEllipsis
+                TextTrimming = TextTrimming.CharacterEllipsis,
+                VerticalAlignment = VerticalAlignment.Center
             });
-            string sub = d.IsCharging ? $"{d.KindLabel} · {d.Source} · ⚡ Carregando" : $"{d.KindLabel} · {d.Source}";
+
+            if (!string.IsNullOrWhiteSpace(d.ConnectionBadge))
+            {
+                var badge = new Border
+                {
+                    Background = d.IsDongle
+                        ? new SolidColorBrush(Color.FromArgb(40, 16, 185, 129))
+                        : new SolidColorBrush(Color.FromArgb(30, 56, 189, 248)),
+                    BorderBrush = d.IsDongle
+                        ? new SolidColorBrush(Color.FromArgb(120, 16, 185, 129))
+                        : lineBrush,
+                    BorderThickness = new Thickness(1),
+                    CornerRadius = new CornerRadius(6),
+                    Padding = new Thickness(6, 1, 6, 1),
+                    Margin = new Thickness(8, 0, 0, 0),
+                    VerticalAlignment = VerticalAlignment.Center
+                };
+                badge.Child = new TextBlock
+                {
+                    Text = d.ConnectionBadge,
+                    Foreground = d.IsDongle ? new SolidColorBrush(Color.FromRgb(16, 185, 129)) : fgBrush,
+                    FontSize = 10,
+                    FontWeight = FontWeights.SemiBold
+                };
+                titleRow.Children.Add(badge);
+            }
+            infoStack.Children.Add(titleRow);
+
+            var subParts = new List<string> { d.KindLabel, d.Source };
+            if (d.Millivolts is int mv && mv > 0) subParts.Add($"{mv / 1000.0:F2} V");
+            if (d.IsAsleep) subParts.Add("💤 Em espera");
+            else if (d.IsCharging) subParts.Add("⚡ Carregando");
+            else if (!hasLevel && d.Source.StartsWith("XInput", StringComparison.OrdinalIgnoreCase))
+                subParts.Add("Conectado (sem leitura de bateria via XInput)");
+            else if (!hasLevel && d.IsDongle)
+                subParts.Add("Conectado via receptor 2.4 GHz");
+
             infoStack.Children.Add(new TextBlock
             {
-                Text = sub,
+                Text = string.Join(" · ", subParts),
                 Foreground = mutedBrush,
                 FontSize = 11,
                 Margin = new Thickness(0, 2, 0, 0)
             });
             Grid.SetColumn(infoStack, 1);
             grid.Children.Add(infoStack);
+
+            bool pinnedInTray = _settings.PeripheralBatteryTrayKeys.Any(k => string.Equals(k, d.Key, StringComparison.OrdinalIgnoreCase));
+            var btnPinTray = new System.Windows.Controls.Button
+            {
+                Content = pinnedInTray ? "✓ Na Bandeja" : "+ Bandeja",
+                Padding = new Thickness(10, 4, 10, 4),
+                FontSize = 11,
+                VerticalAlignment = VerticalAlignment.Center,
+                Margin = new Thickness(10, 0, 14, 0),
+                ToolTip = pinnedInTray ? "Remover ícone individual deste dispositivo da bandeja" : "Adicionar ícone individual deste dispositivo na bandeja"
+            };
+            if (TryFindResource(pinnedInTray ? "PrimaryButton" : "OutlineButton") is Style btnStyle)
+                btnPinTray.Style = btnStyle;
+            string devKey = d.Key;
+            string devName = d.Name;
+            btnPinTray.Click += (_, _) => ToggleDeviceInBatteryTray(devKey, devName);
+            Grid.SetColumn(btnPinTray, 2);
+            grid.Children.Add(btnPinTray);
 
             var rightStack = new StackPanel { VerticalAlignment = VerticalAlignment.Center, HorizontalAlignment = HorizontalAlignment.Right, Width = 155 };
             rightStack.Children.Add(new TextBlock
@@ -2569,20 +2648,45 @@ public partial class MainWindow
                 HorizontalAlignment = HorizontalAlignment.Right,
                 Margin = new Thickness(0, 0, 0, 4)
             });
-            rightStack.Children.Add(new ProgressBar
+            if (hasLevel)
             {
-                Minimum = 0,
-                Maximum = 100,
-                Value = pct,
-                Height = 6,
-                Foreground = levelBrush,
-                Background = lineBrush
-            });
-            Grid.SetColumn(rightStack, 2);
+                rightStack.Children.Add(new ProgressBar
+                {
+                    Minimum = 0,
+                    Maximum = 100,
+                    Value = pct,
+                    Height = 6,
+                    Foreground = levelBrush,
+                    Background = lineBrush
+                });
+            }
+            Grid.SetColumn(rightStack, 3);
             grid.Children.Add(rightStack);
 
             border.Child = grid;
             PanelPerifBatteryList.Children.Add(border);
+        }
+    }
+
+    private void ToggleDeviceInBatteryTray(string key, string name)
+    {
+        bool exists = _settings.PeripheralBatteryTrayKeys.RemoveAll(k => string.Equals(k, key, StringComparison.OrdinalIgnoreCase)) > 0;
+        if (!exists)
+        {
+            _settings.PeripheralBatteryTrayKeys.Add(key);
+            Toast("Bandeja de Bateria", $"{name} adicionado à bandeja.", "\uE83F");
+        }
+        else
+        {
+            Toast("Bandeja de Bateria", $"{name} removido da bandeja.", "\uE83F");
+        }
+        _settings.Save();
+        RenderPeripheralBatteriesList(_lastBatteryDevices);
+        UpdatePeripheralBatteryTrayPolling();
+        if (_trayManager != null)
+        {
+            _trayManager.ShowPeripheralBatteryIcon = _settings.ShowPeripheralBatteryTrayIcon;
+            _trayManager.UpdatePeripheralBattery(_lastBatteryDevices, _settings.PeripheralBatteryTrayKeys, _settings.PeripheralBatterySelectedTrayKey);
         }
     }
 

@@ -52,10 +52,9 @@ public partial class MainWindow
 
         try
         {
-            _taskbarVolumeOsd = new TaskbarVolumeOsdWindow();
             _taskbarVolumeHook = new TaskbarVolumeHook(_audioSettings, (title, vol, x, y) =>
             {
-                Dispatcher.BeginInvoke(() => _taskbarVolumeOsd?.ShowVolume(title, vol, x, y));
+                Dispatcher.BeginInvoke(() => (_taskbarVolumeOsd ??= new TaskbarVolumeOsdWindow()).ShowVolume(title, vol, x, y));
             });
         }
         catch
@@ -65,12 +64,15 @@ public partial class MainWindow
 
         try
         {
-            _micOverlay = new MicOverlayWindow(_audioSettings, () => Dispatcher.Invoke(AudioToggleMicMute));
             if (_audioSettings.OverlayEnabled)
             {
-                _micOverlay.Show();
-                bool micMuted = AudioCore.GetDefaultMute(AudioInterop.EDataFlow.Capture);
-                _micOverlay.UpdateState(micMuted);
+                EnsureMicOverlayCreated();
+                if (_micOverlay != null)
+                {
+                    _micOverlay.Show();
+                    bool micMuted = AudioCore.GetDefaultMute(AudioInterop.EDataFlow.Capture);
+                    _micOverlay.UpdateState(micMuted);
+                }
             }
         }
         catch
@@ -104,6 +106,11 @@ public partial class MainWindow
                     ShowAndRestoreWindow();
                     if (NavPerifDevices != null) NavPerifDevices.IsChecked = true;
                     else ShowPage("PagePerifDevices");
+                }),
+                key => Dispatcher.Invoke(() =>
+                {
+                    _settings.PeripheralBatterySelectedTrayKey = key;
+                    _settings.Save();
                 }));
             UpdatePeripheralBatteryTrayPolling();
 
@@ -143,6 +150,16 @@ public partial class MainWindow
         }
     }
 
+    private void EnsureMicOverlayCreated()
+    {
+        if (_micOverlay != null) return;
+        try
+        {
+            _micOverlay = new MicOverlayWindow(_audioSettings, () => Dispatcher.Invoke(AudioToggleMicMute));
+        }
+        catch { }
+    }
+
     private void ShowAndRestoreWindow()
     {
         Show();
@@ -153,11 +170,12 @@ public partial class MainWindow
         UpdateRamStatus();
         if (_timer != null)
         {
-            _timer.Interval = TimeSpan.FromSeconds(1);
+            _timer.Interval = TimeSpan.FromSeconds(_settings.LowPowerMode ? 2 : 1);
             if (!_timer.IsEnabled) _timer.Start();
         }
         UpdateSensorPollingState();
         TriggerAutoUpdateCheck();
+        ScheduleDelayedTrimMemory(1000);
     }
 
     private void ExitApplication()
@@ -926,18 +944,19 @@ public partial class MainWindow
         if (ChkOverlayEnabled != null)
         {
             _audioSettings.OverlayEnabled = ChkOverlayEnabled.IsChecked == true;
-            if (_micOverlay != null)
+            if (_audioSettings.OverlayEnabled && _audioSettings.EnableMicMuteFeature)
             {
-                if (_audioSettings.OverlayEnabled && _audioSettings.EnableMicMuteFeature)
+                EnsureMicOverlayCreated();
+                if (_micOverlay != null)
                 {
                     _micOverlay.Show();
                     bool micMuted = AudioCore.GetDefaultMute(AudioInterop.EDataFlow.Capture);
                     _micOverlay.UpdateState(micMuted);
                 }
-                else
-                {
-                    _micOverlay.Hide();
-                }
+            }
+            else if (_micOverlay != null)
+            {
+                _micOverlay.Hide();
             }
         }
 

@@ -257,6 +257,8 @@ public sealed class AppSettings
 
     // Bateria de Periféricos Sem Fio (baseado no HaloBattery)
     public bool ShowPeripheralBatteryTrayIcon { get; set; } = false;
+    public List<string> PeripheralBatteryTrayKeys { get; set; } = new();
+    public string? PeripheralBatterySelectedTrayKey { get; set; }
     public bool PeripheralBatteryLowAlertEnabled { get; set; } = true;
     public int PeripheralBatteryLowThreshold { get; set; } = 20;
 
@@ -265,6 +267,9 @@ public sealed class AppSettings
     public List<KeyRemapRule> KeyRemaps { get; set; } = new();
     public List<ShortcutRemapRule> ShortcutRemaps { get; set; } = new();
     public List<string> KeyboardRemapExcludedApps { get; set; } = new();
+
+    // Núcleo Nativo Híbrido (Rust cdylib com fallback automático em C#)
+    public bool NativeCoreEnabled { get; set; } = true;
 
     public void Save()
     {

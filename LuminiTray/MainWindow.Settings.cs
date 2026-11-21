@@ -343,6 +343,7 @@ public partial class MainWindow
                 if (ChkFastNoiseSuppressor != null) ChkFastNoiseSuppressor.IsChecked = false;
             }
 
+            ApplyLowPowerVisualOptimizations(true);
             UpdateSensorPollingState();
 
             Toast("Modo Baixo Consumo", "Modo Baixo Consumo ATIVADO. Atividades secundárias pausadas.", "\uE7E8");
@@ -397,9 +398,32 @@ public partial class MainWindow
             }
 
             _settings.Save();
+            ApplyLowPowerVisualOptimizations(false);
             UpdateSensorPollingState();
             Toast("Modo Baixo Consumo", "Modo Baixo Consumo DESATIVADO. Configurações anteriores restauradas.", "\uE7E8");
         }
+    }
+
+    private void ApplyLowPowerVisualOptimizations(bool enable)
+    {
+        try
+        {
+            if (_timer != null)
+                _timer.Interval = TimeSpan.FromSeconds(enable ? 2 : 1);
+
+            if (PopupUpdateNotify != null)
+                PopupUpdateNotify.PopupAnimation = enable
+                    ? System.Windows.Controls.Primitives.PopupAnimation.None
+                    : System.Windows.Controls.Primitives.PopupAnimation.Fade;
+
+            if (enable)
+            {
+                _lightTimer?.Stop();
+                _suppressorMeterTimer?.Stop();
+                TrimMemory(force: true);
+            }
+        }
+        catch { }
     }
 
     // ---------------- Atalhos Rápidos & Controles do Programa (Aba Geral) ----------------

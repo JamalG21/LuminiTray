@@ -14,6 +14,7 @@ public partial class MainWindow
     // ================= Saúde dos discos =================
 
     private bool _diskHealthBusy;
+    private List<DiskHealthCard> _lastDiskCards = new();
 
     private async void RefreshDiskHealth()
     {
@@ -25,7 +26,8 @@ public partial class MainWindow
         {
             var sensors = _monitor.Rows.ToList();
             var cards = await Task.Run(() => DiskHealth.Read(sensors));
-            DiskCards.ItemsSource = cards;
+            _lastDiskCards = cards;
+            DiskCards.ItemsSource = PrivacyModeService.MaskCards(cards);
             int bad = cards.Count(c => c.Verdict is DiskVerdict.Warning or DiskVerdict.Critical);
             DiskHealthStatus.Text = cards.Count == 0
                 ? "Nenhum disco encontrado."
@@ -39,6 +41,12 @@ public partial class MainWindow
             _diskHealthBusy = false;
             BtnDiskRefresh.IsEnabled = true;
         }
+    }
+
+    public void RefreshDiskCardsPrivacy()
+    {
+        if (DiskCards != null && _lastDiskCards.Count > 0)
+            DiskCards.ItemsSource = PrivacyModeService.MaskCards(_lastDiskCards);
     }
 
     private void BtnDiskRefresh_Click(object sender, RoutedEventArgs e) => RefreshDiskHealth();
@@ -147,6 +155,9 @@ public partial class MainWindow
         targetBtn.Content = "GERANDO…";
         try
         {
+            await EnsureSystemInfoLoadedAsync();
+            await EnsureGpuInfoLoadedAsync();
+
             // Dados que vivem na interface são copiados aqui (thread da tela); a leitura dos discos roda em segundo plano.
             var sensorsSnapshot = _monitor.Rows.ToList();
             var data = new ReportData
@@ -161,6 +172,8 @@ public partial class MainWindow
                          g.Sections.Select(ReportBuilder.ToNode).Where(n => n != null).Cast<ReportNode>().ToList())).ToList(),
                 Sensors = sensorsSnapshot.Select(s => new ReportSensor(s.Hardware, s.Category, s.Name, s.Value, s.Min, s.Max)).ToList(),
                 Benchmarks = BuildBenchList(),
+                Monitoring = _monitoringLogService?.LastResult,
+                PrivacyModeActive = PrivacyModeService.IsEnabled
             };
             var disks = await Task.Run(() => DiskHealth.Read(sensorsSnapshot));
             data.Disks.AddRange(disks.Select(d => new ReportDisk(d.Title, d.Meta, d.VerdictText, d.Reasons, d.Metrics)));

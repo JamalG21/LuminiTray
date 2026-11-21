@@ -20,7 +20,8 @@ public sealed class SystemTrayManager : IDisposable
     private Forms.NotifyIcon? _audioTray;
     private Forms.NotifyIcon? _miniTaskTray;
     private Forms.NotifyIcon? _wallpaperTray;
-    private Forms.NotifyIcon? _peripheralBatteryTray;
+    private GuidNotifyIcon? _peripheralBatteryTray;
+    private readonly Dictionary<string, GuidNotifyIcon> _periphDeviceTrays = new(StringComparer.OrdinalIgnoreCase);
     private Drawing.Icon? _cachedWallpaperPlayingIcon;
     private Drawing.Icon? _cachedWallpaperPausedIcon;
     private bool? _lastAppliedWallpaperPausedState;
@@ -48,13 +49,19 @@ public sealed class SystemTrayManager : IDisposable
     public bool ShowPeripheralBatteryIcon { get; set; } = false;
     private Action? _onRefreshPeripheralBattery;
     private Action? _onOpenDevicesTab;
+    private Action<string>? _onSelectedPeripheralChanged;
     private List<PeripheralBatteryInfo> _lastPeripheralBatteries = new();
+    private List<string> _pinnedPeripheralKeys = new();
+    private string? _selectedPeripheralKey;
 
     private bool _lastMicMuted = false;
+    private bool? _lastAppliedMicMuted;
     private string _lastMicName = "Microfone";
     private string _lastAudioName = "Alto-falantes";
     private int _lastAudioVolume = 100;
     private int _lastOutputNumber = 1;
+    private int? _lastAppliedOutputNumber;
+    private bool _miniTaskIconCreated;
 
     [DllImport("user32.dll")]
     public static extern bool DestroyIcon(IntPtr hIcon);
@@ -262,18 +269,14 @@ public sealed class SystemTrayManager : IDisposable
             _wallpaperTray.DoubleClick += (_, _) => _onOpenApp?.Invoke();
             UpdateWallpaper(_lastWallpaperPaused, _lastWallpaperName);
 
-            // 6. Ícone Opcional de Bateria de Periféricos Sem Fio (estilo HaloBattery)
-            _peripheralBatteryTray = new Forms.NotifyIcon
+            // 6. Ícone Principal Opcional de Bateria de Periféricos (GUID próprio independente, 2x clique alterna dispositivo)
+            _peripheralBatteryTray = new GuidNotifyIcon("peripheral-battery-main")
             {
                 Text = "Baterias de Periféricos",
-                Visible = ShowPeripheralBatteryIcon
+                Visible = false
             };
-            _peripheralBatteryTray.MouseClick += (_, e) =>
-            {
-                if (e.Button == Forms.MouseButtons.Left)
-                    (_onOpenDevicesTab ?? _onOpenApp)?.Invoke();
-            };
-            UpdatePeripheralBattery(_lastPeripheralBatteries);
+            _peripheralBatteryTray.DoubleClick += (_, _) => CycleSinglePeripheralBatteryDevice();
+            UpdatePeripheralBattery(_lastPeripheralBatteries, _pinnedPeripheralKeys, _selectedPeripheralKey);
         }
         catch { }
     }
@@ -297,15 +300,21 @@ public sealed class SystemTrayManager : IDisposable
             _micTray.Visible = ShowMicIcon;
             if (ShowMicIcon)
             {
-                IntPtr hIcon = CreateMicIcon(isMuted);
-                try
+                if (_lastAppliedMicMuted != isMuted || _micTray.Icon == null)
                 {
-                    using var tempIcon = Drawing.Icon.FromHandle(hIcon);
-                    _micTray.Icon = (Drawing.Icon)tempIcon.Clone();
-                }
-                finally
-                {
-                    DestroyIcon(hIcon);
+                    var oldIcon = _micTray.Icon;
+                    IntPtr hIcon = CreateMicIcon(isMuted);
+                    try
+                    {
+                        using var tempIcon = Drawing.Icon.FromHandle(hIcon);
+                        _micTray.Icon = (Drawing.Icon)tempIcon.Clone();
+                        _lastAppliedMicMuted = isMuted;
+                    }
+                    finally
+                    {
+                        DestroyIcon(hIcon);
+                    }
+                    try { oldIcon?.Dispose(); } catch { }
                 }
 
                 string status = isMuted ? "MUTADO" : "ATIVO";
@@ -328,15 +337,21 @@ public sealed class SystemTrayManager : IDisposable
             _audioTray.Visible = ShowAudioIcon;
             if (ShowAudioIcon)
             {
-                IntPtr hIcon = CreateSpeakerIcon(_lastOutputNumber);
-                try
+                if (_lastAppliedOutputNumber != _lastOutputNumber || _audioTray.Icon == null)
                 {
-                    using var tempIcon = Drawing.Icon.FromHandle(hIcon);
-                    _audioTray.Icon = (Drawing.Icon)tempIcon.Clone();
-                }
-                finally
-                {
-                    DestroyIcon(hIcon);
+                    var oldIcon = _audioTray.Icon;
+                    IntPtr hIcon = CreateSpeakerIcon(_lastOutputNumber);
+                    try
+                    {
+                        using var tempIcon = Drawing.Icon.FromHandle(hIcon);
+                        _audioTray.Icon = (Drawing.Icon)tempIcon.Clone();
+                        _lastAppliedOutputNumber = _lastOutputNumber;
+                    }
+                    finally
+                    {
+                        DestroyIcon(hIcon);
+                    }
+                    try { oldIcon?.Dispose(); } catch { }
                 }
 
                 string tip = $"Saída #{_lastOutputNumber}: {_lastAudioName} ({_lastAudioVolume}%)";
@@ -713,15 +728,21 @@ public sealed class SystemTrayManager : IDisposable
             _miniTaskTray.Visible = ShowMiniTaskIcon;
             if (ShowMiniTaskIcon)
             {
-                IntPtr hIcon = CreateMiniTaskIcon();
-                try
+                if (!_miniTaskIconCreated || _miniTaskTray.Icon == null)
                 {
-                    using var tempIcon = Drawing.Icon.FromHandle(hIcon);
-                    _miniTaskTray.Icon = (Drawing.Icon)tempIcon.Clone();
-                }
-                finally
-                {
-                    DestroyIcon(hIcon);
+                    var oldIcon = _miniTaskTray.Icon;
+                    IntPtr hIcon = CreateMiniTaskIcon();
+                    try
+                    {
+                        using var tempIcon = Drawing.Icon.FromHandle(hIcon);
+                        _miniTaskTray.Icon = (Drawing.Icon)tempIcon.Clone();
+                        _miniTaskIconCreated = true;
+                    }
+                    finally
+                    {
+                        DestroyIcon(hIcon);
+                    }
+                    try { oldIcon?.Dispose(); } catch { }
                 }
                 BuildMiniTaskContextMenu();
             }
@@ -921,62 +942,212 @@ public sealed class SystemTrayManager : IDisposable
         return bmp.GetHicon();
     }
 
-    public void ConfigurePeripheralBatteryCallbacks(Action? onRefresh, Action? onOpenDevices)
+    public void ConfigurePeripheralBatteryCallbacks(Action? onRefresh, Action? onOpenDevices, Action<string>? onSelectedChanged = null)
     {
         _onRefreshPeripheralBattery = onRefresh;
         _onOpenDevicesTab = onOpenDevices;
+        _onSelectedPeripheralChanged = onSelectedChanged;
     }
 
-    public void UpdatePeripheralBattery(IReadOnlyList<PeripheralBatteryInfo>? devices)
+    public static PeripheralBatteryInfo? SelectSingleTrayDevice(
+        IReadOnlyList<PeripheralBatteryInfo> devices,
+        string? selectedKey,
+        IReadOnlyCollection<string>? pinnedKeys)
     {
-        _lastPeripheralBatteries = devices?.ToList() ?? new List<PeripheralBatteryInfo>();
-        if (_peripheralBatteryTray == null) return;
-
-        _peripheralBatteryTray.Visible = ShowPeripheralBatteryIcon;
-        if (!ShowPeripheralBatteryIcon) return;
-
-        int? minLevel = _lastPeripheralBatteries.Where(d => d.IsOnline && d.Level.HasValue).Select(d => d.Level).OrderBy(v => v).FirstOrDefault();
-        bool anyCharging = _lastPeripheralBatteries.Any(d => d.IsOnline && d.IsCharging);
-
-        var oldIcon = _peripheralBatteryTray.Icon;
-        IntPtr h = CreatePeripheralBatteryIcon(minLevel, anyCharging);
-        try
+        if (devices == null || devices.Count == 0) return null;
+        if (!string.IsNullOrWhiteSpace(selectedKey))
         {
-            using var temp = Drawing.Icon.FromHandle(h);
-            _peripheralBatteryTray.Icon = (Drawing.Icon)temp.Clone();
+            var match = devices.FirstOrDefault(d => string.Equals(d.Key, selectedKey, StringComparison.OrdinalIgnoreCase));
+            if (match != null) return match;
         }
-        finally { DestroyIcon(h); }
-        try { oldIcon?.Dispose(); } catch { }
-
-        _peripheralBatteryTray.Text = PeripheralBatteryService.FormatTrayTooltip(_lastPeripheralBatteries);
-        BuildPeripheralBatteryContextMenu();
+        if (pinnedKeys is { Count: 1 })
+        {
+            string onlyKey = pinnedKeys.First();
+            var match = devices.FirstOrDefault(d => string.Equals(d.Key, onlyKey, StringComparison.OrdinalIgnoreCase));
+            if (match != null) return match;
+        }
+        return devices.FirstOrDefault(d => d.IsOnline && d.Level.HasValue) ?? devices[0];
     }
 
-    private void BuildPeripheralBatteryContextMenu()
+    public static string? GetNextCycledDeviceKey(IReadOnlyList<PeripheralBatteryInfo> devices, string? currentKey)
     {
+        if (devices == null || devices.Count == 0) return null;
+        if (devices.Count == 1) return devices[0].Key;
+        int cur = -1;
+        for (int i = 0; i < devices.Count; i++)
+        {
+            if (string.Equals(devices[i].Key, currentKey, StringComparison.OrdinalIgnoreCase))
+            {
+                cur = i;
+                break;
+            }
+        }
+        int next = (cur + 1) % devices.Count;
+        return devices[next].Key;
+    }
+
+    private void CycleSinglePeripheralBatteryDevice()
+    {
+        if (_lastPeripheralBatteries.Count <= 1)
+        {
+            (_onOpenDevicesTab ?? _onOpenApp)?.Invoke();
+            return;
+        }
+
+        string? cur = SelectSingleTrayDevice(_lastPeripheralBatteries, _selectedPeripheralKey, _pinnedPeripheralKeys)?.Key;
+        string? nextKey = GetNextCycledDeviceKey(_lastPeripheralBatteries, cur);
+        if (string.IsNullOrEmpty(nextKey)) return;
+
+        _selectedPeripheralKey = nextKey;
+        _onSelectedPeripheralChanged?.Invoke(nextKey);
+        UpdatePeripheralBattery(_lastPeripheralBatteries, _pinnedPeripheralKeys, _selectedPeripheralKey);
+    }
+
+    public void UpdatePeripheralBattery(
+        IReadOnlyList<PeripheralBatteryInfo>? devices,
+        IReadOnlyList<string>? pinnedKeys = null,
+        string? selectedKey = null)
+    {
+        _lastPeripheralBatteries = devices?.Where(d => d.IsOnline && !d.IsAsleep).ToList() ?? new List<PeripheralBatteryInfo>();
+        if (pinnedKeys != null)
+            _pinnedPeripheralKeys = pinnedKeys.Where(k => !string.IsNullOrWhiteSpace(k)).Distinct(StringComparer.OrdinalIgnoreCase).ToList();
+        if (selectedKey != null)
+            _selectedPeripheralKey = selectedKey;
+
+        // 1. Ícones individuais ("+ Bandeja"): totalmente independentes do ícone principal,
+        //    cada um com seu próprio GUID determinístico. Oculta automaticamente se desconectado.
+        var activePinnedSet = new HashSet<string>(_pinnedPeripheralKeys, StringComparer.OrdinalIgnoreCase);
+        foreach (var staleKey in _periphDeviceTrays.Keys.Where(k => !activePinnedSet.Contains(k)).ToList())
+        {
+            if (_periphDeviceTrays.Remove(staleKey, out var staleNi))
+            {
+                try { staleNi.Visible = false; staleNi.Dispose(); } catch { }
+            }
+        }
+
+        foreach (var key in _pinnedPeripheralKeys)
+        {
+            var dev = _lastPeripheralBatteries.FirstOrDefault(d => string.Equals(d.Key, key, StringComparison.OrdinalIgnoreCase));
+            if (dev == null)
+            {
+                // Dispositivo desconectado: oculta o ícone sem perder o GUID nem a preferência salva
+                if (_periphDeviceTrays.TryGetValue(key, out var offlineNi))
+                    offlineNi.Visible = false;
+                continue;
+            }
+
+            if (!_periphDeviceTrays.TryGetValue(key, out var ni))
+            {
+                ni = new GuidNotifyIcon("peripheral-battery-dev:" + key);
+                ni.DoubleClick += (_, _) => (_onOpenDevicesTab ?? _onOpenApp)?.Invoke();
+                _periphDeviceTrays[key] = ni;
+            }
+
+            string via = !string.IsNullOrWhiteSpace(dev.ConnectionLabel) ? $" ({dev.ConnectionLabel})" : "";
+            string tip = $"{dev.Name}: {dev.DisplayLevel}{(dev.IsCharging ? "⚡" : "")}{via}";
+            ApplyTrayBatteryIconAndMenu(ni, dev.Level, dev.IsCharging, tip, singleDeviceCycleHint: false, isMainIcon: false);
+            ni.Visible = true;
+        }
+
+        // 2. Ícone principal alternável (controlado exclusivamente pelo checkbox; 2x clique troca dispositivo)
         if (_peripheralBatteryTray == null) return;
+        if (!ShowPeripheralBatteryIcon)
+        {
+            _peripheralBatteryTray.Visible = false;
+            return;
+        }
+
+        var activeDev = SelectSingleTrayDevice(_lastPeripheralBatteries, _selectedPeripheralKey, Array.Empty<string>());
+        if (activeDev != null && (string.IsNullOrEmpty(_selectedPeripheralKey) || !_lastPeripheralBatteries.Any(d => string.Equals(d.Key, _selectedPeripheralKey, StringComparison.OrdinalIgnoreCase))))
+            _selectedPeripheralKey = activeDev.Key;
+
+        string mainTip = activeDev != null
+            ? $"{activeDev.Name}: {activeDev.DisplayLevel}{(activeDev.IsCharging ? "⚡" : "")}"
+            : PeripheralBatteryService.FormatTrayTooltip(_lastPeripheralBatteries);
+
+        ApplyTrayBatteryIconAndMenu(
+            _peripheralBatteryTray,
+            activeDev?.Level,
+            activeDev?.IsCharging == true,
+            mainTip,
+            singleDeviceCycleHint: _lastPeripheralBatteries.Count > 1,
+            isMainIcon: true);
+        _peripheralBatteryTray.Visible = true;
+    }
+
+    private void ClearPerDeviceBatteryTrays()
+    {
+        foreach (var kv in _periphDeviceTrays)
+        {
+            try { kv.Value.Visible = false; kv.Value.Dispose(); } catch { }
+        }
+        _periphDeviceTrays.Clear();
+    }
+
+    public static string BuildBatteryIconCacheKey(int? level, bool charging) => $"{level ?? -1}:{(charging ? 1 : 0)}";
+
+    private void ApplyTrayBatteryIconAndMenu(
+        GuidNotifyIcon ni, int? level, bool charging, string tooltip, bool singleDeviceCycleHint, bool isMainIcon)
+    {
+        string iconKey = BuildBatteryIconCacheKey(level, charging);
+        if (!string.Equals(ni.LastIconKey, iconKey, StringComparison.Ordinal) || ni.Icon == null)
+        {
+            IntPtr h = CreatePeripheralBatteryIcon(level, charging);
+            try
+            {
+                using var temp = Drawing.Icon.FromHandle(h);
+                ni.Icon = (Drawing.Icon)temp.Clone();
+                ni.LastIconKey = iconKey;
+            }
+            finally { DestroyIcon(h); }
+        }
+
+        ni.Text = tooltip.Length >= 125 ? tooltip[..122] + "..." : tooltip;
+        var oldMenu = ni.ContextMenuStrip;
+        ni.ContextMenuStrip = BuildPeripheralBatteryContextMenu(singleDeviceCycleHint, isMainIcon);
+        try { oldMenu?.Dispose(); } catch { }
+    }
+
+    private Forms.ContextMenuStrip BuildPeripheralBatteryContextMenu(bool singleDeviceCycleHint, bool isMainIcon)
+    {
         var menu = new Forms.ContextMenuStrip();
 
         if (_lastPeripheralBatteries.Count == 0)
         {
-            var empty = new Forms.ToolStripMenuItem("Nenhum periférico sem fio detectado") { Enabled = false };
-            menu.Items.Add(empty);
+            menu.Items.Add(new Forms.ToolStripMenuItem("Nenhum periférico conectado no momento") { Enabled = false });
         }
         else
         {
             foreach (var d in _lastPeripheralBatteries)
             {
+                string prefix = isMainIcon && string.Equals(d.Key, _selectedPeripheralKey, StringComparison.OrdinalIgnoreCase)
+                    ? "● " : "";
                 string chg = d.IsCharging ? " ⚡" : "";
-                string itemText = $"{d.Name} — {d.DisplayLevel}{chg} ({d.Source})";
-                var mi = new Forms.ToolStripMenuItem(itemText) { Enabled = false };
+                string via = !string.IsNullOrWhiteSpace(d.ConnectionLabel) ? d.ConnectionLabel : d.Source;
+                string itemText = $"{prefix}{d.Name} — {d.DisplayLevel}{chg} ({via})";
+                var mi = new Forms.ToolStripMenuItem(itemText, null, (_, _) =>
+                {
+                    if (isMainIcon)
+                    {
+                        _selectedPeripheralKey = d.Key;
+                        _onSelectedPeripheralChanged?.Invoke(d.Key);
+                        UpdatePeripheralBattery(_lastPeripheralBatteries, _pinnedPeripheralKeys, _selectedPeripheralKey);
+                    }
+                    else
+                    {
+                        (_onOpenDevicesTab ?? _onOpenApp)?.Invoke();
+                    }
+                });
                 menu.Items.Add(mi);
             }
         }
 
         menu.Items.Add(new Forms.ToolStripSeparator());
+        if (singleDeviceCycleHint)
+            menu.Items.Add(new Forms.ToolStripMenuItem("🔄 Trocar Dispositivo (Duplo clique)", null, (_, _) => CycleSinglePeripheralBatteryDevice()));
         menu.Items.Add(new Forms.ToolStripMenuItem("↻ Atualizar Agora", null, (_, _) => _onRefreshPeripheralBattery?.Invoke()));
         menu.Items.Add(new Forms.ToolStripMenuItem("🔋 Abrir Aba Dispositivos", null, (_, _) => (_onOpenDevicesTab ?? _onOpenApp)?.Invoke()));
-        _peripheralBatteryTray.ContextMenuStrip = menu;
+        return menu;
     }
 
     public static IntPtr CreatePeripheralBatteryIcon(int? minLevel, bool anyCharging)
@@ -1055,6 +1226,7 @@ public sealed class SystemTrayManager : IDisposable
             try { _peripheralBatteryTray.Visible = false; _peripheralBatteryTray.Icon = null; _peripheralBatteryTray.Dispose(); } catch { }
             _peripheralBatteryTray = null;
         }
+        ClearPerDeviceBatteryTrays();
 
         try { _cachedWallpaperPlayingIcon?.Dispose(); } catch { }
         _cachedWallpaperPlayingIcon = null;

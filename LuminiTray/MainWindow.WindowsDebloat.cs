@@ -16,6 +16,7 @@ public partial class MainWindow
     private CancellationTokenSource? _debloatCts;
     private bool _isScanningBloatware;
     private bool _isUninstallingBloatware;
+    private string _systemTweakFilter = "Todos";
 
     public void InitWindowsDebloatPage()
     {
@@ -34,8 +35,7 @@ public partial class MainWindow
             if (ItemsTweaksInput != null)
                 ItemsTweaksInput.ItemsSource = _debloatTweaks.Where(t => t.Category.Contains("Latência")).ToList();
 
-            if (ItemsTweaksSystem != null)
-                ItemsTweaksSystem.ItemsSource = _debloatTweaks.Where(t => t.Category.Contains("Telemetria")).ToList();
+            RefreshSystemTweaksFilter();
         }
 
         // Atualiza o estado real dos interruptores no registro
@@ -54,6 +54,25 @@ public partial class MainWindow
         if (_scannedBloatware.Count == 0 && !_isScanningBloatware)
         {
             _ = ScanBloatwareAsync();
+        }
+    }
+
+    private void RefreshSystemTweaksFilter()
+    {
+        if (ItemsTweaksSystem == null || _debloatTweaks == null) return;
+        ItemsTweaksSystem.ItemsSource = _debloatTweaks
+            .Where(t => t.Category.Contains("Telemetria") &&
+                        (_systemTweakFilter == "Todos" ||
+                         string.Equals(t.SubGroup, _systemTweakFilter, StringComparison.Ordinal)))
+            .ToList();
+    }
+
+    private void SystemTweakFilter_Checked(object sender, RoutedEventArgs e)
+    {
+        if (sender is RadioButton { Tag: string tag })
+        {
+            _systemTweakFilter = tag;
+            RefreshSystemTweaksFilter();
         }
     }
 

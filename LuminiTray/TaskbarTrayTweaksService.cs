@@ -60,9 +60,9 @@ public static class TaskbarTrayTweaksService
 {
     private const string TweaksRegKey = @"Software\LuminiTray\TaskbarTweaks";
     private const string ExplorerAdvancedKey = @"Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced";
-    private const string RefreshEventName = @"Local\LuminiTrayTaskbarTweaksRefresh_v3";
+    private const string RefreshEventName = @"Local\LuminiTrayTaskbarTweaksRefresh_v4";
     public static readonly string[] DiagEndpointNames = { "VisualDiagConnection1", "VisualDiagConnection2" };
-    private const string HookDllFileName = "LuminiTray.TaskbarHook.v3.dll";
+    private const string HookDllFileName = "LuminiTray.TaskbarHook.v4.dll";
     private static readonly Guid ClsidLuminiTaskbarDiag = new("7B8D4E21-9C4A-4B8F-A312-90D4E5F61234");
 
     [DllImport("user32.dll", CharSet = CharSet.Unicode, SetLastError = true)]

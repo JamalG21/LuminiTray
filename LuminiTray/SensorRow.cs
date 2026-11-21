@@ -1,3 +1,4 @@
+using System;
 using System.ComponentModel;
 using LibreHardwareMonitor.Hardware;
 
@@ -14,7 +15,24 @@ public class SensorRow : INotifyPropertyChanged
     public HardwareType HardwareType { get; init; }
 
     private float? _value, _min, _max;
+    private bool _isSelectedForMonitoring;
+
     public float? RawValue => _value;
+    public float? RawMin => _min;
+    public float? RawMax => _max;
+    public DateTime? MinTime { get; private set; }
+    public DateTime? MaxTime { get; private set; }
+
+    public bool IsSelectedForMonitoring
+    {
+        get => _isSelectedForMonitoring;
+        set
+        {
+            if (_isSelectedForMonitoring == value) return;
+            _isSelectedForMonitoring = value;
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(IsSelectedForMonitoring)));
+        }
+    }
 
     /// <summary>Ordem de exibição por tipo (clocks e temperaturas primeiro, como no GPU-Z).</summary>
     public int Order => Type switch
@@ -23,24 +41,95 @@ public class SensorRow : INotifyPropertyChanged
         SensorType.Control => 4, SensorType.Power => 5, SensorType.Voltage => 6, SensorType.Current => 7,
         SensorType.SmallData => 8, SensorType.Data => 9, SensorType.Throughput => 10, _ => 11
     };
+
+    public string UnitLabel => Type switch
+    {
+        SensorType.Temperature => "°C",
+        SensorType.Load or SensorType.Control or SensorType.Level or SensorType.Humidity => "%",
+        SensorType.Clock => "MHz",
+        SensorType.Power => "W",
+        SensorType.Voltage => "V",
+        SensorType.Current => "A",
+        SensorType.Fan => "RPM",
+        SensorType.Flow => "L/h",
+        SensorType.Frequency => "Hz",
+        SensorType.Data => "GB",
+        SensorType.SmallData => "MB",
+        SensorType.Throughput => "MB/s",
+        SensorType.Energy => "mWh",
+        _ => ""
+    };
+
     public string Value => Format(_value);
     public string Min => Format(_min);
     public string Max => Format(_max);
+    public string MinTimeText => MinTime?.ToString("HH:mm:ss") ?? "—";
+    public string MaxTimeText => MaxTime?.ToString("HH:mm:ss") ?? "—";
+    public string MinWithTime => _min == null ? "—" : $"{Min} ({MinTimeText})";
+    public string MaxWithTime => _max == null ? "—" : $"{Max} ({MaxTimeText})";
 
-    public void Update(float? value, float? min, float? max)
+    public string FormatValue(float? v) => Format(v);
+
+    private void TrackMinMaxTimes(float? min, float? max, DateTime now)
     {
-        if (_value == value && _min == min && _max == max) return;
+        if (min != null && (_min == null || min.Value < _min.Value || MinTime == null))
+            MinTime = now;
+        if (max != null && (_max == null || max.Value > _max.Value || MaxTime == null))
+            MaxTime = now;
+    }
+
+    public void Update(float? value, float? min, float? max, DateTime? timestamp = null)
+    {
+        DateTime now = timestamp ?? DateTime.Now;
+        bool valChanged = _value != value;
+        bool minChanged = _min != min;
+        bool maxChanged = _max != max;
+        if (!valChanged && !minChanged && !maxChanged) return;
+
+        TrackMinMaxTimes(min, max, now);
         _value = value; _min = min; _max = max;
-        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(Value)));
-        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(Min)));
-        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(Max)));
+
+        if (valChanged)
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(Value)));
+        if (minChanged)
+        {
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(Min)));
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(MinTimeText)));
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(MinWithTime)));
+        }
+        if (maxChanged)
+        {
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(Max)));
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(MaxTimeText)));
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(MaxWithTime)));
+        }
     }
 
     /// <summary>Atualiza o valor numérico em background sem disparar eventos de interface WPF.</summary>
-    public void UpdateRawOnly(float? value, float? min, float? max)
+    public void UpdateRawOnly(float? value, float? min, float? max, DateTime? timestamp = null)
     {
+        TrackMinMaxTimes(min, max, timestamp ?? DateTime.Now);
         _value = value; _min = min; _max = max;
     }
+
+    public void ResetMinMax(DateTime? timestamp = null)
+    {
+        DateTime? now = _value != null ? (timestamp ?? DateTime.Now) : null;
+        _min = _value;
+        _max = _value;
+        MinTime = now;
+        MaxTime = now;
+        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(Min)));
+        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(Max)));
+        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(MinTimeText)));
+        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(MaxTimeText)));
+        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(MinWithTime)));
+        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(MaxWithTime)));
+    }
+
+    /// <summary>Notifica a UI para rebindar os valores já atualizados em segundo plano.</summary>
+    public void NotifyUiRefresh() =>
+        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(string.Empty));
 
     private string Format(float? v)
     {

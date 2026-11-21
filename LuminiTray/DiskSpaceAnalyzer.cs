@@ -42,17 +42,17 @@ public sealed class DiskSpaceItem
     public string Category { get; set; } = "Outros";
     public List<DiskSpaceItem> Children { get; set; } = new();
 
+    private static readonly System.Collections.Concurrent.ConcurrentDictionary<string, Brush> FrozenCategoryBrushes =
+        new(StringComparer.OrdinalIgnoreCase);
+
     public string CategoryColorHex => TreemapLayoutEngine.CategoryColors.TryGetValue(Category, out var c) ? $"#{c.R:X2}{c.G:X2}{c.B:X2}" : "#64748B";
     public Color CategoryColor => TreemapLayoutEngine.GetCategoryColor(Category);
-    public Brush CategoryBrush
+    public Brush CategoryBrush => FrozenCategoryBrushes.GetOrAdd(Category ?? "Outros", static cat =>
     {
-        get
-        {
-            var b = new SolidColorBrush(CategoryColor);
-            b.Freeze();
-            return b;
-        }
-    }
+        var b = new SolidColorBrush(TreemapLayoutEngine.GetCategoryColor(cat));
+        b.Freeze();
+        return b;
+    });
     public string FormattedSize => DiskSpaceAnalyzer.FormatSize(Size);
     public string FormattedPercentage => $"{Percentage:F1}%";
     public string Icon => IsDirectory ? "📁" : GetFileIcon(Name);
@@ -126,6 +126,167 @@ public static class DiskSpaceAnalyzer
     /// Escaneia uma unidade ou diretório e gera a árvore completa com porcentagens e maiores arquivos.
     /// </summary>
     public static async Task<DiskScanResult> ScanAsync(
+        string rootPath,
+        Action<string, int>? onProgress = null,
+        CancellationToken ct = default)
+    {
+        if (NativeCoreBridge.IsEnabled())
+        {
+            try
+            {
+                return await ScanNativeAsync(rootPath, onProgress, ct);
+            }
+            catch (OperationCanceledException)
+            {
+                throw;
+            }
+            catch
+            {
+                // Fallback transparente para implementação gerenciada em C#
+            }
+        }
+
+        return await ScanManagedAsync(rootPath, onProgress, ct);
+    }
+
+    public static async Task<DiskScanResult> ScanNativeAsync(
+        string rootPath,
+        Action<string, int>? onProgress = null,
+        CancellationToken ct = default)
+    {
+        return await Task.Run(() =>
+        {
+            ct.ThrowIfCancellationRequested();
+            var sw = Stopwatch.StartNew();
+            var payload = NativeCoreBridge.TryScanDisk(
+                    rootPath,
+                    ct,
+                    onProgress: onProgress != null ? count => onProgress(rootPath, count) : null)
+                ?? throw new InvalidOperationException("Falha no scanner nativo em Rust.");
+
+            var topFiles = new List<DiskSpaceItem>();
+            var allFolders = new List<DiskSpaceItem>();
+            var rootDi = new DirectoryInfo(rootPath);
+
+            var rootItem = ConvertNativeNode(
+                payload.Root,
+                rootDi.Name,
+                rootDi.FullName,
+                topFiles,
+                allFolders,
+                ct);
+
+            CalculatePercentages(rootItem, rootItem.Size);
+            onProgress?.Invoke(rootItem.FullPath, rootItem.FileCount + rootItem.FolderCount);
+
+            var sortedTopFiles = topFiles.OrderByDescending(f => f.Size).Take(50).ToList();
+            var sortedTopFolders = allFolders.OrderByDescending(f => f.Size).Take(50).ToList();
+            var sortedExtensions = payload.Extensions
+                .OrderByDescending(e => e.TotalSize)
+                .Take(15)
+                .ToList();
+
+            sw.Stop();
+            return new DiskScanResult
+            {
+                Root = rootItem,
+                TopFiles = sortedTopFiles,
+                TopFolders = sortedTopFolders,
+                Extensions = sortedExtensions,
+                AccessDeniedCount = payload.AccessDeniedCount,
+                ReparseCount = payload.ReparseCount,
+                Elapsed = sw.Elapsed
+            };
+        }, ct);
+    }
+
+    private static DiskSpaceItem ConvertNativeNode(
+        NativeDiskDirNode src,
+        string displayName,
+        string fullPath,
+        List<DiskSpaceItem> topFiles,
+        List<DiskSpaceItem> allFolders,
+        CancellationToken ct)
+    {
+        ct.ThrowIfCancellationRequested();
+
+        var node = new DiskSpaceItem
+        {
+            Name = displayName,
+            FullPath = fullPath,
+            Size = src.TotalSize,
+            FileCount = src.FileCount,
+            FolderCount = src.FolderCount,
+            IsDirectory = true,
+            Category = "Pasta"
+        };
+
+        foreach (var f in src.DirectFiles)
+        {
+            string fileFullPath = Path.Combine(fullPath, f.Name);
+            string ext = Path.GetExtension(f.Name).ToLowerInvariant();
+            var fileItem = new DiskSpaceItem
+            {
+                Name = f.Name,
+                FullPath = fileFullPath,
+                Size = f.Size,
+                IsDirectory = false,
+                Category = ClassifyExtension(ext, fileFullPath)
+            };
+            node.Children.Add(fileItem);
+
+            if (topFiles.Count < 100 || f.Size >= 10L * 1024 * 1024)
+            {
+                topFiles.Add(fileItem);
+            }
+        }
+
+        foreach (var sub in src.SubDirs)
+        {
+            string subFullPath = Path.Combine(fullPath, sub.Name);
+            var subNode = ConvertNativeNode(sub, sub.Name, subFullPath, topFiles, allFolders, ct);
+            node.Children.Add(subNode);
+
+            if (subNode.Size > 10L * 1024 * 1024)
+            {
+                allFolders.Add(subNode);
+            }
+        }
+
+        node.Children.Sort((a, b) => b.Size.CompareTo(a.Size));
+
+        string pLower = node.FullPath.ToLowerInvariant();
+        if (pLower.Contains(@"\windows") || pLower.Contains(@"system32") || pLower.Contains(@"winsxs") || node.Name.StartsWith("$Recycle.Bin", StringComparison.OrdinalIgnoreCase))
+        {
+            node.Category = "Windows e sistema";
+        }
+        else if (pLower.Contains(@"\program files") || pLower.Contains(@"\games") || pLower.Contains("steamlibrary"))
+        {
+            node.Category = "Programas e jogos";
+        }
+        else if (node.Children.Count > 0)
+        {
+            string? bestCat = null;
+            long bestSum = -1;
+            var sums = new Dictionary<string, long>(StringComparer.Ordinal);
+            foreach (var c in node.Children)
+            {
+                sums.TryGetValue(c.Category, out long cur);
+                long next = cur + c.Size;
+                sums[c.Category] = next;
+                if (next > bestSum)
+                {
+                    bestSum = next;
+                    bestCat = c.Category;
+                }
+            }
+            node.Category = bestCat ?? "Outros";
+        }
+
+        return node;
+    }
+
+    public static async Task<DiskScanResult> ScanManagedAsync(
         string rootPath,
         Action<string, int>? onProgress = null,
         CancellationToken ct = default)

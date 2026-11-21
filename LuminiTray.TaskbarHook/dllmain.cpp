@@ -61,8 +61,10 @@ struct DesktopWidthState {
 static std::vector<DesktopWidthState> g_desktopStates;
 
 struct MainStackTextState {
+    winrt::weak_ref<FrameworkElement> iconEl;
     winrt::weak_ref<Controls::TextBlock> textBlock;
-    int64_t token{0};
+    int64_t textToken{0};
+    int64_t visToken{0};
 };
 static std::vector<MainStackTextState> g_mainStackStates;
 
@@ -199,19 +201,35 @@ static void ApplyMainStackIcon(FrameworkElement iconEl) {
 
     iconEl.Visibility(eval(tb) ? Visibility::Collapsed : Visibility::Visible);
 
-    std::erase_if(g_mainStackStates, [](const MainStackTextState& s) { return !s.textBlock.get(); });
+    std::erase_if(g_mainStackStates, [](const MainStackTextState& s) { return !s.textBlock.get() || !s.iconEl.get(); });
     bool tracked = std::any_of(g_mainStackStates.begin(), g_mainStackStates.end(),
-        [&](const MainStackTextState& s) { return s.textBlock.get() == tb; });
+        [&](const MainStackTextState& s) { return s.textBlock.get() == tb && s.iconEl.get() == iconEl; });
     if (!tracked) {
         auto weakEl = winrt::make_weak(iconEl);
+        auto weakTb = winrt::make_weak(tb);
         MainStackTextState st;
+        st.iconEl = iconEl;
         st.textBlock = tb;
-        st.token = tb.RegisterPropertyChangedCallback(
+        st.textToken = tb.RegisterPropertyChangedCallback(
             Controls::TextBlock::TextProperty(),
             [weakEl, eval](DependencyObject sender, DependencyProperty) {
                 auto t = sender.try_as<Controls::TextBlock>();
                 auto el = weakEl.get();
-                if (t && el) el.Visibility(eval(t) ? Visibility::Collapsed : Visibility::Visible);
+                if (t && el) {
+                    auto targetVis = eval(t) ? Visibility::Collapsed : Visibility::Visible;
+                    if (el.Visibility() != targetVis) el.Visibility(targetVis);
+                }
+            });
+        // O Windows 11 volta a definir Visibility = Visible no ícone do microfone quando um app abre o áudio;
+        // este callback força imediatamente Collapsed novamente enquanto a opção de ocultar estiver ativa.
+        st.visToken = iconEl.RegisterPropertyChangedCallback(
+            UIElement::VisibilityProperty(),
+            [weakTb, eval](DependencyObject sender, DependencyProperty) {
+                auto el = sender.try_as<FrameworkElement>();
+                auto t = weakTb.get();
+                if (el && t && eval(t) && el.Visibility() != Visibility::Collapsed) {
+                    el.Visibility(Visibility::Collapsed);
+                }
             });
         g_mainStackStates.push_back(std::move(st));
     }
@@ -495,7 +513,7 @@ static void ApplyAll() {
 }
 
 static DWORD WINAPI RefreshWatcherProc(LPVOID) {
-    HANDLE ev = CreateEventW(nullptr, FALSE, FALSE, L"Local\\LuminiTrayTaskbarTweaksRefresh_v3");
+    HANDLE ev = CreateEventW(nullptr, FALSE, FALSE, L"Local\\LuminiTrayTaskbarTweaksRefresh_v4");
     if (!ev) return 0;
     while (!g_stopWatcher) {
         DWORD res = WaitForSingleObject(ev, 500);
@@ -559,7 +577,9 @@ public:
 
     HRESULT STDMETHODCALLTYPE OnVisualTreeChange(ParentChildRelation, VisualElement element, VisualMutationType mutationType) override {
         if (mutationType != Add || !_diag) return S_OK;
-        if (!element.Type || (wcscmp(element.Type, L"SystemTray.SystemTrayFrame") != 0 && wcscmp(element.Type, L"SystemTray.IconView") != 0))
+        if (!element.Type || (wcscmp(element.Type, L"SystemTray.SystemTrayFrame") != 0
+            && wcscmp(element.Type, L"SystemTray.IconView") != 0
+            && wcscmp(element.Type, L"SystemTray.TextIconContent") != 0))
             return S_OK;
 
         IInspectable* raw = nullptr;

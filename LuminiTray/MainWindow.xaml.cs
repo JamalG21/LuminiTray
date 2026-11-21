@@ -56,8 +56,12 @@ public partial class MainWindow : Window
     private const int HotkeyId = HotkeyIdOverlay;
 
     // RESET BENCH
-    private readonly BenchRenderer _bench = new();
+    private BenchRenderer? _bench;
+    private BenchRenderer Bench => _bench ??= new BenchRenderer();
     private System.Windows.Media.Imaging.WriteableBitmap? _benchBitmap;
+    private bool _benchInit;
+    private bool _gamesInit;
+    private bool _ocInit;
     private CancellationTokenSource? _benchCts;
     private DispatcherTimer? _benchTimer;
     private DateTime _benchStart;
@@ -91,6 +95,9 @@ public partial class MainWindow : Window
     private readonly bool _isMinimized;
     private bool _isExiting;
     private bool _isMetricsSubtaskRegistered;
+    private Task? _systemInfoLoadTask;
+    private Task? _gpuInfoLoadTask;
+    private static long _lastTrimMemoryTicks;
 
     public MainWindow() : this(false, false) { }
 
@@ -119,8 +126,6 @@ public partial class MainWindow : Window
         SystemSub.Text = "Lendo informações do sistema…";
         StatusText.Text = "Detectando o hardware…";
 
-        InitBench();
-        SnapshotUsb();
         RefreshDrives();
         TitlePage.Text = "Visão geral";
         UpdateDashboard();
@@ -155,6 +160,7 @@ public partial class MainWindow : Window
             }
 
             await LoadHardwareAsync();
+            if (_settings.LowPowerMode) ApplyLowPowerVisualOptimizations(true);
             EnsureFanControlServiceRunning();
             EnsureSuppressorServiceRunning();
             InitializeWallpaperSlideshowOnStartup();
@@ -175,6 +181,7 @@ public partial class MainWindow : Window
         };
 
         int _minimizedTicks = 0;
+        int _activeTrimTicks = 0;
         int _btAutoTicks = 0;
         _timer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(1) };
         _timer.Tick += async (_, _) =>
@@ -185,15 +192,18 @@ public partial class MainWindow : Window
 
             bool isWindowActive = IsVisible && WindowState != WindowState.Minimized;
             bool isOverlayActive = _overlay != null && _overlay.IsVisible;
-            bool isSensorOrDashPage = isWindowActive && ((PageDash != null && PageDash.Visibility == Visibility.Visible) ||
-                                                         (PageSensors != null && PageSensors.Visibility == Visibility.Visible));
-            bool needsFullRead = isOverlayActive || isSensorOrDashPage;
+            bool isMonitoringRecording = _monitoringLogService != null && _monitoringLogService.IsRunning;
+            bool isSensorGridVisible = isWindowActive && ((PageSensors != null && PageSensors.Visibility == Visibility.Visible) ||
+                                                          (PageMonitoring != null && PageMonitoring.Visibility == Visibility.Visible) ||
+                                                          (PageGpu != null && PageGpu.Visibility == Visibility.Visible));
+            bool isSensorOrDashPage = isSensorGridVisible || (isWindowActive && PageDash != null && PageDash.Visibility == Visibility.Visible);
+            bool needsFullRead = isOverlayActive || isSensorOrDashPage || isMonitoringRecording;
             bool fanActive = _fanControlService != null && _fanControlService.IsControlActive;
 
             if (needsFullRead)
             {
                 UpdateSensorPollingState();
-                await _monitor.RefreshAsync(updateUi: isWindowActive);
+                await _monitor.RefreshAsync(updateUi: isSensorGridVisible);
             }
             else
             {
@@ -204,10 +214,13 @@ public partial class MainWindow : Window
                 }
             }
 
+            OnMonitoringOneSecondTick();
+
             if (!isWindowActive)
             {
-                // Se minimizado na bandeja e nem overlay nem controle de fans estão ativos, desliga o timer (0.0% CPU)
-                if (!isOverlayActive && !fanActive)
+                _activeTrimTicks = 0;
+                // Se minimizado na bandeja e nem overlay, nem fans, nem monitoramento registrado estão ativos, desliga o timer (0.0% CPU)
+                if (!isOverlayActive && !fanActive && !(_monitoringLogService != null && _monitoringLogService.IsRunning))
                 {
                     _timer.Stop();
                     TrimMemory();
@@ -232,9 +245,16 @@ public partial class MainWindow : Window
                 return;
             }
             _minimizedTicks = 0;
-            if (_timer.Interval != TimeSpan.FromSeconds(1))
+            int targetIntervalSec = _settings.LowPowerMode ? 2 : 1;
+            if (_timer.Interval != TimeSpan.FromSeconds(targetIntervalSec))
             {
-                _timer.Interval = TimeSpan.FromSeconds(1);
+                _timer.Interval = TimeSpan.FromSeconds(targetIntervalSec);
+            }
+
+            if (!AnyBenchRunning && !TestRunning && ++_activeTrimTicks >= 15)
+            {
+                _activeTrimTicks = 0;
+                TrimMemory();
             }
 
             if (_monitor.IsOpen && needsFullRead) StatusText.Text = $"{_monitor.Rows.Count} sensores · atualizado {DateTime.Now:HH:mm:ss}";
@@ -269,15 +289,24 @@ public partial class MainWindow : Window
             if (WindowState == WindowState.Minimized)
             {
                 ReleaseWallpaperGalleryMemory();
+                ReleaseDiskSpaceCache();
                 if (!MiniTaskManagerWindow.IsWindowVisible) MiniTaskManagerService.Instance.SetActive(false);
                 TrimMemory();
             }
             else if (IsVisible)
             {
-                _timer.Interval = TimeSpan.FromSeconds(1);
+                _timer.Interval = TimeSpan.FromSeconds(_settings.LowPowerMode ? 2 : 1);
                 if (!_timer.IsEnabled) _timer.Start();
                 UpdateSensorPollingState();
-                _ = _monitor.RefreshAsync(updateUi: true);
+                if (PageSystem != null && PageSystem.Visibility == Visibility.Visible)
+                    _ = EnsureSystemInfoLoadedAsync();
+                if (PageGpu != null && PageGpu.Visibility == Visibility.Visible)
+                    _ = EnsureGpuInfoLoadedAsync();
+                bool syncGridUi = (PageSensors != null && PageSensors.Visibility == Visibility.Visible) ||
+                                  (PageMonitoring != null && PageMonitoring.Visibility == Visibility.Visible) ||
+                                  (PageGpu != null && PageGpu.Visibility == Visibility.Visible);
+                _ = _monitor.RefreshAsync(updateUi: syncGridUi);
+                ScheduleDelayedTrimMemory();
                 if (_wasMinimizedForUpdate) TriggerAutoUpdateCheck();
             }
             _wasMinimizedForUpdate = WindowState == WindowState.Minimized;
@@ -290,6 +319,7 @@ public partial class MainWindow : Window
                 WindowState = WindowState.Minimized;
                 Hide();
                 ReleaseWallpaperGalleryMemory();
+                ReleaseDiskSpaceCache();
                 if (!MiniTaskManagerWindow.IsWindowVisible) MiniTaskManagerService.Instance.SetActive(false);
                 UpdateSensorPollingState();
                 TrimMemory();
@@ -403,59 +433,169 @@ public partial class MainWindow : Window
         try { MiniTaskManagerWindow.Instance.Close(); } catch { }
     }
 
-    /// <summary>Coletas lentas da abertura, em paralelo e fora da thread da janela; cada parte preenche a tela quando fica pronta.</summary>
+    /// <summary>Coletas na abertura: sensores carregam imediatamente; WMI de Sistema e GPU carregam sob demanda (lazy).</summary>
     private async Task LoadHardwareAsync()
     {
-        async Task LoadInfo()
+        await LoadSensorsAsync();
+        SnapshotUsb();
+        TrimMemory(force: true);
+        ScheduleDelayedTrimMemory(1200);
+    }
+
+    private void ScheduleDelayedTrimMemory(int delayMs = 1200)
+    {
+        _ = Task.Delay(delayMs).ContinueWith(_ =>
         {
             try
             {
-                var info = await Task.Run(SystemInfoCollector.Collect);
-                InfoCategories.ItemsSource = info;
-                InfoCategories.SelectedIndex = 0;
-                SystemSub.Text = $"{Environment.MachineName} · {info.Count} categorias";
+                if (!AnyBenchRunning && !TestRunning)
+                {
+                    Dispatcher.BeginInvoke(System.Windows.Threading.DispatcherPriority.Background, () => TrimMemory(force: true));
+                }
             }
-            catch (Exception ex) { SystemSub.Text = $"Não foi possível ler as informações do sistema: {ex.Message}"; }
-        }
+            catch { }
+        });
+    }
 
-        async Task LoadSensors()
-        {
-            try { await _monitor.OpenAsync(); }
-            catch (Exception ex) { StatusText.Text = $"Sensores indisponíveis: {ex.Message}"; return; }
-            await _monitor.RefreshAsync();
-            UpdateCpuSensorWarning();
-            AddChip("Todos", null, isChecked: true);
-            foreach (var c in _monitor.Rows.Select(r => r.Category).Distinct().OrderBy(x => x))
-                AddChip(c, c);
-            UpdateDashboard();
-        }
+    private async Task LoadSensorsAsync()
+    {
+        try { await _monitor.OpenAsync(); }
+        catch (Exception ex) { StatusText.Text = $"Sensores indisponíveis: {ex.Message}"; return; }
+        await _monitor.RefreshAsync();
+        UpdateCpuSensorWarning();
+        AddChip("Todos", null, isChecked: true);
+        foreach (var c in _monitor.Rows.Select(r => r.Category).Distinct().OrderBy(x => x))
+            AddChip(c, c);
+        InitFastCpuAndGpuStubs();
+        UpdateDashboard();
+    }
 
-        async Task LoadGpu()
+    /// <summary>
+    /// Identifica CPU e GPUs em &lt; 1 ms via LibreHardwareMonitor / Registro / NVML (zero WMI),
+    /// suficiente para a Visão Geral, Barra Lateral e Overlay na abertura.
+    /// </summary>
+    private void InitFastCpuAndGpuStubs()
+    {
+        try
         {
-            try { _gpus = await Task.Run(GpuInfoCollector.Collect); }
-            catch { _gpus = new(); }
-            for (int i = 0; i < _gpus.Count && _gpus.Count > 1; i++)
+            if (string.IsNullOrWhiteSpace(_cpuName))
             {
-                var g = _gpus[i];
-                var chip = new RadioButton { Content = g.Name, GroupName = "Gpu", Style = (Style)FindResource("Chip"), IsChecked = i == 0 };
-                chip.Checked += (_, _) => ShowGpu(g);
-                GpuChips.Children.Add(chip);
+                string? lhmCpu = _monitor.Computer.Hardware
+                    .FirstOrDefault(h => h.HardwareType == HardwareType.Cpu)?.Name;
+                if (string.IsNullOrWhiteSpace(lhmCpu))
+                {
+                    lhmCpu = Microsoft.Win32.Registry.GetValue(
+                        @"HKEY_LOCAL_MACHINE\HARDWARE\DESCRIPTION\System\CentralProcessor\0",
+                        "ProcessorNameString", null) as string;
+                }
+                _cpuName = lhmCpu?.Trim() ?? "";
+                _cpuIdx = GameCatalog.CpuPerf(_cpuName) ?? 80;
             }
+
+            if (_gpus.Count == 0)
+            {
+                var nvDevices = Nvml.Devices();
+                var stubs = new List<GpuInfo>();
+                foreach (var hw in _monitor.Computer.Hardware)
+                {
+                    if (hw.HardwareType is not (HardwareType.GpuNvidia or HardwareType.GpuAmd or HardwareType.GpuIntel))
+                        continue;
+
+                    IntPtr nvHandle = hw.HardwareType == HardwareType.GpuNvidia && nvDevices.Count > 0
+                        ? nvDevices[0].Handle
+                        : IntPtr.Zero;
+                    string vendor = hw.HardwareType switch
+                    {
+                        HardwareType.GpuNvidia => "NVIDIA",
+                        HardwareType.GpuAmd => "AMD",
+                        HardwareType.GpuIntel => "Intel",
+                        _ => ""
+                    };
+                    ulong vram = 0;
+                    if (nvHandle != IntPtr.Zero && Nvml.MemoryInfo(nvHandle) is Nvml.Memory m)
+                        vram = m.Total;
+
+                    stubs.Add(new GpuInfo
+                    {
+                        Name = hw.Name,
+                        Vendor = vendor,
+                        NvmlHandle = nvHandle,
+                        VramBytes = vram
+                    });
+                }
+
+                _gpus = stubs.OrderByDescending(g => g.VramBytes).ToList();
+            }
+
             if (_gpus.Count > 0)
             {
+                _gpuName = _gpus[0].Name;
+                _gpuIdx = GameCatalog.GpuPerf(_gpuName) ?? 50;
                 _monitor.InvalidateGpuCache(_gpus[0].Name);
-                ShowGpu(_gpus[0]);
+            }
+            else
+            {
+                _gpuIdx = 50;
             }
 
-            // Dependem do nome da GPU/CPU
-            InitGames();
             InitBottleneckAndOverlay();
-            InitOc();
-            UpdateDashboard();
+        }
+        catch { }
+    }
+
+    public Task EnsureSystemInfoLoadedAsync()
+    {
+        if (_systemInfoLoadTask != null) return _systemInfoLoadTask;
+        _systemInfoLoadTask = LoadSystemInfoCoreAsync();
+        return _systemInfoLoadTask;
+    }
+
+    private async Task LoadSystemInfoCoreAsync()
+    {
+        try
+        {
+            var info = await Task.Run(SystemInfoCollector.Collect);
+            InfoCategories.ItemsSource = info;
+            InfoCategories.SelectedIndex = 0;
+            _rawSystemSubText = $"{Environment.MachineName} · {info.Count} categorias";
+            SystemSub.Text = PrivacyModeService.MaskSensitivePatterns(_rawSystemSubText);
+            TrimMemory(force: true);
+        }
+        catch (Exception ex) { SystemSub.Text = $"Não foi possível ler as informações do sistema: {ex.Message}"; }
+    }
+
+    public Task EnsureGpuInfoLoadedAsync()
+    {
+        if (_gpuInfoLoadTask != null) return _gpuInfoLoadTask;
+        _gpuInfoLoadTask = LoadGpuInfoCoreAsync();
+        return _gpuInfoLoadTask;
+    }
+
+    private async Task LoadGpuInfoCoreAsync()
+    {
+        try { _gpus = await Task.Run(GpuInfoCollector.Collect); }
+        catch { _gpus = new(); }
+        GpuChips.Children.Clear();
+        for (int i = 0; i < _gpus.Count && _gpus.Count > 1; i++)
+        {
+            var g = _gpus[i];
+            var chip = new RadioButton { Content = g.Name, GroupName = "Gpu", Style = (Style)FindResource("Chip"), IsChecked = i == 0 };
+            chip.Checked += (_, _) => ShowGpu(g);
+            GpuChips.Children.Add(chip);
+        }
+        if (_gpus.Count > 0)
+        {
+            _gpuName = _gpus[0].Name;
+            _gpuIdx = GameCatalog.GpuPerf(_gpuName) ?? 50;
+            _monitor.InvalidateGpuCache(_gpus[0].Name);
+            ShowGpu(_gpus[0]);
         }
 
-        await Task.WhenAll(LoadInfo(), LoadSensors(), LoadGpu());
-        TrimMemory();
+        if (_gamesInit) InitGames();
+        if (!_overlayReady) InitBottleneckAndOverlay();
+        if (_ocInit) InitOc();
+        UpdateDashboard();
+        TrimMemory(force: true);
     }
 
     // ---------------- Sensores da CPU (PawnIO) ----------------
@@ -736,10 +876,31 @@ public partial class MainWindow : Window
             switch (page)
             {
                 case "PageDash": UpdateDashboard(); break;
+                case "PageSystem": _ = EnsureSystemInfoLoadedAsync(); break;
+                case "PageSensors":
+                    _monitor.SyncRowsToUi();
+                    break;
+                case "PageGpu":
+                    _monitor.SyncRowsToUi();
+                    _ = EnsureGpuInfoLoadedAsync();
+                    break;
+                case "PageGames":
+                    EnsureGamesInitialized();
+                    break;
+                case "PageBench":
+                    EnsureBenchInitialized();
+                    break;
+                case "PageStress":
+                    _ = EnsureGpuInfoLoadedAsync();
+                    break;
+                case "PageMonitoring":
+                    _monitor.SyncRowsToUi();
+                    InitMonitoringPage();
+                    break;
                 case "PageDisks": RefreshDiskHealth(); break;
                 case "PageDiskTools": InitDiskSpaceAnalyzer(); break;
                 case "PageEnergy": RefreshEnergy(); break;
-                case "PageOc": UpdateOcGpuState(); UpdateRecentErrors(); break;
+                case "PageOc": EnsureOcInitialized(); UpdateOcGpuState(); UpdateRecentErrors(); break;
                 case "PageInteg":
                     if (TabSettingsInteg != null) TabSettingsInteg.IsChecked = true;
                     InitInteg();
@@ -834,7 +995,12 @@ public partial class MainWindow : Window
                 _suppressorMeterTimer?.Stop();
             }
 
-            var pages = new FrameworkElement?[] { PageDash, PageSystem, PageSensors, PageGpu, PageGames, PageBottleneck, PageOverlay, PageBench, PageOptimize, PageOc, PageLauncher, PageDriver, PageApps, PageUninstaller, PageStartup, PageMakerPorts, PageMakerDrv, PageDisks, PageDiskTools, PageRestore, PageBackup, PageEnergy, PageNet, PageStress, PageSettings, PagePerifericos, PageFanControl, PageWindowsDebloat, PageTweaks, PageSuppressor, PagePostFormat, PageWindowsRepair };
+            if (name != "PageDiskTools")
+            {
+                ReleaseDiskSpaceCache();
+            }
+
+            var pages = new FrameworkElement?[] { PageDash, PageSystem, PageSensors, PageMonitoring, PageGpu, PageGames, PageBottleneck, PageOverlay, PageBench, PageOptimize, PageOc, PageLauncher, PageDriver, PageApps, PageUninstaller, PageStartup, PageMakerPorts, PageMakerDrv, PageDisks, PageDiskTools, PageRestore, PageBackup, PageEnergy, PageNet, PageStress, PageSettings, PagePerifericos, PageFanControl, PageWindowsDebloat, PageTweaks, PageSuppressor, PagePostFormat, PageWindowsRepair };
             foreach (var p in pages)
             {
                 if (p != null)
@@ -858,9 +1024,11 @@ public partial class MainWindow : Window
     {
         bool isWindowActive = IsVisible && WindowState != WindowState.Minimized;
         bool isOverlayActive = _overlay != null && _overlay.IsVisible;
+        bool isMonitoringRecording = _monitoringLogService != null && _monitoringLogService.IsRunning;
         bool isSensorOrDashPage = isWindowActive && ((PageDash != null && PageDash.Visibility == Visibility.Visible) ||
-                                                     (PageSensors != null && PageSensors.Visibility == Visibility.Visible));
-        bool needsFullRead = isOverlayActive || isSensorOrDashPage;
+                                                     (PageSensors != null && PageSensors.Visibility == Visibility.Visible) ||
+                                                     (PageMonitoring != null && PageMonitoring.Visibility == Visibility.Visible));
+        bool needsFullRead = isOverlayActive || isSensorOrDashPage || isMonitoringRecording;
 
         if (needsFullRead)
         {
@@ -1045,6 +1213,7 @@ public partial class MainWindow : Window
         if ((ev == DBT_DEVICEARRIVAL || ev == DBT_DEVICEREMOVECOMPLETE) && lParam != IntPtr.Zero &&
             Marshal.ReadInt32(lParam, 4) == DBT_DEVTYP_VOLUME)
         {
+            DiskTopologyService.Invalidate();
             int mask = Marshal.ReadInt32(lParam, 12); // DEV_BROADCAST_VOLUME.dbcv_unitmask: bit 0 = A:
             var letters = Enumerable.Range(0, 26).Where(i => (mask & (1 << i)) != 0).Select(i => $"{(char)('A' + i)}:").ToList();
             _lastVolumeEvent = DateTime.Now;
@@ -1052,6 +1221,7 @@ public partial class MainWindow : Window
         }
         else if (ev == DBT_DEVNODES_CHANGED)
         {
+            DiskTopologyService.Invalidate();
             // Chega várias vezes seguidas por dispositivo: espera assentar e compara com a lista anterior.
             _usbDebounce ??= new DispatcherTimer(TimeSpan.FromMilliseconds(1500), DispatcherPriority.Normal, (_, _) =>
             {
@@ -1183,15 +1353,40 @@ public partial class MainWindow : Window
 
     // ---------------- Jogos ----------------
 
+    private void EnsureGamesInitialized()
+    {
+        if (_gamesInit) return;
+        _gamesInit = true;
+        InitGames();
+    }
+
+    private void EnsureOcInitialized()
+    {
+        if (_ocInit) return;
+        _ocInit = true;
+        InitOc();
+    }
+
     private void InitGames()
     {
-        try
+        if (string.IsNullOrWhiteSpace(_cpuName))
         {
-            using var s = new System.Management.ManagementObjectSearcher("SELECT Name FROM Win32_Processor");
-            foreach (System.Management.ManagementObject mo in s.Get()) { _cpuName = mo["Name"]?.ToString()?.Trim() ?? ""; break; }
+            try
+            {
+                using var s = new System.Management.ManagementObjectSearcher("SELECT Name FROM Win32_Processor");
+                using var col = s.Get();
+                foreach (System.Management.ManagementObject mo in col)
+                {
+                    using (mo)
+                    {
+                        _cpuName = mo["Name"]?.ToString()?.Trim() ?? "";
+                        break;
+                    }
+                }
+            }
+            catch { }
         }
-        catch { }
-        _gpuName = _gpus.Count > 0 ? _gpus[0].Name : "";
+        _gpuName = _gpus.Count > 0 ? _gpus[0].Name : _gpuName;
         _gpuIdx = GameCatalog.GpuPerf(_gpuName) ?? 50;
         _cpuIdx = GameCatalog.CpuPerf(_cpuName) ?? 80;
         GamesSub.Text = $"FPS esperado no seu PC · {GameCatalog.ShortGpuName(_gpuName)} · {GameCatalog.ShortCpuName(_cpuName)}";
@@ -1460,6 +1655,13 @@ public partial class MainWindow : Window
 
     // ---------------- RESET BENCH ----------------
 
+    private void EnsureBenchInitialized()
+    {
+        if (_benchInit) return;
+        _benchInit = true;
+        InitBench();
+    }
+
     private void InitBench()
     {
         _benchBitmap = new System.Windows.Media.Imaging.WriteableBitmap(BenchRenderer.Width, BenchRenderer.Height, 96, 96,
@@ -1473,6 +1675,7 @@ public partial class MainWindow : Window
 
     private async void BtnBench_Click(object sender, RoutedEventArgs e)
     {
+        EnsureBenchInitialized();
         if (BenchRunning) { _benchCts!.Cancel(); return; }
         if (TestRunning || _gameBenchRunning) { BenchHint.Text = "Pare o outro teste antes de rodar o benchmark."; return; }
 
@@ -1501,14 +1704,14 @@ public partial class MainWindow : Window
             {
                 _benchPhase = $"Multi-core · {threads} threads";
                 _benchPhaseStart = DateTime.Now;
-                var r = await Task.Run(() => _bench.Run(threads, minDuration, ct), ct);
+                var r = await Task.Run(() => Bench.Run(threads, minDuration, ct), ct);
                 if (!ct.IsCancellationRequested) { mt = r.Score; BenchMt.Text = $"{r.Score:N0}"; }
             }
             if (!ct.IsCancellationRequested && mode is "st" or "both")
             {
                 _benchPhase = "Single-core · 1 thread";
                 _benchPhaseStart = DateTime.Now;
-                var r = await Task.Run(() => _bench.Run(1, minDuration, ct), ct);
+                var r = await Task.Run(() => Bench.Run(1, minDuration, ct), ct);
                 if (!ct.IsCancellationRequested) { st = r.Score; BenchSt.Text = $"{r.Score:N0}"; }
             }
         }
@@ -1544,15 +1747,16 @@ public partial class MainWindow : Window
     /// <summary>Copia a imagem parcial e desenha o contorno dos blocos que cada thread está renderizando.</summary>
     private void UpdateBenchView()
     {
-        _benchBitmap!.WritePixels(new Int32Rect(0, 0, BenchRenderer.Width, BenchRenderer.Height),
-                                  _bench.Pixels, BenchRenderer.Width * 4, 0);
+        if (_benchBitmap == null) return;
+        _benchBitmap.WritePixels(new Int32Rect(0, 0, BenchRenderer.Width, BenchRenderer.Height),
+                                 Bench.Pixels, BenchRenderer.Width * 4, 0);
 
         BenchBuckets.Children.Clear();
-        var active = _bench.Active;
+        var active = Bench.Active;
         foreach (int b in active)
         {
             if (b < 0) continue;
-            var (x, y, w, h) = _bench.Buckets[b];
+            var (x, y, w, h) = Bench.Buckets[b];
             var rect = new Rectangle { Width = w, Height = h, Stroke = Brushes.White, StrokeThickness = 1.5 };
             Canvas.SetLeft(rect, x); Canvas.SetTop(rect, y);
             BenchBuckets.Children.Add(rect);
@@ -1560,7 +1764,7 @@ public partial class MainWindow : Window
 
         if (BenchRunning)
         {
-            double frac = _bench.BucketsTotal > 0 ? (double)_bench.BucketsDone / _bench.BucketsTotal : 0;
+            double frac = Bench.BucketsTotal > 0 ? (double)Bench.BucketsDone / Bench.BucketsTotal : 0;
             BenchProgress.ScaleX = frac;
             // Tempo restante da passada atual, pela velocidade até agora (só depois de 3% para não oscilar).
             var phaseElapsed = DateTime.Now - _benchPhaseStart;
@@ -2795,7 +2999,10 @@ public partial class MainWindow : Window
             };
         }
 
-        EnsureMiniTaskCreated();
+        if (MiniTaskManagerWindow.IsWindowVisible)
+        {
+            EnsureMiniTaskCreated();
+        }
         UpdateMiniTaskPositionUi();
 
         // Mini Gerenciador de Tarefas por padrão desligado ao iniciar, para acionamento manual
@@ -2934,16 +3141,16 @@ public partial class MainWindow : Window
         _settings.MiniTaskVisible = show;
         _settings.Save();
 
-        var win = MiniTaskManagerWindow.Instance;
         if (show)
         {
             ApplyMiniTaskOptions();
+            var win = MiniTaskManagerWindow.Instance;
             win.Show();
             win.KeepOnTop();
         }
-        else
+        else if (MiniTaskManagerWindow.IsWindowVisible)
         {
-            win.Hide();
+            MiniTaskManagerWindow.Instance.Hide();
         }
     }
 
@@ -3158,10 +3365,15 @@ public partial class MainWindow : Window
     [System.Runtime.InteropServices.DllImport("psapi.dll")]
     private static extern int EmptyWorkingSet(IntPtr hwProc);
 
-    public static void TrimMemory()
+    public static void TrimMemory(bool force = false)
     {
         try
         {
+            long now = System.Diagnostics.Stopwatch.GetTimestamp();
+            if (!force && _lastTrimMemoryTicks != 0 && System.Diagnostics.Stopwatch.GetElapsedTime(_lastTrimMemoryTicks).TotalSeconds < 8.0)
+                return;
+            _lastTrimMemoryTicks = now;
+
             System.Runtime.GCSettings.LargeObjectHeapCompactionMode = System.Runtime.GCLargeObjectHeapCompactionMode.CompactOnce;
             GC.Collect(2, GCCollectionMode.Forced, true, true);
             GC.WaitForPendingFinalizers();

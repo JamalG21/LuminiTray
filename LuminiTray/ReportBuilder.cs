@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Net;
 using System.Text;
 using System.Text.Json;
@@ -10,7 +11,7 @@ public sealed record ReportBench(DateTime Date, string Test, string Summary, str
 public sealed record ReportDisk(string Name, string Details, string Verdict, string Reasons, List<KeyValuePair<string, string>> Metrics);
 public sealed record ReportGpu(string Name, string Subtitle, List<ReportNode> Sections);
 
-/// <summary>Tudo que entra no relatório exportado.</summary>
+/// <summary>Tudo que entra no relatÃ³rio exportado.</summary>
 public sealed class ReportData
 {
     public DateTime Date { get; init; } = DateTime.Now;
@@ -24,43 +25,105 @@ public sealed class ReportData
     public List<ReportDisk> Network { get; init; } = new();
     public List<ReportSensor> Sensors { get; init; } = new();
     public List<ReportBench> Benchmarks { get; init; } = new();
+    public MonitoringSessionResult? Monitoring { get; init; }
+    public bool PrivacyModeActive { get; init; }
 }
 
-/// <summary>Gera o relatório em HTML (arquivo único, abre em qualquer navegador) ou JSON. Números de série ficam de fora.</summary>
+/// <summary>Gera o relatÃ³rio em HTML (arquivo Ãºnico, abre em qualquer navegador) ou JSON. NÃºmeros de sÃ©rie ficam de fora.</summary>
 public static class ReportBuilder
 {
-    public static ReportNode? ToNode(InfoNode n)
+    public static ReportNode? ToNode(InfoNode n) => ToNode(n, PrivacyModeService.IsEnabled);
+
+    public static ReportNode? ToNode(InfoNode n, bool privacyMode)
     {
         string h = n.Header ?? "";
-        // privacidade: o relatório costuma ser enviado a terceiros
-        if (h.Contains("série", StringComparison.OrdinalIgnoreCase) || h.Contains("serial", StringComparison.OrdinalIgnoreCase)) return null;
-        var kids = n.Children.Select(ToNode).Where(k => k != null).Cast<ReportNode>().ToList();
-        return new ReportNode(h, string.IsNullOrEmpty(n.Value) ? null : n.Value, kids.Count > 0 ? kids : null);
+        // privacidade: o relatÃ³rio costuma ser enviado a terceiros
+        if (h.Contains("sÃ©rie", StringComparison.OrdinalIgnoreCase) || h.Contains("serial", StringComparison.OrdinalIgnoreCase)) return null;
+        var kids = n.Children.Select(c => ToNode(c, privacyMode)).Where(k => k != null).Cast<ReportNode>().ToList();
+        string? val = string.IsNullOrEmpty(n.Value) ? null : PrivacyModeService.MaskIfSensitiveField(h, n.Value, privacyMode);
+        return new ReportNode(PrivacyModeService.MaskSensitivePatterns(h, privacyMode), val, kids.Count > 0 ? kids : null);
     }
 
-    public static string Json(ReportData d) => JsonSerializer.Serialize(new
+    private static List<ReportDisk> SanitizeCards(List<ReportDisk> items, bool privacy)
     {
-        gerado_em = d.Date.ToString("s"),
-        computador = d.Machine,
-        versao_do_programa = d.AppVersion,
-        sistema = d.System,
-        placas_de_video = d.Gpus,
-        discos = d.Disks.Select(x => new
+        if (!privacy || items.Count == 0) return items;
+        return items.Select(x => new ReportDisk(
+            PrivacyModeService.MaskSensitivePatterns(x.Name, true),
+            PrivacyModeService.MaskSensitivePatterns(x.Details, true),
+            x.Verdict,
+            PrivacyModeService.MaskSensitivePatterns(x.Reasons, true),
+            x.Metrics.Select(m => new KeyValuePair<string, string>(
+                PrivacyModeService.MaskSensitivePatterns(m.Key, true),
+                PrivacyModeService.MaskIfSensitiveField(m.Key, m.Value, true))).ToList()
+        )).ToList();
+    }
+
+    private static List<ReportNode> SanitizeNodes(List<ReportNode> nodes, bool privacy)
+    {
+        if (!privacy || nodes.Count == 0) return nodes;
+        return nodes.Select(n => new ReportNode(
+            PrivacyModeService.MaskSensitivePatterns(n.Name, true),
+            n.Value != null ? PrivacyModeService.MaskIfSensitiveField(n.Name, n.Value, true) : null,
+            n.Children != null ? SanitizeNodes(n.Children, true) : null
+        )).ToList();
+    }
+
+    public static string Json(ReportData d)
+    {
+        bool privacy = d.PrivacyModeActive || PrivacyModeService.IsEnabled;
+        string machine = privacy ? PrivacyModeService.MaskToken : d.Machine;
+        var sys = SanitizeNodes(d.System, privacy);
+        var disks = SanitizeCards(d.Disks, privacy);
+        var power = SanitizeCards(d.Power, privacy);
+        var net = SanitizeCards(d.Network, privacy);
+
+        return JsonSerializer.Serialize(new
         {
-            x.Name, x.Details, saude = x.Verdict, x.Reasons,
-            metricas = x.Metrics.ToDictionary(m => m.Key, m => m.Value)
-        }),
-        energia = d.Power.Select(x => new { x.Name, x.Details, estado = x.Verdict, x.Reasons, metricas = x.Metrics.ToDictionary(m => m.Key, m => m.Value) }),
-        rede = d.Network.Select(x => new { x.Name, x.Details, estado = x.Verdict, x.Reasons, metricas = x.Metrics.ToDictionary(m => m.Key, m => m.Value) }),
-        sensores = d.Sensors,
-        benchmarks = d.Benchmarks.Select(b => new
-        {
-            data = b.Date.ToString("s"),
-            teste = b.Test,
-            app_referencia = b.ReferenceApp,
-            resultado = b.Summary
-        }),
-    }, new JsonSerializerOptions { WriteIndented = true, Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping });
+            gerado_em = d.Date.ToString("s"),
+            computador = machine,
+            modo_privacidade = privacy,
+            versao_do_programa = d.AppVersion,
+            sistema = sys,
+            placas_de_video = d.Gpus,
+            discos = disks.Select(x => new
+            {
+                x.Name, x.Details, saude = x.Verdict, x.Reasons,
+                metricas = x.Metrics.ToDictionary(m => m.Key, m => m.Value)
+            }),
+            energia = power.Select(x => new { x.Name, x.Details, estado = x.Verdict, x.Reasons, metricas = x.Metrics.ToDictionary(m => m.Key, m => m.Value) }),
+            rede = net.Select(x => new { x.Name, x.Details, estado = x.Verdict, x.Reasons, metricas = x.Metrics.ToDictionary(m => m.Key, m => m.Value) }),
+            sensores = d.Sensors,
+            monitoramento_registrado = d.Monitoring == null ? null : new
+            {
+                iniciado_em = d.Monitoring.StartedAt.ToString("s"),
+                encerrado_em = d.Monitoring.EndedAt.ToString("s"),
+                intervalo_segundos = d.Monitoring.IntervalSeconds,
+                duracao_segundos = d.Monitoring.DurationSeconds,
+                concluido_automaticamente = d.Monitoring.CompletedAutomatically,
+                sensores = d.Monitoring.Sensors.Select(s => new
+                {
+                    hardware = s.Hardware,
+                    sensor = s.SensorName,
+                    categoria = s.Category,
+                    unidade = s.Unit,
+                    min = s.Min,
+                    horario_min = s.MinTime.ToString("HH:mm:ss"),
+                    max = s.Max,
+                    horario_max = s.MaxTime.ToString("HH:mm:ss"),
+                    media = Math.Round(s.Average, 2),
+                    leituras = s.SampleCount,
+                    pontos = s.Points.Select(p => new { horario = p.Timestamp.ToString("HH:mm:ss"), valor = p.Value })
+                })
+            },
+            benchmarks = d.Benchmarks.Select(b => new
+            {
+                data = b.Date.ToString("s"),
+                teste = b.Test,
+                app_referencia = b.ReferenceApp,
+                resultado = b.Summary
+            }),
+        }, new JsonSerializerOptions { WriteIndented = true, Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping });
+    }
 
     private static void Section(StringBuilder sb, string title, List<ReportDisk> items)
     {
@@ -68,7 +131,7 @@ public static class ReportBuilder
         sb.Append($"<section><h2>{E(title)}</h2>");
         foreach (var disk in items)
         {
-            string cls = disk.Verdict switch { "SAUDÁVEL" or "ESTÁVEL" or "EM USO" => "ok", "SEM DADOS" => "na", _ => "bad" };
+            string cls = disk.Verdict switch { "SAUDÃVEL" or "ESTÃVEL" or "EM USO" => "ok", "SEM DADOS" => "na", _ => "bad" };
             sb.Append($"<div class=\"card\"><div class=\"row\"><b>{E(disk.Name)}</b><span class=\"badge {cls}\">{E(disk.Verdict)}</span></div>");
             if (disk.Details.Length > 0) sb.Append($"<p class=\"muted\">{E(disk.Details)}</p>");
             sb.Append($"<p>{E(disk.Reasons)}</p>");
@@ -87,32 +150,45 @@ public static class ReportBuilder
 
     public static string Html(ReportData d)
     {
+        bool privacy = d.PrivacyModeActive || PrivacyModeService.IsEnabled;
+        string machine = privacy ? PrivacyModeService.MaskToken : d.Machine;
+        var sys = SanitizeNodes(d.System, privacy);
+        var disks = SanitizeCards(d.Disks, privacy);
+        var power = SanitizeCards(d.Power, privacy);
+        var net = SanitizeCards(d.Network, privacy);
+
         var sb = new StringBuilder(64 * 1024);
         sb.Append("<!doctype html><html lang=\"pt-BR\"><head><meta charset=\"utf-8\"><meta name=\"viewport\" content=\"width=device-width,initial-scale=1\">");
-        sb.Append($"<title>Lumini Tray · Relatório · {E(d.Machine)}</title><style>{Css}</style></head><body><div class=\"wrap\">");
+        sb.Append($"<title>Lumini Tray Â· RelatÃ³rio Â· {E(machine)}</title><style>{Css}</style></head><body><div class=\"wrap\">");
 
         sb.Append("<header>");
         if (!string.IsNullOrEmpty(d.LogoBase64)) sb.Append($"<img class=\"logo\" alt=\"\" src=\"data:image/png;base64,{d.LogoBase64}\">");
-        sb.Append($"<div><h1>LUMINI TRAY</h1><p class=\"sub\">Relatório de hardware · {E(d.Machine)} · {d.Date:dd/MM/yyyy HH:mm}");
-        if (d.AppVersion.Length > 0) sb.Append($" · v{E(d.AppVersion)}");
+        sb.Append($"<div><h1>LUMINI TRAY</h1><p class=\"sub\">RelatÃ³rio de hardware Â· {E(machine)} Â· {d.Date:dd/MM/yyyy HH:mm}");
+        if (d.AppVersion.Length > 0) sb.Append($" Â· v{E(d.AppVersion)}");
         sb.Append("</p></div></header>");
-        sb.Append("<p class=\"note\">Números de série foram omitidos deste relatório.</p>");
+        sb.Append(privacy
+            ? "<p class=\"note\">NÃºmeros de sÃ©rie foram omitidos e dados sensÃ­veis (IP, MAC, hostname, usuÃ¡rio) foram ocultados pelo Modo Privacidade.</p>"
+            : "<p class=\"note\">NÃºmeros de sÃ©rie foram omitidos deste relatÃ³rio.</p>");
 
-        // Resumo dos discos no topo (o que mais interessa de imediato)
-        Section(sb, "Saúde dos discos", d.Disks);
-        Section(sb, "Bateria e energia", d.Power);
-        Section(sb, "Teste de rede", d.Network);
+        Section(sb, "SaÃºde dos discos", disks);
+        Section(sb, "Bateria e energia", power);
+        Section(sb, "Teste de rede", net);
 
-        if (d.System.Count > 0)
+        if (d.Monitoring is { Sensors.Count: > 0 } mon)
+        {
+            AppendMonitoringHtmlSection(sb, mon);
+        }
+
+        if (sys.Count > 0)
         {
             sb.Append("<section><h2>Sistema</h2>");
-            foreach (var n in d.System) { sb.Append($"<div class=\"card\"><h3>{E(n.Name)}</h3>"); Tree(sb, n.Children, 0); sb.Append("</div>"); }
+            foreach (var n in sys) { sb.Append($"<div class=\"card\"><h3>{E(n.Name)}</h3>"); Tree(sb, n.Children, 0); sb.Append("</div>"); }
             sb.Append("</section>");
         }
 
         foreach (var g in d.Gpus)
         {
-            sb.Append($"<section><h2>Placa de vídeo · {E(g.Name)}</h2>");
+            sb.Append($"<section><h2>Placa de vÃ­deo Â· {E(g.Name)}</h2>");
             if (g.Subtitle.Length > 0) sb.Append($"<p class=\"muted\">{E(g.Subtitle)}</p>");
             foreach (var s in g.Sections) { sb.Append($"<div class=\"card\"><h3>{E(s.Name)}</h3>"); Tree(sb, s.Children, 0); sb.Append("</div>"); }
             sb.Append("</section>");
@@ -120,10 +196,10 @@ public static class ReportBuilder
 
         if (d.Sensors.Count > 0)
         {
-            sb.Append("<section><h2>Sensores (leitura no momento da exportação)</h2>");
+            sb.Append("<section><h2>Sensores (leitura no momento da exportaÃ§Ã£o)</h2>");
             foreach (var grp in d.Sensors.GroupBy(s => s.Hardware))
             {
-                sb.Append($"<div class=\"card\"><h3>{E(grp.Key)}</h3><table><tr><th>Categoria</th><th>Sensor</th><th>Valor</th><th>Mín.</th><th>Máx.</th></tr>");
+                sb.Append($"<div class=\"card\"><h3>{E(grp.Key)}</h3><table><tr><th>Categoria</th><th>Sensor</th><th>Valor</th><th>MÃ­n.</th><th>MÃ¡x.</th></tr>");
                 foreach (var s in grp)
                     sb.Append($"<tr><td class=\"muted\">{E(s.Category)}</td><td>{E(s.Name)}</td><td class=\"num\">{E(s.Value)}</td><td class=\"num muted\">{E(s.Min)}</td><td class=\"num muted\">{E(s.Max)}</td></tr>");
                 sb.Append("</table></div>");
@@ -133,18 +209,77 @@ public static class ReportBuilder
 
         if (d.Benchmarks.Count > 0)
         {
-            sb.Append("<section><h2>Benchmarks e testes recentes</h2><div class=\"card\"><table><tr><th>Data</th><th>Teste</th><th>App / Metodologia de Referência</th><th>Resultado</th></tr>");
+            sb.Append("<section><h2>Benchmarks e testes recentes</h2><div class=\"card\"><table><tr><th>Data</th><th>Teste</th><th>App / Metodologia de ReferÃªncia</th><th>Resultado</th></tr>");
             foreach (var b in d.Benchmarks)
             {
-                string refBadge = !string.IsNullOrEmpty(b.ReferenceApp) ? $"<span class=\"badge ok\">{E(b.ReferenceApp)}</span>" : "—";
+                string refBadge = !string.IsNullOrEmpty(b.ReferenceApp) ? $"<span class=\"badge ok\">{E(b.ReferenceApp)}</span>" : "â€”";
                 sb.Append($"<tr><td class=\"muted\">{b.Date:dd/MM/yyyy HH:mm}</td><td><b>{E(b.Test)}</b></td><td>{refBadge}</td><td>{E(b.Summary)}</td></tr>");
             }
             sb.Append("</table></div></section>");
         }
 
-        sb.Append("<footer>Gerado pelo Lumini Tray. Dados lidos do Windows, do driver da placa de vídeo e dos sensores da placa-mãe; podem variar conforme o hardware.</footer>");
+        sb.Append("<footer>Gerado pelo Lumini Tray. Dados lidos do Windows, do driver da placa de vÃ­deo e dos sensores da placa-mÃ£e; podem variar conforme o hardware.</footer>");
         sb.Append("</div></body></html>");
         return sb.ToString();
+    }
+
+    private static void AppendMonitoringHtmlSection(StringBuilder sb, MonitoringSessionResult mon)
+    {
+        sb.Append("<section><h2>Monitoramento registrado</h2>");
+        sb.Append($"<p class=\"muted\">PerÃ­odo: {mon.StartedAt:dd/MM HH:mm:ss} atÃ© {mon.EndedAt:HH:mm:ss} Â· Intervalo: {mon.IntervalSeconds}s Â· {mon.Sensors.Count} sensor(es)</p>");
+
+        sb.Append("<div class=\"card\"><table><tr><th>Hardware</th><th>Sensor</th><th>MÃ­n. (HorÃ¡rio)</th><th>MÃ©dia</th><th>MÃ¡x. (HorÃ¡rio)</th><th>Leituras</th></tr>");
+        foreach (var s in mon.Sensors)
+        {
+            sb.Append($"<tr><td>{E(s.Hardware)}</td><td>{E(s.SensorName)}</td>");
+            sb.Append($"<td class=\"num\">{E(s.FormatStat(s.Min))} <span class=\"muted\">({s.MinTime:HH:mm:ss})</span></td>");
+            sb.Append($"<td class=\"num\">{E(s.FormatStat(s.Average))}</td>");
+            sb.Append($"<td class=\"num\">{E(s.FormatStat(s.Max))} <span class=\"muted\">({s.MaxTime:HH:mm:ss})</span></td>");
+            sb.Append($"<td class=\"num muted\">{s.SampleCount}</td></tr>");
+        }
+        sb.Append("</table></div>");
+
+        foreach (var s in mon.Sensors.Where(x => x.Points.Count > 0))
+        {
+            sb.Append($"<div class=\"card\"><h3>{E(s.DisplayLabel)}</h3>");
+            AppendSvgChart(sb, s);
+            sb.Append("</div>");
+        }
+
+        sb.Append("</section>");
+    }
+
+    private static void AppendSvgChart(StringBuilder sb, MonitoringSensorSummary s)
+    {
+        const double w = 640, h = 135, padL = 52, padR = 12, padT = 14, padB = 22;
+        double plotW = w - padL - padR;
+        double plotH = h - padT - padB;
+        double minVal = s.Points.Min(p => (double)p.Value);
+        double maxVal = s.Points.Max(p => (double)p.Value);
+        double span = Math.Max(0.1, maxVal - minVal);
+        double yMin = minVal - span * 0.12;
+        double yMax = maxVal + span * 0.12;
+        if (Math.Abs(yMax - yMin) < 0.01) { yMin -= 1; yMax += 1; }
+
+        var pts = new StringBuilder();
+        for (int i = 0; i < s.Points.Count; i++)
+        {
+            double x = s.Points.Count == 1 ? padL + plotW * 0.5 : padL + (plotW * i / (s.Points.Count - 1));
+            double y = padT + plotH * (1.0 - (s.Points[i].Value - yMin) / (yMax - yMin));
+            pts.Append(FormattableString.Invariant($"{x:0.#},{y:0.#} "));
+        }
+
+        string startTime = s.Points[0].Timestamp.ToString("HH:mm:ss");
+        string endTime = s.Points[^1].Timestamp.ToString("HH:mm:ss");
+        sb.Append("<svg viewBox=\"0 0 640 135\" style=\"width:100%;height:auto;display:block\">");
+        sb.Append(FormattableString.Invariant($"<line x1=\"{padL}\" y1=\"{padT}\" x2=\"{padL + plotW}\" y2=\"{padT}\" stroke=\"#444\" stroke-dasharray=\"3 3\" stroke-width=\"0.8\"/>"));
+        sb.Append(FormattableString.Invariant($"<line x1=\"{padL}\" y1=\"{padT + plotH}\" x2=\"{padL + plotW}\" y2=\"{padT + plotH}\" stroke=\"#444\" stroke-width=\"0.8\"/>"));
+        sb.Append(FormattableString.Invariant($"<text x=\"{padL - 6}\" y=\"{padT + 4}\" text-anchor=\"end\" font-size=\"10\" fill=\"#888\">{E(s.FormatStat(s.Max))}</text>"));
+        sb.Append(FormattableString.Invariant($"<text x=\"{padL - 6}\" y=\"{padT + plotH}\" text-anchor=\"end\" font-size=\"10\" fill=\"#888\">{E(s.FormatStat(s.Min))}</text>"));
+        sb.Append(FormattableString.Invariant($"<text x=\"{padL}\" y=\"{h - 4}\" font-size=\"10\" fill=\"#888\">{E(startTime)}</text>"));
+        sb.Append(FormattableString.Invariant($"<text x=\"{padL + plotW}\" y=\"{h - 4}\" text-anchor=\"end\" font-size=\"10\" fill=\"#888\">{E(endTime)}</text>"));
+        sb.Append($"<polyline fill=\"none\" stroke=\"#00D2FF\" stroke-width=\"2\" points=\"{pts.ToString().TrimEnd()}\"/>");
+        sb.Append("</svg>");
     }
 
     private static void Tree(StringBuilder sb, List<ReportNode>? nodes, int depth)
@@ -155,7 +290,7 @@ public static class ReportBuilder
         {
             if (n.Children != null)
             {
-                sb.Append($"<tr><td colspan=\"2\" class=\"grp\">{E(n.Name)}{(n.Value != null ? " · " + E(n.Value) : "")}</td></tr><tr><td colspan=\"2\" class=\"inner\">");
+                sb.Append($"<tr><td colspan=\"2\" class=\"grp\">{E(n.Name)}{(n.Value != null ? " Â· " + E(n.Value) : "")}</td></tr><tr><td colspan=\"2\" class=\"inner\">");
                 Tree(sb, n.Children, depth + 1);
                 sb.Append("</td></tr>");
             }

@@ -60,14 +60,18 @@ public static class GpuInfoCollector
         var nvDevices = Nvml.Devices();
 
         using var searcher = new ManagementObjectSearcher("SELECT * FROM Win32_VideoController");
-        foreach (ManagementObject vc in searcher.Get())
+        using var vcCollection = searcher.Get();
+        foreach (ManagementObject vc in vcCollection)
         {
-            try { result.Add(Build(vc, adapters, nvDevices)); }
-            catch (Exception ex)
+            using (vc)
             {
-                var g = new GpuInfo { Name = vc["Name"]?.ToString() ?? "GPU" };
-                g.Sections.Add(new InfoNode { Header = "ERRO" }.Also(n => n.Add("Falha ao ler", ex.Message)));
-                result.Add(g);
+                try { result.Add(Build(vc, adapters, nvDevices)); }
+                catch (Exception ex)
+                {
+                    var g = new GpuInfo { Name = vc["Name"]?.ToString() ?? "GPU" };
+                    g.Sections.Add(new InfoNode { Header = "ERRO" }.Also(n => n.Add("Falha ao ler", ex.Message)));
+                    result.Add(g);
+                }
             }
         }
         // Placa dedicada primeiro (mais VRAM).
@@ -274,19 +278,27 @@ public static class GpuInfoCollector
         {
             // Instanciar pelo caminho do objeto falha ("Não encontrado"); via consulta funciona.
             using var s = new ManagementObjectSearcher($"SELECT * FROM Win32_PnPEntity WHERE DeviceID='{pnpId.Replace("\\", "\\\\")}'");
-            var mo = s.Get().Cast<ManagementObject>().FirstOrDefault();
+            using var col = s.Get();
+            using var mo = col.Cast<ManagementObject>().FirstOrDefault();
             if (mo == null) return dict;
-            var input = mo.GetMethodParameters("GetDeviceProperties");
+            using var input = mo.GetMethodParameters("GetDeviceProperties");
             input["devicePropertyKeys"] = new[]
             {
                 "DEVPKEY_PciDevice_CurrentLinkSpeed", "DEVPKEY_PciDevice_CurrentLinkWidth",
                 "DEVPKEY_PciDevice_MaxLinkSpeed", "DEVPKEY_PciDevice_MaxLinkWidth",
                 "DEVPKEY_Device_Driver", "DEVPKEY_Device_LocationInfo"
             };
-            var output = mo.InvokeMethod("GetDeviceProperties", input, null);
+            using var output = mo.InvokeMethod("GetDeviceProperties", input, null);
             if (output?["deviceProperties"] is ManagementBaseObject[] props)
+            {
                 foreach (var p in props)
-                    if (p["KeyName"] is string k) dict[k] = p["Data"];
+                {
+                    using (p)
+                    {
+                        if (p["KeyName"] is string k) dict[k] = p["Data"];
+                    }
+                }
+            }
         }
         catch { }
         return dict;
@@ -323,13 +335,17 @@ public static class GpuInfoCollector
         {
             using var s = new ManagementObjectSearcher(
                 $"SELECT IsSigned, Signer FROM Win32_PnPSignedDriver WHERE DeviceID='{pnpId.Replace("\\", "\\\\")}'");
-            foreach (ManagementObject d in s.Get())
+            using var col = s.Get();
+            foreach (ManagementObject d in col)
             {
-                bool signed = d["IsSigned"] is bool b && b;
-                string signer = d["Signer"]?.ToString() ?? "";
-                if (!signed) return "Não assinado";
-                return signer.Contains("Windows Hardware Compatibility", StringComparison.OrdinalIgnoreCase)
-                    ? "WHQL (Microsoft)" : $"Assinado · {signer}";
+                using (d)
+                {
+                    bool signed = d["IsSigned"] is bool b && b;
+                    string signer = d["Signer"]?.ToString() ?? "";
+                    if (!signed) return "Não assinado";
+                    return signer.Contains("Windows Hardware Compatibility", StringComparison.OrdinalIgnoreCase)
+                        ? "WHQL (Microsoft)" : $"Assinado · {signer}";
+                }
             }
         }
         catch { }

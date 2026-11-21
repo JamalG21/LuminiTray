@@ -3,6 +3,100 @@
 Todas as alterações notáveis deste projeto serão documentadas neste arquivo.
 O formato é baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/), e este projeto adere ao [Semantic Versioning](https://semver.org/lang/pt-BR/).
 
+## [0.34.0] - 2026-11-20
+
+### 🚀 Adicionado & Aprimorado (Expansão Otimização & Debloat via Win11Debloat 2026.10.30)
+- **Novos Ajustes de Registro Reversíveis (`WindowsDebloatService`):** adicionados novos tweaks organizados em subgrupos filtráveis na aba **Otimização & Debloat**, preservando o backup e a reversão completa (`AppSettings.TweakBackup`) sem alterar o perfil automático recomendado:
+  - **IA & Navegadores:** bloqueio do serviço `WSAIFabricSvc`, *Click to Do*, Copilot/IA no Microsoft Edge, Gemini/IA no Google Chrome, IA no Bloco de Notas e Paint, além de remoção de anúncios/sugestões no Edge e bloatware no Brave.
+  - **Telemetria, Privacidade & Iniciar:** localização, *Localizar Meu Dispositivo*, anúncios Microsoft 365 e página inicial nas Configurações, dicas na tela de bloqueio, *Windows Spotlight*, painel *Vincular ao Celular*, seções do Menu Iniciar e notificações toast.
+  - **Explorador & Menu de Contexto:** ocultar *Início*, *Galeria*, *OneDrive* e unidades removíveis duplicadas; remover *Conceder acesso a*, *Incluir na biblioteca* e *Compartilhar*; exibir letras das unidades primeiro.
+  - **Barra de Tarefas & Multitarefa:** ativar *Finalizar Tarefa* no clique direito da barra de tarefas, clique na última janela ativa, desativação de *Snap Assist* / *Snap Layouts* / *Aero Snap*, ocultar abas do Edge no `Alt+Tab`, desativar animações e integração `ms-gamebar`.
+  - **Sistema & Windows Update:** desativar *Fast Startup*, rede em *Modern Standby*, criptografia automática BitLocker, *Storage Sense*, atalho de Teclas de Aderência (`Shift 5x`), Otimização de Entrega P2P, download automático de apps/ícones de dispositivos, atualizações de drivers via Windows Update, reinicialização automática e atualizações antecipadas.
+- **Filtros na Interface (`MainWindow.xaml` & `MainWindow.WindowsDebloat.cs`):** adicionados chips de filtro por subgrupo acima da lista de Telemetria, Privacidade & Sistema.
+- **Catálogo de Apps Validado (`Apps.json`):** confirmada a sincronia completa dos 162 aplicativos catalogados no `Win11Debloat-2026.10.30` (incluindo `Microsoft PC Manager` e `Microsoft Edge`).
+
+## [0.33.4] - 2026-11-20
+
+### ⚡ Performance & Otimização (Redução de RAM com Janela Aberta)
+- **Trim de Memória Pós-Inicialização e Periódico (`MainWindow`):** restaurado `TrimMemory(force: true)` após a carga inicial de sensores com a janela aberta (+ compactação agendada 1,2s após renderização/restauração) e ciclo periódico a cada 15s fora de benchmarks/stress, liberando páginas transitórias do XAML/JIT/driver que ficavam retidas no Working Set.
+- **Lazy Loading Real na `Visão geral` (`InitFastCpuAndGpuStubs`):** removidas as coletas pesadas de WMI e DXGI (`EnsureSystemInfoLoadedAsync` e `EnsureGpuInfoLoadedAsync`) da abertura da tela inicial; CPU, GPU principal e NVML agora são identificados em `< 1 ms` direto pelo `LibreHardwareMonitor` / Registro / NVML, carregando o WMI completo apenas ao abrir `Sistema`, `Placa de vídeo`, `Estresse` ou ao exportar relatório.
+- **Inicialização Sob Demanda de Buffers e Janelas Ocultas:** `BenchRenderer`, `WriteableBitmap` do Benchmark, `InitGames`, `InitOc`, `MiniTaskManagerWindow`, `TaskbarVolumeOsdWindow` e `MicOverlayWindow` passam a ser instanciados apenas quando suas abas/recursos são efetivamente utilizados.
+- **Redução de Churn de UI em Sensores Ocultos (`SensorMonitor` / `SensorRow`):** na `Visão geral`, a leitura dos sensores atualiza os valores em memória (`updateUi: false`) sem disparar centenas de notificações `PropertyChanged` por segundo na grade oculta `SensorGrid`; os bindings são sincronizados (`SyncRowsToUi()`) ao abrir `Sensores`, `Monitoramento` ou `Placa de vídeo`.
+- **Descarte COM no Coletor de GPU (`GpuInfoCollector`):** adicionados blocos `using` explícitos em `ManagementObjectCollection` e `ManagementObject` para evitar retenção de handles nativos de WMI.
+
+## [0.33.3] - 2026-11-20
+
+### ⚡ Performance & Otimização (Fase 3 — Módulos Híbridos em Rust)
+- **Varredura de Disco Nativa (`disk.rs` ↔ `DiskSpaceAnalyzer`):** implementado scanner recursivo Win32 `FindFirstFileExW` (`FindExInfoBasic` + `FIND_FIRST_EX_LARGE_FETCH`) em Rust (`ABI_VERSION = 2`) ignorando *reparse points* (`FILE_ATTRIBUTE_REPARSE_POINT`) e serializando a árvore + extensões em formato binário `LTDS` para o C#, mantendo fallback automático via `ScanManagedAsync`.
+- **Store e Métricas de Frame Time Nativo (`frames.rs` ↔ `FrameMonitor`):** transferida a fila temporal por PID (`FrameStore` com janela de 10s / corte de inatividade de 2s) e cálculo de FPS médio / Frametime / 1% Low (`nc_frames_compute_metrics`) para memória não-gerenciada fora do GC do .NET, mantendo `ComputeFrameMetricsManaged` como fallback.
+- **Pipeline DSP de Microfone em Rust (`dsp.rs` ↔ `NoiseSuppressionEngine`):** portados filtro passa-altas 80 Hz, EQ paramétrico de 3 bandas, *Noise Gate* inteligente com *sidechain HPF*, histerese (*Schmitt Trigger*), *Hold Time*, *VAD grace*, de-esser de 6,5 kHz e limitador suave (`SoftLimit`) para execução nativa em memória contígua de 480 amostras (48 kHz), preservando a chamada neural ao `rnnoise.dll` e o fallback gerenciado `ProcessManaged`.
+- **Testes de Equivalência (`OverlayAndAppsTests` + `cargo test`):** validada paridade funcional e numérica entre implementações nativas em Rust e gerenciadas em C# nos três módulos.
+
+## [0.33.2] - 2026-11-20
+
+### 🛠️ Correções & Melhorias (Fase 2 — Infraestrutura Híbrida Rust)
+- **Crate Nativa Rust (`LuminiTray.NativeCore`):** adicionada biblioteca `cdylib` x64 (`x86_64-pc-windows-msvc`, ~121 KB) com toolchain pinada (`rust-toolchain.toml`), contrato ABI versionado (`ABI_VERSION = 1`), guarda `catch_unwind` anti-panic na fronteira FFI, alocador/liberador seguro (`nc_alloc_buffer` / `nc_free_buffer`) e canal de erro UTF-16 (`nc_last_error`).
+- **Ponte Segura C# ↔ Rust (`NativeCoreBridge`):** validação de versão ABI e integridade **SHA-256** da DLL, carregamento local ou via recurso embutido, fallback automático e silencioso para C# em caso de ausência ou incompatibilidade, interfaces de estratégia para a Fase 3 (`IDiskScannerBackend`, `IFrameMonitorBackend`, `IVoiceDspBackend`) e chave `AppSettings.NativeCoreEnabled` / `LUMINI_FORCE_MANAGED=1`.
+- **Integração Incremental no Build (`LuminiTray.csproj`):** target MSBuild `BuildRustNativeCore` executa `cargo build --release` quando `cargo` está disponível e utiliza a DLL pré-compilada em `Native\` caso contrário.
+
+## [0.33.1] - 2026-11-20
+
+### ⚡ Performance & Otimização (Fase 1 C# / .NET 8)
+- **Inicialização Preguiçosa (*Lazy Loading*) de WMI e GPU:** a coleta pesada de informações estáticas do sistema e de GPUs (`LoadInfo` / `LoadGpu`) agora carrega sob demanda ao abrir a aba correspondente, ao exportar relatório ou em baixa prioridade ociosa — evitando desperdício de RAM e CPU quando o app inicia minimizado na bandeja.
+- **Cache Centralizado de Topologia de Discos (`DiskTopologyService`):** unificadas as consultas WMI `Win32_DiskDrive` / `Partition` / `LogicalDisk` com cache de 30s, invalidação automática por `WM_DEVICECHANGE` e descarte explícito de objetos COM (`ManagementBaseObject.Dispose()`).
+- **Eliminação de Churn GDI+ / HICON na Bandeja (`SystemTrayManager` & `GuidNotifyIcon`):** ícones de microfone, áudio, mini-tarefas e bateria de periféricos agora verificam chave de estado em cache (`LastIconKey`) e descartam ícones antigos antes de recriar handles Win32.
+- **Hot-Paths com Zero Alocação Extra:**
+  - `DiskSpaceItem.CategoryBrush` agora reutiliza instâncias congeladas (`Frozen`) em cache por categoria em vez de alocar um `SolidColorBrush` por leitura.
+  - `FrameMonitor` (`ComputeFrameMetrics` + `PidNameCache`) utiliza `ArrayPool<double>` + `Array.Sort` in-place e cache de nomes por PID (15s) para reduzir alocações no overlay em jogos.
+  - `TrimMemory()` recebeu debounce de 8s e `<RetainVMGarbageCollection>false</RetainVMGarbageCollection>` no projeto.
+- **Economia Visual no Modo Baixo Consumo:** estende o `Modo Baixo Consumo` para desacelerar polling de sensores na UI (2s), desativar animação de popups e pausar timers puramente visuais ao ativar.
+- **Script de Medição (`Tools/Measure-LuminiResources.ps1`):** adicionado utilitário em `desenvolvimento/` para aferir RAM privada, Working Set e CPU% antes/depois.
+
+## [0.33.0] - 2026-11-18
+
+### 🚀 Adicionado & Aprimorado
+- **Nova Sub-aba Monitoramento (`LUMINI INFORMAÇÕES` → `Monitoramento`):**
+  - Tabela estilo HWMonitor mais detalhada exibindo **Valor Atual**, **Mínimo + Horário exato (`HH:mm:ss`)** e **Máximo + Horário exato**, busca por hardware/sensor, filtro por tipo e botão **Zerar Mín/Máx**.
+  - **Monitoramento Registrado Programável:** permite selecionar qualquer hardware ou sensor individualmente (botões *Principais*, *Todos*, *Limpar* e toggle por hardware), configurar livremente o **intervalo entre leituras** (segundos/minutos) e a **duração total da sessão** (minutos/horas).
+  - **Gravação Temporizada e Limpeza Automática:** registra em disco apenas durante a duração programada (inclusive com o programa minimizado na bandeja); ao finalizar, consolida em um **resumo breve** (Mín + horário, Média, Máx + horário, total de leituras) com **gráfico interativo por sensor** (trocável via seletor com tooltip) e apaga automaticamente o arquivo bruto temporário do disco.
+  - **Inclusão no Relatório do PC:** a sessão de monitoramento (tabela resumida + gráficos SVG embutidos no HTML e séries no JSON) agora faz parte do botão **EXPORTAR RELATÓRIO**.
+- **Modo Privacidade Global (Ícone de Olho na Barra Superior):**
+  - Botão de olho ao lado do ícone de atualização na barra superior que oculta instantaneamente dados sensíveis em todas as abas (`Sistema`, `Rede & DNS`, `Saúde dos Discos` e `Periféricos/Bluetooth`), mascarando endereços IPv4/IPv6, MAC, Gateway, DNS, SSID Wi-Fi, números de série, UUID, nome do computador e usuário por `••••`.
+  - Quando ativado, a mesma proteção é aplicada automaticamente ao **Relatório do PC exportado** (HTML e JSON).
+
+## [0.32.1] - 2026-11-18
+
+### 🛠️ Correções & Melhorias
+- **Exibição Estrita de Periféricos Atualmente Conectados:**
+  - Dispositivos Bluetooth pareados mas desconectados (com cache antigo de bateria no Windows), periféricos em modo de espera e receptores 2.4 GHz vazios sem periférico ativo agora são ocultados automaticamente da lista e da bandeja.
+  - Ícones individuais fixados com **"+ Bandeja"** ocultam-se automaticamente quando o periférico é desligado e reaparecem na mesma posição assim que ele reconecta.
+- **Ícones da Bandeja 100% Independentes com `GUID` Fixo (`GuidNotifyIcon`):**
+  - Substituídos os ícones de bateria por um wrapper nativo `Shell_NotifyIconW` com `NIF_GUID` e `GUID` determinístico por dispositivo. O ícone principal (checkbox *"Exibir ícone de bateria na bandeja"*, troca por duplo clique) e cada ícone individual (**"+ Bandeja"**) agora são totalmente independentes e não se movem juntos na barra de tarefas do Windows 11.
+- **Identificação Multi-Marca e Correção do XInput em Dongles 2.4 GHz (`PeripheralDeviceCatalog`):**
+  - Correlacionamento de slots XInput aos dispositivos USB/HID/PnP reais (lendo `DEVPKEY_Device_BusReportedDeviceDesc`, `HidD_GetManufacturerString` e `HidD_GetProductString`), corrigindo controles sem fio via dongle 2.4 GHz como o **Machenike G5 Pro V2** (`1A34:F517` / `2345:E02F`), **GameSir**, **8BitDo**, **Flydigi**, **EasySMX** e **BigBig Won** que antes apareciam incorretamente como `"Controle Xbox / XInput #1 · Cabo USB · 100% (Cabeado)"`. Agora exibem o modelo real, o selo **`📡 Dongle 2.4 GHz`** e status **`Conectado`** sem inventar porcentagem falsa.
+  - Adicionada leitura do nome real via **Logitech HID++ Feature `0x0005` (GetDeviceName)** para dispositivos em receptores Unifying/Lightspeed/Bolt e catálogo expandido com 45+ fabricantes de mouses, teclados, headsets e controles.
+
+## [0.32.0] - 2026-11-18
+
+### 🚀 Adicionado & Aprimorado
+- **Aprimoramento da Bateria de Periféricos & Identificação de Dongle 2.4 GHz (baseado no Wireless-Device-Battery-Monitor):**
+  - **Identificação de Conexão / Dongle:** Cada periférico agora exibe um selo visual indicando se está conectado via **`📡 Dongle 2.4 GHz`**, **`ᛒ Bluetooth`**, **`🔌 Cabo USB`** ou **`🎮 XInput`**, tanto na aba **Periféricos → Dispositivos** quanto no menu da bandeja. Mesmo receptores/dongles 2.4 GHz que não expõem leitura de bateria via HID passam a ser identificados como ativos via dongle.
+  - **Leitura Genérica HID Padrão:** Adicionado fallback nativo via `HidP_GetValueCaps` / `HidP_GetUsageValue` para ler bateria padrão HID (`UsagePage 0x06 / Usage 0x20` e `0x85 / 0x65`) com deduplicação por `ContainerId` contra Bluetooth (ignorando Digitizers e UPS).
+  - **Novos Protocolos Nativos Suportados:** **ASUS ROG** (incluindo Omni Receiver `0x1ACE` e detecção de modo de espera), **Kysona / ATK / VXE / Pulsar / Hitscan / HECATE / Redragon CompX** (com leitura de tensão em mV), **Rapoo VT** (Nordic 54L e VT3 Pro legado), **Redragon Areson 2.4 GHz** (`0x25A7`), **AULA / MCHOSE / Redragon Horus Pro** e **Nintendo Switch Pro / GameSir (modo Switch)**.
+
+## [0.31.2] - 2026-11-17
+
+### 🛠️ Correções
+- **Ícone do Microfone do Windows Voltando a Aparecer:**
+  - Adicionado observador em `UIElement::VisibilityProperty` no hook `LuminiTray.TaskbarHook.v4.dll` para interceptar e re-ocultar imediatamente o ícone de microfone (e demais ícones de `MainStack`) sempre que o Windows 11 tentar restaurar sua visibilidade ao iniciar uma captura de áudio, além de monitorar elementos `SystemTray.TextIconContent` adicionados dinamicamente.
+
+## [0.31.1] - 2026-11-17
+
+### 🛠️ Correções
+- **Ícones Individuais & Troca por Duplo Clique na Bandeja de Bateria:**
+  - Adicionado botão **"+ Bandeja" / "✓ Na Bandeja"** em cada dispositivo conectado na sub-aba **Dispositivos** para fixar ou remover ícones individuais na bandeja do sistema.
+  - Quando houver apenas **1 ícone de bateria** na bandeja, clicar **2x** sobre ele alterna diretamente para o próximo periférico conectado (atualizando anel, porcentagem e tooltip).
+
 ## [0.31.0] - 2026-11-17
 
 ### 🚀 Adicionado & Aprimorado

@@ -92,8 +92,14 @@ public partial class MainWindow
     private void UpdateNetHeaderInfo()
     {
         if (_netDiagVm == null) return;
-        if (TxtActiveAdapterHeader != null) TxtActiveAdapterHeader.Text = _netDiagVm.ActiveAdapterInfo;
-        if (TxtActiveDnsHeader != null) TxtActiveDnsHeader.Text = _netDiagVm.ActiveDnsInfo;
+        if (TxtActiveAdapterHeader != null) TxtActiveAdapterHeader.Text = PrivacyModeService.MaskSensitivePatterns(_netDiagVm.ActiveAdapterInfo);
+        if (TxtActiveDnsHeader != null) TxtActiveDnsHeader.Text = PrivacyModeService.MaskSensitivePatterns(_netDiagVm.ActiveDnsInfo);
+    }
+
+    public void RefreshNetworkPrivacyDisplay()
+    {
+        if (NetCards != null && _lastNet != null)
+            NetCards.ItemsSource = PrivacyModeService.MaskCards(_lastNet);
     }
 
     // ---------------- TAREFA 1: SpeedTest Handlers ----------------
@@ -450,7 +456,7 @@ public partial class MainWindow
                 NetProgress.ScaleX = Math.Clamp(frac, 0, 1);
             })), ct);
             _lastNet = cards;
-            NetCards.ItemsSource = cards;
+            NetCards.ItemsSource = PrivacyModeService.MaskCards(cards);
             NetStatus.Text = $"Concluído às {DateTime.Now:HH:mm:ss}. O resultado entra no relatório exportado.";
             NetProgress.ScaleX = 1;
         }

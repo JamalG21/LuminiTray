@@ -12,9 +12,9 @@
     <AssemblyName>LuminiTray</AssemblyName>
     <Product>Lumini Tray</Product>
     <Title>Lumini Tray</Title>
-    <Version>0.31.0</Version>
-    <AssemblyVersion>0.31.0.0</AssemblyVersion>
-    <FileVersion>0.31.0.0</FileVersion>
+    <Version>0.34.0</Version>
+    <AssemblyVersion>0.34.0.0</AssemblyVersion>
+    <FileVersion>0.34.0.0</FileVersion>
     <!-- Sempre otimizado: o LUMINI BENCH e os stress tests precisam do JIT otimizado tambÃƒÂ©m em Debug -->
     <Optimize>true</Optimize>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
@@ -22,6 +22,7 @@
     <EnableCompressionInSingleFile>true</EnableCompressionInSingleFile>
     <ServerGarbageCollection>false</ServerGarbageCollection>
     <ConcurrentGarbageCollection>true</ConcurrentGarbageCollection>
+    <RetainVMGarbageCollection>false</RetainVMGarbageCollection>
     <GarbageCollectionAdaptationMode>1</GarbageCollectionAdaptationMode>
     <DebugType Condition="'$(Configuration)' == 'Release'">none</DebugType>
     <DebugSymbols Condition="'$(Configuration)' == 'Release'">false</DebugSymbols>
@@ -54,6 +55,8 @@
     <None Include="Native\SDL2.dll" Condition="Exists('Native\SDL2.dll')" Link="SDL2.dll" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
     <None Include="Native\NvAPIWrapper.dll" Condition="Exists('Native\NvAPIWrapper.dll')" Link="NvAPIWrapper.dll" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
     <None Include="Native\rnnoise.dll" Condition="Exists('Native\rnnoise.dll')" Link="rnnoise.dll" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+    <None Include="Native\LuminiTray.NativeCore.dll" Condition="Exists('Native\LuminiTray.NativeCore.dll')" Link="LuminiTray.NativeCore.dll" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+    <None Include="Native\LuminiTray.NativeCore.dll.sha256" Condition="Exists('Native\LuminiTray.NativeCore.dll.sha256')" Link="LuminiTray.NativeCore.dll.sha256" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
     <None Include="Assets\**\*" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
     <None Include="Assets\AMD\PawnIO\RyzenSMU.bin" Condition="Exists('Assets\AMD\PawnIO\RyzenSMU.bin')" Link="RyzenSMU.bin" CopyToOutputDirectory="Always" CopyToPublishDirectory="Always" />
   </ItemGroup>
@@ -98,7 +101,31 @@
 
   <ItemGroup>
     <EmbeddedResource Include="Native\LuminiTray.TaskbarHook.dll" LogicalName="LuminiTray.TaskbarHook.dll" />
+    <EmbeddedResource Include="Native\LuminiTray.NativeCore.dll" Condition="Exists('Native\LuminiTray.NativeCore.dll')" LogicalName="LuminiTray.NativeCore.dll" />
   </ItemGroup>
+
+  <PropertyGroup>
+    <RustCargoExe>$(USERPROFILE)\.cargo\bin\cargo.exe</RustCargoExe>
+    <RustCoreManifest>..\LuminiTray.NativeCore\Cargo.toml</RustCoreManifest>
+    <RustCoreBuiltDll>..\LuminiTray.NativeCore\target\x86_64-pc-windows-msvc\release\luminitray_nativecore.dll</RustCoreBuiltDll>
+  </PropertyGroup>
+
+  <Target Name="BuildRustNativeCore" BeforeTargets="BeforeBuild"
+          Inputs="$(RustCoreManifest);..\LuminiTray.NativeCore\src\lib.rs;..\LuminiTray.NativeCore\src\disk.rs;..\LuminiTray.NativeCore\src\frames.rs;..\LuminiTray.NativeCore\src\dsp.rs"
+          Outputs="Native\LuminiTray.NativeCore.dll">
+    <Exec Condition="Exists('$(RustCargoExe)') And Exists('$(RustCoreManifest)')"
+          WorkingDirectory="..\LuminiTray.NativeCore"
+          Command="&quot;$(RustCargoExe)&quot; build --release --target x86_64-pc-windows-msvc" />
+    <Copy Condition="Exists('$(RustCoreBuiltDll)')"
+          SourceFiles="$(RustCoreBuiltDll)"
+          DestinationFiles="Native\LuminiTray.NativeCore.dll"
+          SkipUnchangedFiles="true" />
+    <Exec Condition="Exists('$(RustCargoExe)') And Exists('Native\LuminiTray.NativeCore.dll')"
+          Command="powershell -NoProfile -Command &quot;$h=(Get-FileHash 'Native\LuminiTray.NativeCore.dll' -Algorithm SHA256).Hash.ToLowerInvariant(); Set-Content 'Native\LuminiTray.NativeCore.dll.sha256' ($h + '  LuminiTray.NativeCore.dll') -NoNewline&quot;" />
+    <Message Condition="!Exists('$(RustCargoExe)')"
+             Importance="High"
+             Text="Rust/Cargo nao detectado; usando Native\LuminiTray.NativeCore.dll pre-compilada (ou fallback C#)." />
+  </Target>
 
   <Target Name="CopySubtaskExecutables" AfterTargets="Build">
     <Copy SourceFiles="@(SubtaskExes)" DestinationFolder="$(TargetDir)" SkipUnchangedFiles="true" />

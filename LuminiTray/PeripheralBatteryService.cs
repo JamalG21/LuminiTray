@@ -16,6 +16,16 @@ public enum PeripheralKind
     Gamepad
 }
 
+public enum PeripheralConnectionType
+{
+    Unknown,
+    Dongle24GHz,
+    Bluetooth,
+    UsbCable,
+    XInput,
+    Hid
+}
+
 public sealed class PeripheralBatteryInfo
 {
     public string Key { get; init; } = "";
@@ -23,10 +33,35 @@ public sealed class PeripheralBatteryInfo
     public int? Level { get; set; }
     public bool IsCharging { get; set; }
     public bool IsOnline { get; set; } = true;
+    public bool IsAsleep { get; set; }
+    public int? Millivolts { get; set; }
     public string Source { get; init; } = "";
     public PeripheralKind Kind { get; init; } = PeripheralKind.Device;
     public string ApproxText { get; set; } = "";
     public bool ViaBluetooth { get; set; }
+    public PeripheralConnectionType ConnectionType { get; set; } = PeripheralConnectionType.Unknown;
+
+    public bool IsDongle => ConnectionType == PeripheralConnectionType.Dongle24GHz;
+
+    public string ConnectionLabel => ConnectionType switch
+    {
+        PeripheralConnectionType.Dongle24GHz => "Dongle 2.4 GHz",
+        PeripheralConnectionType.Bluetooth => "Bluetooth",
+        PeripheralConnectionType.UsbCable => "Cabo USB",
+        PeripheralConnectionType.XInput => "XInput",
+        PeripheralConnectionType.Hid => "HID",
+        _ => ViaBluetooth ? "Bluetooth" : Source
+    };
+
+    public string ConnectionBadge => ConnectionType switch
+    {
+        PeripheralConnectionType.Dongle24GHz => "📡 Dongle 2.4 GHz",
+        PeripheralConnectionType.Bluetooth => "ᛒ Bluetooth",
+        PeripheralConnectionType.UsbCable => "🔌 Cabo USB",
+        PeripheralConnectionType.XInput => "🎮 XInput",
+        PeripheralConnectionType.Hid => "HID",
+        _ => ViaBluetooth ? "ᛒ Bluetooth" : ""
+    };
 
     public string KindGlyph => Kind switch
     {
@@ -48,7 +83,7 @@ public sealed class PeripheralBatteryInfo
 
     public string DisplayLevel => Level is int l
         ? (!string.IsNullOrEmpty(ApproxText) ? $"~{l}% ({ApproxText})" : $"{l}%")
-        : (IsCharging ? "Carregando" : "—");
+        : (IsAsleep ? "Em espera" : (IsCharging ? "Carregando" : (IsOnline ? "Conectado" : "—")));
 }
 
 /// <summary>
@@ -142,6 +177,7 @@ public static class PeripheralBatteryService
     public static List<PeripheralBatteryInfo> PollAll()
     {
         var results = new List<PeripheralBatteryInfo>();
+        var claimed = new HashSet<(ushort Vid, ushort Pid)>();
         List<string> hidPaths = PeripheralHidTransport.EnumerateHidInterfacePaths();
         var presentVids = new HashSet<ushort>();
         foreach (string p in hidPaths)
@@ -152,20 +188,35 @@ public static class PeripheralBatteryService
 
         // 1. Bluetooth nativo (Windows PnP DEVPKEY_Bluetooth_Battery)
         PollBluetooth(results);
+        var btContainers = PeripheralHidTransport.ReadBluetoothContainerIds();
 
-        // 2. XInput (Xbox / GameSir / XInput gamepads)
-        PollXInput(results);
+        // 2. XInput (Xbox / Machenike / GameSir / 8BitDo / Flydigi / XInput gamepads)
+        PollXInput(hidPaths, results, claimed);
 
         // 3. HID diretos (apenas provedores cujo VID está realmente plugado, evitando abrir outros dispositivos)
-        if (presentVids.Contains(0x046D)) PollLogitech(hidPaths, results);
-        if (presentVids.Contains(0x1532)) PollRazer(hidPaths, results);
-        if (presentVids.Contains(0x054C)) PollPlayStation(hidPaths, results);
-        if (presentVids.Contains(0x1B1C)) PollCorsair(hidPaths, results);
-        if (presentVids.Contains(0x1038)) PollSteelSeries(hidPaths, results);
-        if (presentVids.Contains(0x03F0) || presentVids.Contains(0x0951)) PollHyperX(hidPaths, results);
-        if (presentVids.Contains(0x3434)) PollKeychron(hidPaths, results);
-        if (presentVids.Contains(0x0ECB)) PollJblQuantum(hidPaths, results);
-        PollChecksum17HidDevices(hidPaths, presentVids, results);
+        if (presentVids.Contains(0x046D)) PollLogitech(hidPaths, results, claimed);
+        if (presentVids.Contains(0x1532)) PollRazer(hidPaths, results, claimed);
+        if (presentVids.Contains(0x054C)) PollPlayStation(hidPaths, results, claimed);
+        if (presentVids.Contains(0x1B1C)) PollCorsair(hidPaths, results, claimed);
+        if (presentVids.Contains(0x1038)) PollSteelSeries(hidPaths, results, claimed);
+        if (presentVids.Contains(0x03F0) || presentVids.Contains(0x0951)) PollHyperX(hidPaths, results, claimed);
+        if (presentVids.Contains(0x3434)) PollKeychron(hidPaths, results, claimed);
+        if (presentVids.Contains(0x0ECB)) PollJblQuantum(hidPaths, results, claimed);
+
+        // 4. Provedores inspirados no Wireless-Device-Battery-Monitor (WDBM)
+        if (presentVids.Contains(0x0B05)) PollAsusRog(hidPaths, results, claimed);
+        if (presentVids.Contains(0x3554) || presentVids.Contains(0x41E4)) PollAulaMchose(hidPaths, results, claimed);
+        if (presentVids.Contains(0x3554) || presentVids.Contains(0x373B) || presentVids.Contains(0x3770) ||
+            presentVids.Contains(0x33E4) || presentVids.Contains(0x3710) || presentVids.Contains(0x35BB))
+            PollKysonaFamily(hidPaths, presentVids, results, claimed);
+        if (presentVids.Contains(0x24AE)) PollRapoo(hidPaths, results, claimed);
+        if (presentVids.Contains(0x25A7)) PollAreson(hidPaths, results, claimed);
+        if (presentVids.Contains(0x057E)) PollSwitchPro(hidPaths, results, claimed);
+
+        PollChecksum17HidDevices(hidPaths, presentVids, results, claimed);
+
+        // 5. Fallback HID padrão (Usage 0x06:0x20 / 0x85:0x65) + Identificação de dongles 2.4 GHz não reclamados
+        PollGenericHidAndDongles(hidPaths, claimed, btContainers, results);
 
         return MergeAndOrder(results);
     }
@@ -186,16 +237,23 @@ public static class PeripheralBatteryService
                 existing.Level = item.Level ?? existing.Level;
                 existing.IsCharging = existing.IsCharging || item.IsCharging;
                 existing.IsOnline = existing.IsOnline || item.IsOnline;
+                existing.IsAsleep = existing.IsAsleep && item.IsAsleep;
+                existing.Millivolts ??= item.Millivolts;
+                if (existing.ConnectionType == PeripheralConnectionType.Unknown && item.ConnectionType != PeripheralConnectionType.Unknown)
+                    existing.ConnectionType = item.ConnectionType;
                 if (!string.IsNullOrWhiteSpace(item.ApproxText)) existing.ApproxText = item.ApproxText;
             }
         }
 
-        return byKey.Values
-            .OrderByDescending(d => d.IsOnline)
+        return FilterConnectedOnly(byKey.Values)
+            .OrderByDescending(d => d.Level.HasValue)
             .ThenBy(d => d.Level ?? 999)
             .ThenBy(d => d.Name, StringComparer.OrdinalIgnoreCase)
             .ToList();
     }
+
+    public static List<PeripheralBatteryInfo> FilterConnectedOnly(IEnumerable<PeripheralBatteryInfo> devices) =>
+        devices.Where(d => d.IsOnline && !d.IsAsleep).ToList();
 
     // ------------------------------------------------------------------ 1. Bluetooth PnP
 
@@ -207,9 +265,11 @@ public static class PeripheralBatteryService
             var paired = BluetoothManagerService.ListPairedDevices();
             foreach (var dev in paired)
             {
+                // Exibe estritamente dispositivos atualmente conectados
+                if (!dev.IsConnected) continue;
+
                 string mac = dev.AddressText.Replace(":", "").ToUpperInvariant();
                 bool hasBat = btBatteries.TryGetValue(mac, out int batLevel);
-                if (!dev.IsConnected && !hasBat) continue;
                 if (!hasBat) continue;
 
                 results.Add(new PeripheralBatteryInfo
@@ -218,20 +278,22 @@ public static class PeripheralBatteryService
                     Name = dev.Name,
                     Level = Math.Clamp(batLevel, 0, 100),
                     IsCharging = false,
-                    IsOnline = dev.IsConnected,
+                    IsOnline = true,
                     Source = "Bluetooth",
                     Kind = InferKind(dev.DeviceTypeLabel, dev.Name),
-                    ViaBluetooth = true
+                    ViaBluetooth = true,
+                    ConnectionType = PeripheralConnectionType.Bluetooth
                 });
             }
         }
         catch { }
     }
 
-    // ------------------------------------------------------------------ 2. XInput (Xbox / GameSir)
+    // ------------------------------------------------------------------ 2. XInput (Xbox / Machenike / GameSir / 8BitDo / Flydigi)
 
-    private static void PollXInput(List<PeripheralBatteryInfo> results)
+    private static void PollXInput(List<string> hidPaths, List<PeripheralBatteryInfo> results, HashSet<(ushort Vid, ushort Pid)> claimed)
     {
+        var activeSlots = new List<(uint Index, XINPUT_BATTERY_INFORMATION Info)>();
         for (uint idx = 0; idx < 4; idx++)
         {
             try
@@ -242,27 +304,43 @@ public static class PeripheralBatteryService
                 catch { rc = XInput13GetBatteryInformation(idx, 0, out info); }
 
                 if (rc != 0 || info.BatteryType == 0x00) continue; // desconectado
-
-                var (level, approx, charging) = ParseXboxXInputLevel(info.BatteryType, info.BatteryLevel);
-                results.Add(new PeripheralBatteryInfo
-                {
-                    Key = $"xinput:{idx}",
-                    Name = $"Controle Xbox / XInput #{idx + 1}",
-                    Level = level,
-                    ApproxText = approx,
-                    IsCharging = charging,
-                    IsOnline = true,
-                    Source = "XInput",
-                    Kind = PeripheralKind.Gamepad
-                });
+                activeSlots.Add((idx, info));
             }
             catch { }
+        }
+
+        if (activeSlots.Count == 0) return;
+
+        var presentGamepads = PeripheralHidTransport.EnumeratePresentUsbGamepads(hidPaths);
+        for (int i = 0; i < activeSlots.Count; i++)
+        {
+            var (slotIdx, info) = activeSlots[i];
+            int matchIdx = i < presentGamepads.Count ? i : -1;
+            var resolved = PeripheralDeviceCatalog.ResolveXInputDevice(
+                slotIdx, info.BatteryType, info.BatteryLevel, presentGamepads, matchIdx);
+
+            if (matchIdx >= 0)
+                claimed.Add((presentGamepads[matchIdx].VendorId, presentGamepads[matchIdx].ProductId));
+
+            results.Add(new PeripheralBatteryInfo
+            {
+                Key = resolved.Key,
+                Name = resolved.DisplayName,
+                Level = resolved.Level,
+                ApproxText = resolved.ApproxText,
+                IsCharging = resolved.IsCharging,
+                IsOnline = true,
+                Source = resolved.Source,
+                Kind = PeripheralKind.Gamepad,
+                ViaBluetooth = resolved.ConnectionType == PeripheralConnectionType.Bluetooth,
+                ConnectionType = resolved.ConnectionType
+            });
         }
     }
 
     // ------------------------------------------------------------------ 3. Logitech HID++ 2.0 & 1.0
 
-    private static void PollLogitech(List<string> hidPaths, List<PeripheralBatteryInfo> results)
+    private static void PollLogitech(List<string> hidPaths, List<PeripheralBatteryInfo> results, HashSet<(ushort Vid, ushort Pid)> claimed)
     {
         var eps = PeripheralHidTransport.InspectVendorInterfaces(hidPaths, 0x046D);
         var byDevice = eps.GroupBy(e => $"{e.ProductId:X4}:{e.InterfaceNumber}");
@@ -277,16 +355,24 @@ public static class PeripheralBatteryService
             if (h == null) continue;
 
             bool isReceiver = LogitechReceivers.ContainsKey(ep.ProductId) || ep.ProductName.Contains("Receiver", StringComparison.OrdinalIgnoreCase);
+            var connType = isReceiver
+                ? PeripheralConnectionType.Dongle24GHz
+                : (ep.IsBluetooth ? PeripheralConnectionType.Bluetooth : ClassifyConnectionType(ep.VendorId, ep.ProductId, ep.ProductName, ep.IsBluetooth));
             int[] slots = isReceiver ? new[] { 1, 2, 3, 4, 5, 6 } : new[] { 0xFF };
             foreach (int slot in slots)
             {
-                var info = QueryLogitechSlot(h, ep, (byte)slot, shortEp != null);
-                if (info != null) results.Add(info);
+                var info = QueryLogitechSlot(h, ep, (byte)slot, shortEp != null, connType);
+                if (info != null)
+                {
+                    results.Add(info);
+                    claimed.Add((ep.VendorId, ep.ProductId));
+                }
             }
         }
     }
 
-    private static PeripheralBatteryInfo? QueryLogitechSlot(Microsoft.Win32.SafeHandles.SafeFileHandle h, HidEndpointInfo ep, byte slot, bool allowHidPp1)
+    private static PeripheralBatteryInfo? QueryLogitechSlot(
+        Microsoft.Win32.SafeHandles.SafeFileHandle h, HidEndpointInfo ep, byte slot, bool allowHidPp1, PeripheralConnectionType connType)
     {
         // Feature 0x1004 (Unified Battery) -> 0x1000 (Battery Status) -> 0x1001 (Voltage) -> 0x1F20 (Headset ADC)
         foreach (ushort feat in new ushort[] { 0x1004, 0x1000, 0x1001, 0x1F20 })
@@ -308,8 +394,11 @@ public static class PeripheralBatteryService
             }
             if (lvl != null)
             {
-                string name = !string.IsNullOrWhiteSpace(ep.ProductName) ? ep.ProductName : $"Logitech HID++ ({ep.ProductId:X4})";
-                if (slot != 0xFF) name = $"{name} #{slot}";
+                string? realName = LogitechGetDeviceName(h, slot);
+                string name = !string.IsNullOrWhiteSpace(realName)
+                    ? (realName.Contains("Logitech", StringComparison.OrdinalIgnoreCase) ? realName : $"Logitech {realName}")
+                    : (!string.IsNullOrWhiteSpace(ep.ProductName) ? ep.ProductName : $"Logitech HID++ ({ep.ProductId:X4})");
+                if (string.IsNullOrWhiteSpace(realName) && slot != 0xFF) name = $"{name} #{slot}";
                 return new PeripheralBatteryInfo
                 {
                     Key = $"logi:{ep.ProductId:X4}:{slot}",
@@ -318,7 +407,9 @@ public static class PeripheralBatteryService
                     IsCharging = chg,
                     IsOnline = true,
                     Source = "Logitech HID++",
-                    Kind = InferKind(ep.UsagePage == 0xFF43 ? "Headset" : "", name)
+                    Kind = InferKind(ep.UsagePage == 0xFF43 ? "Headset" : "", name),
+                    ViaBluetooth = ep.IsBluetooth,
+                    ConnectionType = connType
                 };
             }
         }
@@ -345,7 +436,9 @@ public static class PeripheralBatteryService
                             ApproxText = approx,
                             IsOnline = true,
                             Source = "Logitech HID++ 1.0",
-                            Kind = PeripheralKind.Mouse
+                            Kind = PeripheralKind.Mouse,
+                            ViaBluetooth = ep.IsBluetooth,
+                            ConnectionType = connType
                         };
                     }
                 }
@@ -367,18 +460,48 @@ public static class PeripheralBatteryService
         return resp[4];
     }
 
-    private static byte[]? LogitechSendShortOrLong(Microsoft.Win32.SafeHandles.SafeFileHandle h, byte slot, byte featIdx, byte fnSwid)
+    private static byte[]? LogitechSendShortOrLong(Microsoft.Win32.SafeHandles.SafeFileHandle h, byte slot, byte featIdx, byte fnSwid, byte param0 = 0x00)
     {
         var req = new byte[20];
-        req[0] = 0x11; req[1] = slot; req[2] = featIdx; req[3] = fnSwid;
+        req[0] = 0x11; req[1] = slot; req[2] = featIdx; req[3] = fnSwid; req[4] = param0;
         PeripheralHidTransport.FlushInput(h);
         if (!PeripheralHidTransport.WriteReport(h, req, 250)) return null;
         return PeripheralHidTransport.ReadReport(h, 20, 350);
     }
 
+    private static string? LogitechGetDeviceName(Microsoft.Win32.SafeHandles.SafeFileHandle h, byte slot)
+    {
+        try
+        {
+            byte? nameIdx = LogitechGetFeatureIndex(h, slot, 0x0005);
+            if (nameIdx == null) return null;
+            byte[]? lenResp = LogitechSendShortOrLong(h, slot, nameIdx.Value, 0x0A);
+            if (lenResp == null || lenResp.Length < 5) return null;
+            int totalLen = lenResp[4];
+            if (totalLen is <= 0 or > 48) return null;
+
+            var sb = new System.Text.StringBuilder(totalLen);
+            for (int off = 0; off < totalLen; off += 16)
+            {
+                byte[]? chunk = LogitechSendShortOrLong(h, slot, nameIdx.Value, 0x1A, (byte)off);
+                if (chunk == null || chunk.Length < 5) break;
+                int take = Math.Min(totalLen - off, Math.Min(16, chunk.Length - 4));
+                for (int i = 0; i < take; i++)
+                {
+                    byte b = chunk[4 + i];
+                    if (b == 0) break;
+                    if (b is >= 0x20 and <= 0x7E) sb.Append((char)b);
+                }
+            }
+            string result = sb.ToString().Trim();
+            return string.IsNullOrWhiteSpace(result) ? null : result;
+        }
+        catch { return null; }
+    }
+
     // ------------------------------------------------------------------ 4. Razer (0x1532)
 
-    private static void PollRazer(List<string> hidPaths, List<PeripheralBatteryInfo> results)
+    private static void PollRazer(List<string> hidPaths, List<PeripheralBatteryInfo> results, HashSet<(ushort Vid, ushort Pid)> claimed)
     {
         var eps = PeripheralHidTransport.InspectVendorInterfaces(hidPaths, 0x1532)
             .Where(e => e.FeatureReportLength >= 90 || (e.ProductId == 0x0528 && e.UsagePage == 0xFF00));
@@ -408,8 +531,11 @@ public static class PeripheralBatteryService
                 IsCharging = chg,
                 IsOnline = true,
                 Source = "Razer HID",
-                Kind = InferKind("", name)
+                Kind = InferKind("", name),
+                ViaBluetooth = ep.IsBluetooth,
+                ConnectionType = ClassifyConnectionType(ep.VendorId, ep.ProductId, ep.ProductName, ep.IsBluetooth)
             });
+            claimed.Add((ep.VendorId, ep.ProductId));
         }
     }
 
@@ -438,7 +564,7 @@ public static class PeripheralBatteryService
 
     // ------------------------------------------------------------------ 5. PlayStation (0x054C)
 
-    private static void PollPlayStation(List<string> hidPaths, List<PeripheralBatteryInfo> results)
+    private static void PollPlayStation(List<string> hidPaths, List<PeripheralBatteryInfo> results, HashSet<(ushort Vid, ushort Pid)> claimed)
     {
         var eps = PeripheralHidTransport.InspectVendorInterfaces(hidPaths, 0x054C)
             .Where(e => e.UsagePage == 0x0001 && (e.Usage == 0x0005 || e.Usage == 0x0004));
@@ -482,15 +608,17 @@ public static class PeripheralBatteryService
                     IsOnline = true,
                     Source = ep.IsBluetooth ? "PlayStation BT" : "PlayStation USB",
                     Kind = PeripheralKind.Gamepad,
-                    ViaBluetooth = ep.IsBluetooth
+                    ViaBluetooth = ep.IsBluetooth,
+                    ConnectionType = ep.IsBluetooth ? PeripheralConnectionType.Bluetooth : (ep.ProductId == 0x0BA0 ? PeripheralConnectionType.Dongle24GHz : PeripheralConnectionType.UsbCable)
                 });
+                claimed.Add((ep.VendorId, ep.ProductId));
             }
         }
     }
 
     // ------------------------------------------------------------------ 6. Corsair (0x1B1C)
 
-    private static void PollCorsair(List<string> hidPaths, List<PeripheralBatteryInfo> results)
+    private static void PollCorsair(List<string> hidPaths, List<PeripheralBatteryInfo> results, HashSet<(ushort Vid, ushort Pid)> claimed)
     {
         var eps = PeripheralHidTransport.InspectVendorInterfaces(hidPaths, 0x1B1C)
             .Where(e => e.UsagePage >= 0xFF00);
@@ -516,8 +644,10 @@ public static class PeripheralBatteryService
                             IsCharging = ve.Charging,
                             IsOnline = ve.Online,
                             Source = "Corsair HID",
-                            Kind = PeripheralKind.Headset
+                            Kind = PeripheralKind.Headset,
+                            ConnectionType = PeripheralConnectionType.Dongle24GHz
                         });
+                        claimed.Add((ep.VendorId, ep.ProductId));
                     }
                 }
             }
@@ -540,8 +670,11 @@ public static class PeripheralBatteryService
                             Level = pct,
                             IsOnline = true,
                             Source = "Corsair Slipstream",
-                            Kind = InferKind("", ep.ProductName)
+                            Kind = InferKind("", ep.ProductName),
+                            ViaBluetooth = ep.IsBluetooth,
+                            ConnectionType = ep.IsBluetooth ? PeripheralConnectionType.Bluetooth : PeripheralConnectionType.Dongle24GHz
                         });
+                        claimed.Add((ep.VendorId, ep.ProductId));
                     }
                 }
             }
@@ -550,7 +683,7 @@ public static class PeripheralBatteryService
 
     // ------------------------------------------------------------------ 7. SteelSeries (0x1038)
 
-    private static void PollSteelSeries(List<string> hidPaths, List<PeripheralBatteryInfo> results)
+    private static void PollSteelSeries(List<string> hidPaths, List<PeripheralBatteryInfo> results, HashSet<(ushort Vid, ushort Pid)> claimed)
     {
         var eps = PeripheralHidTransport.InspectVendorInterfaces(hidPaths, 0x1038)
             .Where(e => e.UsagePage == 0xFFC0);
@@ -575,15 +708,17 @@ public static class PeripheralBatteryService
                     IsCharging = st.Charging,
                     IsOnline = true,
                     Source = "SteelSeries HID",
-                    Kind = PeripheralKind.Headset
+                    Kind = PeripheralKind.Headset,
+                    ConnectionType = PeripheralConnectionType.Dongle24GHz
                 });
+                claimed.Add((ep.VendorId, ep.ProductId));
             }
         }
     }
 
     // ------------------------------------------------------------------ 8. HyperX (0x03F0 / 0x0951)
 
-    private static void PollHyperX(List<string> hidPaths, List<PeripheralBatteryInfo> results)
+    private static void PollHyperX(List<string> hidPaths, List<PeripheralBatteryInfo> results, HashSet<(ushort Vid, ushort Pid)> claimed)
     {
         foreach (ushort vid in new ushort[] { 0x03F0, 0x0951 })
         {
@@ -608,8 +743,10 @@ public static class PeripheralBatteryService
                         Level = r[4],
                         IsOnline = true,
                         Source = "HyperX HID",
-                        Kind = PeripheralKind.Headset
+                        Kind = PeripheralKind.Headset,
+                        ConnectionType = PeripheralConnectionType.Dongle24GHz
                     });
+                    claimed.Add((ep.VendorId, ep.ProductId));
                 }
             }
         }
@@ -617,7 +754,7 @@ public static class PeripheralBatteryService
 
     // ------------------------------------------------------------------ 9. Keychron (0x3434) & JBL (0x0ECB) & 17-byte 0x55 Mice
 
-    private static void PollKeychron(List<string> hidPaths, List<PeripheralBatteryInfo> results)
+    private static void PollKeychron(List<string> hidPaths, List<PeripheralBatteryInfo> results, HashSet<(ushort Vid, ushort Pid)> claimed)
     {
         var eps = PeripheralHidTransport.InspectVendorInterfaces(hidPaths, 0x3434)
             .Where(e => e.InterfaceNumber == 4 || e.UsagePage >= 0xFF00);
@@ -639,13 +776,16 @@ public static class PeripheralBatteryService
                     Level = pct,
                     IsOnline = true,
                     Source = "Keychron HID",
-                    Kind = ep.ProductName.Contains("M5", StringComparison.OrdinalIgnoreCase) ? PeripheralKind.Mouse : PeripheralKind.Keyboard
+                    Kind = ep.ProductName.Contains("M5", StringComparison.OrdinalIgnoreCase) ? PeripheralKind.Mouse : PeripheralKind.Keyboard,
+                    ViaBluetooth = ep.IsBluetooth,
+                    ConnectionType = ClassifyConnectionType(ep.VendorId, ep.ProductId, ep.ProductName, ep.IsBluetooth)
                 });
+                claimed.Add((ep.VendorId, ep.ProductId));
             }
         }
     }
 
-    private static void PollJblQuantum(List<string> hidPaths, List<PeripheralBatteryInfo> results)
+    private static void PollJblQuantum(List<string> hidPaths, List<PeripheralBatteryInfo> results, HashSet<(ushort Vid, ushort Pid)> claimed)
     {
         var eps = PeripheralHidTransport.InspectVendorInterfaces(hidPaths, 0x0ECB)
             .Where(e => e.UsagePage == 0xFF13);
@@ -663,17 +803,20 @@ public static class PeripheralBatteryService
                     Level = r[1],
                     IsOnline = true,
                     Source = "JBL HID",
-                    Kind = PeripheralKind.Headset
+                    Kind = PeripheralKind.Headset,
+                    ConnectionType = PeripheralConnectionType.Dongle24GHz
                 });
+                claimed.Add((ep.VendorId, ep.ProductId));
             }
         }
     }
 
-    private static void PollChecksum17HidDevices(List<string> hidPaths, HashSet<ushort> presentVids, List<PeripheralBatteryInfo> results)
+    private static void PollChecksum17HidDevices(
+        List<string> hidPaths, HashSet<ushort> presentVids, List<PeripheralBatteryInfo> results, HashSet<(ushort Vid, ushort Pid)> claimed)
     {
         foreach (var kv in GamingChecksum17Devices)
         {
-            if (!presentVids.Contains(kv.Key.Vid)) continue;
+            if (!presentVids.Contains(kv.Key.Vid) || claimed.Contains(kv.Key)) continue;
             var eps = PeripheralHidTransport.InspectVendorInterfaces(hidPaths, kv.Key.Vid)
                 .Where(e => e.ProductId == kv.Key.Pid && e.UsagePage >= 0xFF00);
 
@@ -701,7 +844,156 @@ public static class PeripheralBatteryService
                         IsCharging = r[7] != 0,
                         IsOnline = true,
                         Source = "2.4 GHz HID",
-                        Kind = kv.Value.Kind
+                        Kind = kv.Value.Kind,
+                        ConnectionType = PeripheralConnectionType.Dongle24GHz
+                    });
+                    claimed.Add((ep.VendorId, ep.ProductId));
+                    break;
+                }
+            }
+        }
+    }
+
+    // ------------------------------------------------------------------ 10. Provedores WDBM (ASUS ROG, Kysona/ATK/VXE/Pulsar, Rapoo, Areson, AULA/MCHOSE, Switch Pro, Generic HID & Dongles)
+
+    private static void PollAsusRog(List<string> hidPaths, List<PeripheralBatteryInfo> results, HashSet<(ushort Vid, ushort Pid)> claimed)
+    {
+        var eps = PeripheralHidTransport.InspectVendorInterfaces(hidPaths, 0x0B05)
+            .Where(e => e.UsagePage >= 0xFF00 && e.OutputReportLength >= 64 && e.InputReportLength >= 64);
+
+        foreach (var grp in eps.GroupBy(e => e.ProductId))
+        {
+            var ep = grp.OrderByDescending(e => e.UsagePage == 0xFF01 || e.UsagePage == 0xFF00).First();
+            using var h = PeripheralHidTransport.OpenPath(ep.Path);
+            if (h == null) continue;
+
+            byte rid = ep.OutputReportLength >= 65 ? (byte)0x00 : (byte)0x00;
+            foreach (byte subCmd in new byte[] { 0x07, 0x01 })
+            {
+                var req = new byte[Math.Max(65, ep.OutputReportLength)];
+                req[0] = rid;
+                req[1] = 0x12;
+                req[2] = subCmd;
+                PeripheralHidTransport.FlushInput(h);
+                if (!PeripheralHidTransport.WriteReport(h, req, 250)) continue;
+                var r = PeripheralHidTransport.ReadReport(h, Math.Max(65, ep.InputReportLength), 350);
+                if (r != null && ParseAsusRogBatteryResponse(r) is { } parsed)
+                {
+                    var conn = ep.ProductId == 0x1ACE
+                        ? PeripheralConnectionType.Dongle24GHz
+                        : ClassifyConnectionType(ep.VendorId, ep.ProductId, ep.ProductName, ep.IsBluetooth);
+                    string name = string.IsNullOrWhiteSpace(ep.ProductName) ? $"ASUS ROG ({ep.ProductId:X4})" : ep.ProductName;
+                    results.Add(new PeripheralBatteryInfo
+                    {
+                        Key = $"rog:{ep.ProductId:X4}",
+                        Name = name,
+                        Level = parsed.Level,
+                        IsCharging = parsed.Charging,
+                        IsAsleep = parsed.Asleep,
+                        IsOnline = !parsed.Asleep,
+                        Source = "ASUS ROG HID",
+                        Kind = InferKind("", name),
+                        ViaBluetooth = ep.IsBluetooth,
+                        ConnectionType = conn
+                    });
+                    claimed.Add((ep.VendorId, ep.ProductId));
+                    break;
+                }
+            }
+        }
+    }
+
+    private static void PollKysonaFamily(
+        List<string> hidPaths, HashSet<ushort> presentVids, List<PeripheralBatteryInfo> results, HashSet<(ushort Vid, ushort Pid)> claimed)
+    {
+        ushort[] vendors = { 0x3554, 0x373B, 0x3770, 0x33E4, 0x3710, 0x35BB };
+        foreach (ushort vid in vendors)
+        {
+            if (!presentVids.Contains(vid)) continue;
+            var eps = PeripheralHidTransport.InspectVendorInterfaces(hidPaths, vid)
+                .Where(e =>
+                {
+                    if (claimed.Contains((e.VendorId, e.ProductId))) return false;
+                    // ATK N9 headsets usam serial; nunca enviar frames de mouse
+                    if (e.VendorId == 0x373B && e.ProductId is 0x11CA or 0x11CB or 0x1203 or 0x1204) return false;
+                    // 3554:FA09 / FB40 são receptores de teclado AULA/MCHOSE (tratados por PollAulaMchose)
+                    if (e.VendorId == 0x3554 && e.ProductId is 0xFA09 or 0xFB40) return false;
+                    // HECATE (0x35BB): apenas IDs de mouse
+                    if (e.VendorId == 0x35BB && e.ProductId is not (0xD3FA or 0xD3FB or 0xD3FC or 0xD3FD)) return false;
+                    return (e.OutputReportLength == 17 && e.InputReportLength == 17) ||
+                           (e.UsagePage >= 0xFF00 && e.OutputReportLength >= 17 && e.InputReportLength >= 17);
+                });
+
+            foreach (var grp in eps.GroupBy(e => e.ProductId))
+            {
+                var ordered = grp.OrderByDescending(e => e.UsagePage == 0xFF02 && e.Usage == 0x0002);
+                foreach (var ep in ordered)
+                {
+                    using var h = PeripheralHidTransport.OpenPath(ep.Path);
+                    if (h == null) continue;
+
+                    bool answered = false;
+                    bool online = true;
+                    var onlineResp = QueryKysonaCmd(h, 0x03, ep.InputReportLength);
+                    if (onlineResp != null)
+                    {
+                        answered = true;
+                        online = onlineResp[6] != 0;
+                    }
+
+                    int? level = null;
+                    bool charging = false;
+                    int? mv = null;
+                    bool asleep = false;
+
+                    if (!answered || online)
+                    {
+                        var batResp = QueryKysonaCmd(h, 0x04, ep.InputReportLength);
+                        if (batResp != null && ParseKysonaBatteryResponse(batResp) is { } parsed)
+                        {
+                            answered = true;
+                            online = true;
+                            level = parsed.Level;
+                            charging = parsed.Charging;
+                            mv = parsed.Millivolts;
+                        }
+                        else if (answered && online)
+                        {
+                            asleep = true;
+                        }
+                    }
+
+                    if (!answered) continue;
+                    claimed.Add((ep.VendorId, ep.ProductId));
+                    if (!online) break;
+
+                    bool isCable = (ep.VendorId == 0x3554 && ep.ProductId is 0xF55E or 0xF58C or 0xF58F or 0xF506)
+                        || (ep.VendorId == 0x35BB && ep.ProductId is 0xD3FA or 0xD3FC or 0xD3FD);
+                    string name = CleanDongleSuffix(ep.ProductName);
+                    if (string.IsNullOrWhiteSpace(name))
+                    {
+                        name = ep.VendorId switch
+                        {
+                            0x3770 => "Hitscan Hyperlight",
+                            0x3710 => "Pulsar Wireless Mouse",
+                            0x373B => "ATK Wireless Mouse",
+                            0x35BB => "HECATE Wireless Mouse",
+                            _ => $"Mouse Sem Fio ({ep.VendorId:X4}:{ep.ProductId:X4})"
+                        };
+                    }
+
+                    results.Add(new PeripheralBatteryInfo
+                    {
+                        Key = $"kysona:{ep.VendorId:X4}:{ep.ProductId:X4}",
+                        Name = name,
+                        Level = level,
+                        IsCharging = charging,
+                        IsOnline = !asleep,
+                        IsAsleep = asleep,
+                        Millivolts = mv,
+                        Source = "Kysona / CompX HID",
+                        Kind = InferKind("", name) is var k && k == PeripheralKind.Device ? PeripheralKind.Mouse : k,
+                        ConnectionType = isCable ? PeripheralConnectionType.UsbCable : PeripheralConnectionType.Dongle24GHz
                     });
                     break;
                 }
@@ -709,7 +1001,388 @@ public static class PeripheralBatteryService
         }
     }
 
+    private static byte[]? QueryKysonaCmd(Microsoft.Win32.SafeHandles.SafeFileHandle h, byte cmd, int inputLen)
+    {
+        var req = new byte[17];
+        req[0] = 0x08;
+        req[1] = cmd;
+        req[16] = ComputeKysonaChecksum(req);
+        PeripheralHidTransport.FlushInput(h);
+        if (!PeripheralHidTransport.WriteReport(h, req, 250)) return null;
+        var sw = Stopwatch.StartNew();
+        while (sw.ElapsedMilliseconds < 450)
+        {
+            int left = Math.Max(50, 450 - (int)sw.ElapsedMilliseconds);
+            var r = PeripheralHidTransport.ReadReport(h, Math.Max(17, inputLen), left);
+            if (r == null) break;
+            if (r.Length >= 17 && r[0] == 0x08 && r[1] == cmd && r[16] == ComputeKysonaChecksum(r))
+                return r;
+        }
+        return null;
+    }
+
+    private static void PollRapoo(List<string> hidPaths, List<PeripheralBatteryInfo> results, HashSet<(ushort Vid, ushort Pid)> claimed)
+    {
+        var eps = PeripheralHidTransport.InspectVendorInterfaces(hidPaths, 0x24AE)
+            .Where(e => e.UsagePage == 0xFF00 && e.Usage == 0x0002 &&
+                        (e.InputReportLength is 16 or 19 or 13 or 7));
+
+        foreach (var ep in eps.GroupBy(e => e.ProductId).Select(g => g.First()))
+        {
+            using var h = PeripheralHidTransport.OpenPath(ep.Path);
+            if (h == null) continue;
+            bool legacy = ep.InputReportLength == 7 && ep.ProductId is 0x1215 or 0x4415 or 0x1233 or 0x4433;
+            var r = PeripheralHidTransport.ReadReport(h, ep.InputReportLength, 400);
+            if (r != null && ParseRapooBatteryResponse(r, legacy) is { } parsed)
+            {
+                string name = string.IsNullOrWhiteSpace(ep.ProductName) || ep.ProductName.Equals("Rapoo Gaming Device", StringComparison.OrdinalIgnoreCase)
+                    ? "Rapoo Wireless Mouse" : ep.ProductName;
+                results.Add(new PeripheralBatteryInfo
+                {
+                    Key = $"rapoo:{(parsed.MousePid != 0 ? parsed.MousePid : ep.ProductId):X4}",
+                    Name = name,
+                    Level = parsed.Level,
+                    IsCharging = parsed.Charging,
+                    IsOnline = true,
+                    Source = "Rapoo HID",
+                    Kind = PeripheralKind.Mouse,
+                    ViaBluetooth = parsed.Connection == PeripheralConnectionType.Bluetooth,
+                    ConnectionType = parsed.Connection
+                });
+                claimed.Add((ep.VendorId, ep.ProductId));
+            }
+        }
+    }
+
+    private static void PollAreson(List<string> hidPaths, List<PeripheralBatteryInfo> results, HashSet<(ushort Vid, ushort Pid)> claimed)
+    {
+        var eps = PeripheralHidTransport.InspectVendorInterfaces(hidPaths, 0x25A7)
+            .Where(e => e.ProductId is 0xFA07 or 0xFA08 && e.InterfaceNumber == 1)
+            .ToList();
+
+        foreach (var grp in eps.GroupBy(e => e.ProductId))
+        {
+            var cmdEp = grp.FirstOrDefault(e => e.UsagePage == 0xFF02 && e.Usage == 0x0002 && e.FeatureReportLength >= 17);
+            var replyEp = grp.FirstOrDefault(e => e.UsagePage == 0xFF01 && e.Usage == 0x0000 && e.InputReportLength >= 17);
+            if (cmdEp == null || replyEp == null) continue;
+
+            using var hCmd = PeripheralHidTransport.OpenPath(cmdEp.Path, readWrite: false);
+            using var hReply = PeripheralHidTransport.OpenPath(replyEp.Path);
+            if (hCmd == null || hReply == null) continue;
+
+            var req = new byte[17];
+            req[0] = 0x08;
+            req[1] = 0x04;
+            req[16] = ComputeKysonaChecksum(req);
+
+            PeripheralHidTransport.FlushInput(hReply);
+            if (!PeripheralHidTransport.SetFeatureReport(hCmd, req)) continue;
+            var r = PeripheralHidTransport.ReadReport(hReply, Math.Max(17, replyEp.InputReportLength), 800);
+            if (r != null && ParseAresonBatteryResponse(r) is { } parsed)
+            {
+                results.Add(new PeripheralBatteryInfo
+                {
+                    Key = $"areson:{cmdEp.VendorId:X4}:{cmdEp.ProductId:X4}",
+                    Name = "Redragon Wireless Mouse",
+                    Level = parsed.Level,
+                    IsCharging = parsed.Charging,
+                    IsOnline = true,
+                    Source = "Areson 2.4 GHz",
+                    Kind = PeripheralKind.Mouse,
+                    ConnectionType = PeripheralConnectionType.Dongle24GHz
+                });
+                claimed.Add((cmdEp.VendorId, cmdEp.ProductId));
+            }
+        }
+    }
+
+    private static void PollAulaMchose(List<string> hidPaths, List<PeripheralBatteryInfo> results, HashSet<(ushort Vid, ushort Pid)> claimed)
+    {
+        (ushort Vid, ushort Pid)[] receivers = { (0x3554, 0xFA09), (0x3554, 0xFB40), (0x41E4, 0x2001) };
+        foreach (var (vid, pid) in receivers)
+        {
+            var eps = PeripheralHidTransport.InspectVendorInterfaces(hidPaths, vid)
+                .Where(e => e.ProductId == pid && e.UsagePage is 0xFF02 or 0xFF04 && e.Usage == 0x0002 &&
+                            e.OutputReportLength >= 20 && e.InputReportLength >= 20);
+            foreach (var ep in eps)
+            {
+                using var h = PeripheralHidTransport.OpenPath(ep.Path);
+                if (h == null) continue;
+
+                var req = new byte[20];
+                req[0] = 0x13;
+                req[1] = 0x4A;
+                req[2] = 0x00;
+                int sum = 0;
+                for (int i = 0; i < 19; i++) sum += req[i];
+                req[19] = (byte)(sum & 0xFF);
+
+                PeripheralHidTransport.FlushInput(h);
+                if (!PeripheralHidTransport.WriteReport(h, req, 250)) continue;
+
+                var sw = Stopwatch.StartNew();
+                while (sw.ElapsedMilliseconds < 1200)
+                {
+                    var r = PeripheralHidTransport.ReadReport(h, Math.Max(20, ep.InputReportLength), 400);
+                    if (r == null) break;
+                    if (ParseAulaBatteryResponse(r) is { } parsed)
+                    {
+                        string name = CleanDongleSuffix(ep.ProductName);
+                        if (string.IsNullOrWhiteSpace(name))
+                            name = vid == 0x41E4 ? "MCHOSE Wireless Keyboard" : "AULA / MCHOSE Keyboard";
+                        results.Add(new PeripheralBatteryInfo
+                        {
+                            Key = $"aula:{vid:X4}:{pid:X4}",
+                            Name = name,
+                            Level = parsed.Level,
+                            IsCharging = parsed.Charging,
+                            IsOnline = true,
+                            Source = "AULA / MCHOSE 2.4 GHz",
+                            Kind = PeripheralKind.Keyboard,
+                            ConnectionType = PeripheralConnectionType.Dongle24GHz
+                        });
+                        claimed.Add((vid, pid));
+                        break;
+                    }
+                }
+                if (claimed.Contains((vid, pid))) break;
+            }
+        }
+    }
+
+    private static void PollSwitchPro(List<string> hidPaths, List<PeripheralBatteryInfo> results, HashSet<(ushort Vid, ushort Pid)> claimed)
+    {
+        var eps = PeripheralHidTransport.InspectVendorInterfaces(hidPaths, 0x057E)
+            .Where(e => e.ProductId == 0x2009 && e.UsagePage == 0x0001 && e.Usage is 0x0004 or 0x0005 && e.InputReportLength >= 13);
+
+        foreach (var ep in eps)
+        {
+            using var h = PeripheralHidTransport.OpenPath(ep.Path);
+            if (h == null) continue;
+            var r = PeripheralHidTransport.ReadReport(h, Math.Max(64, ep.InputReportLength), 300);
+            if (r != null && ParseSwitchProBatteryResponse(r) is { } parsed)
+            {
+                results.Add(new PeripheralBatteryInfo
+                {
+                    Key = $"switchpro:{ep.Path.GetHashCode():X8}",
+                    Name = string.IsNullOrWhiteSpace(ep.ProductName) ? "Nintendo Switch Pro Controller" : ep.ProductName,
+                    Level = parsed.Level,
+                    ApproxText = parsed.ApproxText,
+                    IsCharging = parsed.Charging,
+                    IsOnline = true,
+                    Source = "Switch Pro HID",
+                    Kind = PeripheralKind.Gamepad,
+                    ViaBluetooth = ep.IsBluetooth,
+                    ConnectionType = ClassifyConnectionType(ep.VendorId, ep.ProductId, ep.ProductName, ep.IsBluetooth)
+                });
+                claimed.Add((ep.VendorId, ep.ProductId));
+            }
+        }
+    }
+
+    private static void PollGenericHidAndDongles(
+        List<string> hidPaths,
+        HashSet<(ushort Vid, ushort Pid)> claimed,
+        HashSet<Guid> btContainers,
+        List<PeripheralBatteryInfo> results)
+    {
+        var allEps = PeripheralHidTransport.InspectAllInterfaces(hidPaths);
+        var byVidPid = allEps.GroupBy(e => (e.VendorId, e.ProductId));
+
+        foreach (var grp in byVidPid)
+        {
+            if (claimed.Contains(grp.Key)) continue;
+
+            var first = grp.First();
+            Guid cid = PeripheralHidTransport.GetDeviceContainerId(first.Path);
+            if (cid != Guid.Empty && btContainers.Contains(cid))
+                continue; // já coberto pelo Bluetooth PnP
+
+            // 1. Tenta leitura padrão HID Battery Strength (0x06:0x20) ou State of Charge (0x85:0x65)
+            int? foundBattery = null;
+            HidEndpointInfo? batteryEp = null;
+            foreach (var ep in grp)
+            {
+                if (PeripheralHidTransport.TryReadStandardHidBattery(ep, out int pct))
+                {
+                    foundBattery = pct;
+                    batteryEp = ep;
+                    break;
+                }
+            }
+
+            PeripheralKind inferredKind = InferKindFromCollections(grp, first.ProductName);
+            var connType = ClassifyConnectionType(grp.Key.VendorId, grp.Key.ProductId, first.ProductName, first.IsBluetooth);
+
+            if (foundBattery != null && batteryEp != null)
+            {
+                string name = PeripheralDeviceCatalog.BuildDisplayName(
+                    grp.Key.VendorId, grp.Key.ProductId,
+                    batteryEp.ProductName, batteryEp.ManufacturerName);
+
+                results.Add(new PeripheralBatteryInfo
+                {
+                    Key = $"hid:{grp.Key.VendorId:X4}:{grp.Key.ProductId:X4}",
+                    Name = name,
+                    Level = foundBattery,
+                    IsOnline = true,
+                    Source = connType == PeripheralConnectionType.Dongle24GHz ? "HID via Dongle" : "HID Padrão",
+                    Kind = inferredKind,
+                    ViaBluetooth = first.IsBluetooth,
+                    ConnectionType = connType
+                });
+                claimed.Add(grp.Key);
+            }
+        }
+    }
+
+    private static PeripheralKind InferKindFromCollections(IEnumerable<HidEndpointInfo> eps, string productName)
+    {
+        var byName = InferKind("", productName);
+        if (byName != PeripheralKind.Device) return byName;
+        foreach (var e in eps)
+        {
+            if (e.UsagePage == 0x0001 && e.Usage == 0x0002) return PeripheralKind.Mouse;
+            if (e.UsagePage == 0x0001 && e.Usage == 0x0006) return PeripheralKind.Keyboard;
+            if (e.UsagePage == 0x0001 && e.Usage is 0x0004 or 0x0005) return PeripheralKind.Gamepad;
+        }
+        return PeripheralKind.Device;
+    }
+
+    private static string CleanDongleSuffix(string? name)
+    {
+        if (string.IsNullOrWhiteSpace(name)) return "";
+        string s = name.Trim();
+        foreach (string suffix in new[] { " Wireless Receiver", " USB Receiver", " Receiver", " Dongle", " 2.4G" })
+        {
+            if (s.EndsWith(suffix, StringComparison.OrdinalIgnoreCase) && s.Length > suffix.Length + 2)
+                s = s[..^suffix.Length].Trim();
+        }
+        return s;
+    }
+
     // ------------------------------------------------------------------ Pure Protocol Parsers (Testáveis)
+
+    public static PeripheralConnectionType ClassifyConnectionType(ushort vid, ushort pid, string? productName, bool isBluetooth)
+    {
+        if (isBluetooth) return PeripheralConnectionType.Bluetooth;
+        if (PeripheralHidTransport.IsLikelyWirelessDongle(vid, pid, productName, isBluetooth: false))
+            return PeripheralConnectionType.Dongle24GHz;
+        return PeripheralConnectionType.UsbCable;
+    }
+
+    public static (int? Level, bool Charging, bool Asleep)? ParseAsusRogBatteryResponse(byte[] resp)
+    {
+        if (resp == null || resp.Length < 6) return null;
+        int off = resp[0] == 0x00 ? 1 : 0;
+        if (resp.Length <= off + 4) return null;
+        if (resp[off] == 0xFF && resp[off + 1] == 0xAA)
+            return (null, false, true);
+        if (resp[off] != 0x12) return null;
+        byte sub = resp[off + 1];
+        if (sub is not (0x01 or 0x07)) return null;
+        int pct = resp[off + 3];
+        if (pct > 100) return null;
+        bool chg = resp[off + 2] == 0x01 || resp[off + 2] == 0x02;
+        return (pct, chg, false);
+    }
+
+    public static byte ComputeKysonaChecksum(byte[] frame)
+    {
+        int sum = 0;
+        for (int i = 0; i < 16 && i < frame.Length; i++) sum += frame[i];
+        return (byte)((0x55 - (sum & 0xFF)) & 0xFF);
+    }
+
+    public static (int? Level, bool Charging, int Millivolts)? ParseKysonaBatteryResponse(byte[] resp)
+    {
+        if (resp == null || resp.Length < 17) return null;
+        if (resp[0] != 0x08 || resp[1] != 0x04) return null;
+        if (resp[16] != ComputeKysonaChecksum(resp)) return null;
+        int? lvl = resp[6] <= 100 ? resp[6] : null;
+        bool chg = resp[7] != 0;
+        int mv = (resp[8] << 8) | resp[9];
+        return (lvl, chg, mv);
+    }
+
+    public static (int? Level, bool Charging, PeripheralConnectionType Connection, ushort MousePid)? ParseRapooBatteryResponse(byte[] resp, bool legacyVt3Pro)
+    {
+        if (resp == null || resp.Length == 0) return null;
+        int state, pct;
+        var conn = PeripheralConnectionType.Dongle24GHz;
+        ushort mousePid = 0;
+
+        if (!legacyVt3Pro && resp[0] == 0x07)
+        {
+            if (resp.Length < 9 || (resp[1] & 0x0F) > 2) return null;
+            conn = (resp[1] & 0x0F) switch
+            {
+                0 => PeripheralConnectionType.Dongle24GHz,
+                1 => PeripheralConnectionType.Bluetooth,
+                2 => PeripheralConnectionType.UsbCable,
+                _ => PeripheralConnectionType.Dongle24GHz
+            };
+            state = resp[7];
+            pct = resp[8];
+            if (resp.Length >= 15) mousePid = (ushort)(resp[13] | (resp[14] << 8));
+        }
+        else if (legacyVt3Pro && resp[0] == 0xBB)
+        {
+            if (resp.Length < 7 || resp[1] != 0xB0) return null;
+            state = resp[5];
+            pct = resp[6];
+        }
+        else
+        {
+            return null;
+        }
+
+        if (state is not (1 or 2)) return null;
+        if (pct > 100 && !(legacyVt3Pro && state == 2 && pct == 0x7F)) return null;
+        return (pct <= 100 ? pct : null, state == 2, conn, mousePid);
+    }
+
+    public static (int Level, bool Charging)? ParseAresonBatteryResponse(byte[] resp)
+    {
+        if (resp == null || resp.Length < 17) return null;
+        int total = 0;
+        for (int i = 0; i < 17; i++) total += resp[i];
+        if ((total & 0xFF) != 0x55 || resp[0] != 0x09 || resp[1] != 0x04 || resp[2] != 0x00 || resp[6] > 10)
+            return null;
+        return (Math.Clamp(resp[6] * 10, 0, 100), resp[7] != 0);
+    }
+
+    public static (int Level, bool Charging)? ParseAulaBatteryResponse(byte[] resp)
+    {
+        if (resp == null || resp.Length < 20 || resp[0] != 0x13 || (resp[1] & 0x7F) != 0x4A)
+            return null;
+        int sum = 0;
+        for (int i = 0; i < 19; i++) sum += resp[i];
+        bool checksumOk = resp[19] == (byte)(sum & 0xFF);
+        bool mchoseOk = resp[19] == 0 && resp[2] == 1 && resp[3] == 0;
+        if (!checksumOk && !mchoseOk) return null;
+        int lvl = resp[5];
+        if (lvl is < 1 or > 100) return null;
+        bool chg = (resp[6] & 0xF0) != 0;
+        return (lvl, chg);
+    }
+
+    public static (int Level, string ApproxText, bool Charging)? ParseSwitchProBatteryResponse(byte[] resp)
+    {
+        if (resp == null || resp.Length < 13 || resp[0] != 0x30) return null;
+        int level = (resp[2] & 0xE0) >> 5;
+        if (level > 4) return null;
+        string text = level switch
+        {
+            0 => "vazia",
+            1 => "crítica",
+            2 => "baixa",
+            3 => "média",
+            _ => "cheia"
+        };
+        bool chg = (resp[2] & 0x10) != 0 && level < 4;
+        return (level * 25, text, chg);
+    }
 
     public static (int? Level, string ApproxText, bool Charging) ParseXboxXInputLevel(byte batteryType, byte batteryLevel)
     {

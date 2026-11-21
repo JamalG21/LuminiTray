@@ -351,8 +351,35 @@ public sealed class SensorMonitor : IDisposable
                         _mainGpuTempRow = row;
                     }
                 }
+                else if (snap.HardwareType == HardwareType.Cpu)
+                {
+                    if (snap.SensorType == SensorType.Load && snap.SensorName == "CPU Total")
+                    {
+                        _mainCpuLoadRow = row;
+                    }
+                    else if (snap.SensorType == SensorType.Power &&
+                             (snap.SensorName.Contains("Package", StringComparison.OrdinalIgnoreCase) || _mainCpuPowerRow == null))
+                    {
+                        _mainCpuPowerRow = row;
+                    }
+                }
             }
         }
+    }
+
+    /// <summary>Sincroniza na interface WPF os valores brutos já coletados em segundo plano.</summary>
+    public void SyncRowsToUi()
+    {
+        void Sync()
+        {
+            foreach (var row in Rows)
+                row.NotifyUiRefresh();
+        }
+
+        if (Application.Current?.Dispatcher is { } dispatcher && !dispatcher.CheckAccess())
+            dispatcher.Invoke(Sync);
+        else
+            Sync();
     }
 
     /// <summary>
@@ -587,6 +614,28 @@ public sealed class SensorMonitor : IDisposable
             "confira se o antivírus não bloqueou o driver ou se a CPU é muito antiga/recente para a biblioteca de sensores.",
         _ => ""
     };
+
+    public void ResetAllMinMax()
+    {
+        lock (_syncLock)
+        {
+            foreach (var hw in _computer.Hardware)
+                ResetHardwareMinMax(hw);
+        }
+        var now = DateTime.Now;
+        foreach (var row in Rows)
+            row.ResetMinMax(now);
+    }
+
+    private static void ResetHardwareMinMax(IHardware hw)
+    {
+        foreach (var s in hw.Sensors)
+        {
+            try { s.ResetMin(); s.ResetMax(); } catch { }
+        }
+        foreach (var sub in hw.SubHardware)
+            ResetHardwareMinMax(sub);
+    }
 
     public void Dispose()
     {

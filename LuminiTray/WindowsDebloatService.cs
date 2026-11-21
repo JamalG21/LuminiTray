@@ -72,6 +72,7 @@ public sealed class WindowsTweakItem : INotifyPropertyChanged
     public string Description { get; init; } = "";
     public string Effect { get; init; } = "";
     public string Category { get; init; } = "";
+    public string SubGroup { get; init; } = "Telemetria & Privacidade";
     public bool NeedsRestart { get; init; }
 
     public Func<bool?> Read { get; init; } = () => null;
@@ -1499,7 +1500,475 @@ $count
                 Read = () => (ReadDword(Registry.CurrentUser, @"Software\Microsoft\Windows\CurrentVersion\Themes\Personalize", "EnableTransparency") ?? 1) == 0,
                 Write = (on, s) => SetDword(s, "perf_disable_transparency", Registry.CurrentUser, @"Software\Microsoft\Windows\CurrentVersion\Themes\Personalize", "EnableTransparency", on ? 0 : 1),
                 Restore = s => RestoreDword(s, "perf_disable_transparency", Registry.CurrentUser, @"Software\Microsoft\Windows\CurrentVersion\Themes\Personalize", "EnableTransparency")
-            }
+            },
+
+            // ===== IA & NAVEGADORES (Win11Debloat) =====
+            MultiDwordTweak(
+                "ai_service_autostart", "Desativar Início Automático do Serviço de IA (WSAIFabricSvc)",
+                "Altera o serviço Windows AI Fabric para inicialização manual, evitando consumo em segundo plano.",
+                "Reduz processos ociosos de IA sem remover componentes essenciais.",
+                "🛡️ Telemetria & Privacidade", "IA & Navegadores", true,
+                new DwordRule("s", Registry.LocalMachine, @"SYSTEM\CurrentControlSet\Services\WSAIFabricSvc", "Start", 3, 2)),
+
+            MultiDwordTweak(
+                "ai_click_to_do", "Desativar Click to Do (IA de Tela)",
+                "Bloqueia o recurso Click to Do do Windows 11 via políticas de sistema e usuário.",
+                "Evita análise contínua de conteúdo exibido na tela.",
+                "🛡️ Telemetria & Privacidade", "IA & Navegadores", false,
+                new DwordRule("cu", Registry.CurrentUser, @"Software\Policies\Microsoft\Windows\WindowsAI", "DisableClickToDo", 1, 0),
+                new DwordRule("lm", Registry.LocalMachine, @"SOFTWARE\Policies\Microsoft\Windows\WindowsAI", "DisableClickToDo", 1, 0)),
+
+            MultiDwordTweak(
+                "ai_edge", "Desativar Recursos de IA e Copilot no Microsoft Edge",
+                "Desliga barra lateral, Copilot na página, histórico por IA, Compose e modelo GenAI local do Edge.",
+                "Deixa o Microsoft Edge mais leve e sem assistentes de IA invasivos.",
+                "🛡️ Telemetria & Privacidade", "IA & Navegadores", false,
+                new DwordRule("cdp", Registry.LocalMachine, @"SOFTWARE\Policies\Microsoft\Edge", "CopilotCDPPageContext", 0, 1),
+                new DwordRule("ctx", Registry.LocalMachine, @"SOFTWARE\Policies\Microsoft\Edge", "CopilotPageContext", 0, 1),
+                new DwordRule("hub", Registry.LocalMachine, @"SOFTWARE\Policies\Microsoft\Edge", "HubsSidebarEnabled", 0, 1),
+                new DwordRule("m365", Registry.LocalMachine, @"SOFTWARE\Policies\Microsoft\Edge", "Microsoft365CopilotChatIconEnabled", 0, 1),
+                new DwordRule("entra", Registry.LocalMachine, @"SOFTWARE\Policies\Microsoft\Edge", "EdgeEntraCopilotPageContext", 0, 1),
+                new DwordRule("hist", Registry.LocalMachine, @"SOFTWARE\Policies\Microsoft\Edge", "EdgeHistoryAISearchEnabled", 0, 1),
+                new DwordRule("comp", Registry.LocalMachine, @"SOFTWARE\Policies\Microsoft\Edge", "ComposeInlineEnabled", 0, 1),
+                new DwordRule("genai", Registry.LocalMachine, @"SOFTWARE\Policies\Microsoft\Edge", "GenAILocalFoundationalModelSettings", 1, 0),
+                new DwordRule("bing", Registry.LocalMachine, @"SOFTWARE\Policies\Microsoft\Edge", "NewTabPageBingChatEnabled", 0, 1)),
+
+            MultiDwordTweak(
+                "ai_chrome", "Desativar Recursos de IA e Gemini no Google Chrome",
+                "Aplica políticas corporativas para desabilitar Gemini, Help Me Write, busca por histórico IA e GenAI local no Chrome.",
+                "Reduz uso de memória/CPU e remove prompts de IA no Chrome.",
+                "🛡️ Telemetria & Privacidade", "IA & Navegadores", false,
+                new DwordRule("aimode", Registry.LocalMachine, @"SOFTWARE\Policies\Google\Chrome", "AIModeSettings", 1, 0),
+                new DwordRule("auto", Registry.LocalMachine, @"SOFTWARE\Policies\Google\Chrome", "AutofillPredictionSettings", 2, 0),
+                new DwordRule("sugg", Registry.LocalMachine, @"SOFTWARE\Policies\Google\Chrome", "ChromeSuggestionsSettings", 1, 0),
+                new DwordRule("themes", Registry.LocalMachine, @"SOFTWARE\Policies\Google\Chrome", "CreateThemesSettings", 2, 0),
+                new DwordRule("devtools", Registry.LocalMachine, @"SOFTWARE\Policies\Google\Chrome", "DevToolsGenAiSettings", 2, 0),
+                new DwordRule("find", Registry.LocalMachine, @"SOFTWARE\Policies\Google\Chrome", "FindAndFillWithGeminiSettings", 2, 0),
+                new DwordRule("gemini", Registry.LocalMachine, @"SOFTWARE\Policies\Google\Chrome", "GeminiSettings", 1, 0),
+                new DwordRule("spark", Registry.LocalMachine, @"SOFTWARE\Policies\Google\Chrome", "GeminiSparkSettings", 1, 0),
+                new DwordRule("genai", Registry.LocalMachine, @"SOFTWARE\Policies\Google\Chrome", "GenAILocalFoundationalModelSettings", 1, 0),
+                new DwordRule("write", Registry.LocalMachine, @"SOFTWARE\Policies\Google\Chrome", "HelpMeWriteSettings", 2, 0),
+                new DwordRule("hist", Registry.LocalMachine, @"SOFTWARE\Policies\Google\Chrome", "HistorySearchSettings", 2, 0),
+                new DwordRule("share", Registry.LocalMachine, @"SOFTWARE\Policies\Google\Chrome", "SearchContentSharingSettings", 1, 0),
+                new DwordRule("smart", Registry.LocalMachine, @"SOFTWARE\Policies\Google\Chrome", "SmartTabSharingSettings", 1, 0),
+                new DwordRule("tab", Registry.LocalMachine, @"SOFTWARE\Policies\Google\Chrome", "TabCompareSettings", 2, 0),
+                new DwordRule("chat", Registry.LocalMachine, @"SOFTWARE\Policies\Google\Chrome", "ThirdPartyAiChatSettings", 1, 0),
+                new DwordRule("voice", Registry.LocalMachine, @"SOFTWARE\Policies\Google\Chrome", "VoiceTypingSettings", 2, 0)),
+
+            MultiDwordTweak(
+                "ai_notepad", "Desativar IA no Bloco de Notas (Notepad)",
+                "Desabilita recursos generativos e resumo por IA no Bloco de Notas do Windows 11.",
+                "Mantém o Bloco de Notas rápido e focado apenas em texto.",
+                "🛡️ Telemetria & Privacidade", "IA & Navegadores", false,
+                new DwordRule("np", Registry.LocalMachine, @"SOFTWARE\Policies\WindowsNotepad", "DisableAIFeatures", 1, 0)),
+
+            MultiDwordTweak(
+                "ai_paint", "Desativar Recursos de IA no Paint (Cocreator / Preenchimento)",
+                "Desativa Cocreator, Image Creator, Generative Fill/Erase e remoção de fundo por IA no Paint.",
+                "Elimina integrações de nuvem/IA no aplicativo Paint.",
+                "🛡️ Telemetria & Privacidade", "IA & Navegadores", false,
+                new DwordRule("cc", Registry.LocalMachine, @"SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\Paint", "DisableCocreator", 1, 0),
+                new DwordRule("gf", Registry.LocalMachine, @"SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\Paint", "DisableGenerativeFill", 1, 0),
+                new DwordRule("ic", Registry.LocalMachine, @"SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\Paint", "DisableImageCreator", 1, 0),
+                new DwordRule("ge", Registry.LocalMachine, @"SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\Paint", "DisableGenerativeErase", 1, 0),
+                new DwordRule("rb", Registry.LocalMachine, @"SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\Paint", "DisableRemoveBackground", 1, 0)),
+
+            MultiDwordTweak(
+                "browser_edge_ads", "Desativar Anúncios, Compras e Sugestões no Edge",
+                "Remove feed da nova guia, assistente de compras, carteira, recomendações e banners no Microsoft Edge.",
+                "Limpa a interface do Edge e reduz tráfego em segundo plano.",
+                "🛡️ Telemetria & Privacidade", "IA & Navegadores", false,
+                new DwordRule("ntp", Registry.LocalMachine, @"SOFTWARE\Policies\Microsoft\Edge", "NewTabPageContentEnabled", 0, 1),
+                new DwordRule("top", Registry.LocalMachine, @"SOFTWARE\Policies\Microsoft\Edge", "NewTabPageHideDefaultTopSites", 1, 0),
+                new DwordRule("shop", Registry.LocalMachine, @"SOFTWARE\Policies\Microsoft\Edge", "EdgeShoppingAssistantEnabled", 0, 1),
+                new DwordRule("tabs", Registry.LocalMachine, @"SOFTWARE\Policies\Microsoft\Edge", "TabServicesEnabled", 0, 1),
+                new DwordRule("err", Registry.LocalMachine, @"SOFTWARE\Policies\Microsoft\Edge", "AlternateErrorPagesEnabled", 0, 1),
+                new DwordRule("fb", Registry.LocalMachine, @"SOFTWARE\Policies\Microsoft\Edge", "UserFeedbackAllowed", 0, 1),
+                new DwordRule("rec", Registry.LocalMachine, @"SOFTWARE\Policies\Microsoft\Edge", "ShowRecommendationsEnabled", 0, 1),
+                new DwordRule("wal", Registry.LocalMachine, @"SOFTWARE\Policies\Microsoft\Edge", "WalletDonationEnabled", 0, 1),
+                new DwordRule("fre", Registry.LocalMachine, @"SOFTWARE\Policies\Microsoft\Edge", "HideFirstRunExperience", 0, 1),
+                new DwordRule("def1", Registry.LocalMachine, @"SOFTWARE\Policies\Microsoft\Edge", "DefaultBrowserSettingEnabled", 0, 1),
+                new DwordRule("def2", Registry.LocalMachine, @"SOFTWARE\Policies\Microsoft\Edge", "DefaultBrowserSettingsCampaignEnabled", 0, 1),
+                new DwordRule("spot", Registry.LocalMachine, @"SOFTWARE\Policies\Microsoft\Edge", "SpotlightExperiencesAndRecommendationsEnabled", 0, 1),
+                new DwordRule("acro", Registry.LocalMachine, @"SOFTWARE\Policies\Microsoft\Edge", "ShowAcrobatSubscriptionButton", 0, 1)),
+
+            MultiDwordTweak(
+                "browser_brave_bloat", "Desativar Bloatware do Brave (VPN, Wallet, Rewards, IA, News)",
+                "Desabilita Brave VPN, Crypto Wallet, Leo AI Chat, Rewards, Talk e News via política.",
+                "Deixa o navegador Brave enxuto sem serviços extras.",
+                "🛡️ Telemetria & Privacidade", "IA & Navegadores", false,
+                new DwordRule("vpn", Registry.LocalMachine, @"Software\Policies\BraveSoftware\Brave", "BraveVPNDisabled", 1, 0),
+                new DwordRule("wal", Registry.LocalMachine, @"Software\Policies\BraveSoftware\Brave", "BraveWalletDisabled", 1, 0),
+                new DwordRule("ai", Registry.LocalMachine, @"Software\Policies\BraveSoftware\Brave", "BraveAIChatEnabled", 0, 1),
+                new DwordRule("rew", Registry.LocalMachine, @"Software\Policies\BraveSoftware\Brave", "BraveRewardsDisabled", 1, 0),
+                new DwordRule("tlk", Registry.LocalMachine, @"Software\Policies\BraveSoftware\Brave", "BraveTalkDisabled", 1, 0),
+                new DwordRule("nws", Registry.LocalMachine, @"Software\Policies\BraveSoftware\Brave", "BraveNewsDisabled", 1, 0)),
+
+            // ===== PRIVACIDADE, ANÚNCIOS & INICIAR (Win11Debloat) =====
+            MultiDwordTweak(
+                "privacy_location", "Desativar Serviços de Localização do Windows",
+                "Bloqueia acesso à geolocalização pelo sistema e aplicativos via política.",
+                "Aumenta a privacidade evitando rastreamento de localização.",
+                "🛡️ Telemetria & Privacidade", "Telemetria & Privacidade", false,
+                new DwordRule("loc", Registry.LocalMachine, @"SOFTWARE\Policies\Microsoft\Windows\LocationAndSensors", "DisableLocation", 1, 0)),
+
+            MultiDwordTweak(
+                "privacy_find_my_device", "Desativar 'Localizar Meu Dispositivo'",
+                "Impede o Windows de enviar periodicamente a localização do computador à conta Microsoft.",
+                "Recomendado apenas para desktops fixos por privacidade.",
+                "🛡️ Telemetria & Privacidade", "Telemetria & Privacidade", false,
+                new DwordRule("fmd", Registry.LocalMachine, @"SOFTWARE\Policies\Microsoft\FindMyDevice", "AllowFindMyDevice", 0, 1)),
+
+            MultiDwordTweak(
+                "sys_settings_365_ads", "Desativar Anúncios do Microsoft 365 nas Configurações",
+                "Remove banners promocionais e notificações de assinatura da conta Microsoft no app Configurações.",
+                "Interface de Configurações limpa sem propagandas.",
+                "🛡️ Telemetria & Privacidade", "Telemetria & Privacidade", false,
+                new DwordRule("ads", Registry.LocalMachine, @"SOFTWARE\Policies\Microsoft\Windows\CloudContent", "DisableConsumerAccountStateContent", 1, 0)),
+
+            new WindowsTweakItem
+            {
+                Id = "sys_settings_home",
+                Title = "Ocultar Página Inicial ('Início') nas Configurações",
+                Description = "Remove a página inicial com recomendações do app Configurações do Windows 11.",
+                Effect = "Abre diretamente na aba Sistema sem carregar cartões promocionais.",
+                Category = "🛡️ Telemetria & Privacidade",
+                SubGroup = "Telemetria & Privacidade",
+                Read = () => string.Equals(ReadString(Registry.LocalMachine, @"SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\Explorer", "SettingsPageVisibility"), "hide:home", StringComparison.OrdinalIgnoreCase),
+                Write = (on, s) => SetString(s, "sys_settings_home", Registry.LocalMachine, @"SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\Explorer", "SettingsPageVisibility", on ? "hide:home" : ""),
+                Restore = s => RestoreString(s, "sys_settings_home", Registry.LocalMachine, @"SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\Explorer", "SettingsPageVisibility")
+            },
+
+            MultiDwordTweak(
+                "sys_lockscreen_tips", "Desativar Dicas e Curiosidades na Tela de Bloqueio",
+                "Remove links e textos promocionais sobrepostos na tela de bloqueio do Windows.",
+                "Tela de bloqueio limpa sem conteúdo sugerido.",
+                "🛡️ Telemetria & Privacidade", "Telemetria & Privacidade", false,
+                new DwordRule("sub", Registry.CurrentUser, @"Software\Microsoft\Windows\CurrentVersion\ContentDeliveryManager", "SubscribedContent-338387Enabled", 0, 1),
+                new DwordRule("rot", Registry.CurrentUser, @"Software\Microsoft\Windows\CurrentVersion\ContentDeliveryManager", "RotatingLockScreenOverlayEnabled", 0, 1)),
+
+            MultiDwordTweak(
+                "sys_desktop_spotlight", "Desativar Destaques do Windows na Área de Trabalho",
+                "Desabilita a coleção rotativa Windows Spotlight e seu ícone informativo na área de trabalho.",
+                "Evita downloads automáticos de imagens em segundo plano.",
+                "🛡️ Telemetria & Privacidade", "Telemetria & Privacidade", false,
+                new DwordRule("sp", Registry.CurrentUser, @"Software\Policies\Microsoft\Windows\CloudContent", "DisableSpotlightCollectionOnDesktop", 1, 0)),
+
+            MultiDwordTweak(
+                "sys_phone_link_start", "Ocultar Painel do Vincular ao Celular no Menu Iniciar",
+                "Remove o cartão lateral do Phone Link / dispositivos móveis do Menu Iniciar.",
+                "Menu Iniciar mais limpo e rápido.",
+                "🛡️ Telemetria & Privacidade", "Telemetria & Privacidade", false,
+                new DwordRule("pl", Registry.CurrentUser, @"Software\Microsoft\Windows\CurrentVersion\Start\Companions\Microsoft.YourPhone_8wekyb3d8bbwe", "IsEnabled", 0, 1)),
+
+            MultiDwordTweak(
+                "sys_start_recommended", "Ocultar Seção 'Recomendados' do Menu Iniciar",
+                "Remove a área de arquivos recentes e recomendações do Menu Iniciar do Windows 11.",
+                "Libera espaço visual e evita sugestões no Iniciar.",
+                "🛡️ Telemetria & Privacidade", "Telemetria & Privacidade", false,
+                new DwordRule("sr", Registry.CurrentUser, @"SOFTWARE\Policies\Microsoft\Windows\Explorer", "HideRecommendedSection", 1, 0)),
+
+            MultiDwordTweak(
+                "sys_start_all_apps", "Ocultar Lista 'Todos os Aplicativos' no Menu Iniciar",
+                "Remove o botão e listagem expandida de Todos os Aplicativos do Menu Iniciar.",
+                "Mantém apenas os atalhos fixados no Menu Iniciar.",
+                "🛡️ Telemetria & Privacidade", "Telemetria & Privacidade", false,
+                new DwordRule("sa", Registry.CurrentUser, @"Software\Microsoft\Windows\CurrentVersion\Policies\Explorer", "NoStartMenuMorePrograms", 1, 0)),
+
+            MultiDwordTweak(
+                "sys_notifications", "Desativar Notificações Toast do Sistema",
+                "Desliga as notificações popup na área de trabalho e central de ações.",
+                "Evita distrações durante jogos ou trabalho.",
+                "🛡️ Telemetria & Privacidade", "Telemetria & Privacidade", false,
+                new DwordRule("nt", Registry.CurrentUser, @"Software\Microsoft\Windows\CurrentVersion\PushNotifications", "ToastEnabled", 0, 1)),
+
+            // ===== EXPLORADOR DE ARQUIVOS & MENU DE CONTEXTO (Win11Debloat) =====
+            MultiDwordTweak(
+                "explorer_hide_home", "Ocultar Pasta 'Início' (Home) no Explorador de Arquivos",
+                "Remove o item Início do painel lateral esquerdo do Windows Explorer.",
+                "Abertura mais rápida sem indexação de arquivos recentes na lateral.",
+                "🛡️ Telemetria & Privacidade", "Explorador & Menu", false,
+                new DwordRule("clsid", Registry.CurrentUser, @"Software\Classes\CLSID\{f874310e-b6b7-47dc-bc84-b9e6b38f5903}", "System.IsPinnedToNameSpaceTree", 0, 1)),
+
+            MultiDwordTweak(
+                "explorer_hide_gallery", "Ocultar 'Galeria' no Explorador de Arquivos",
+                "Remove o atalho Galeria do painel de navegação do Windows 11 Explorer.",
+                "Evita varredura automática de fotos ao abrir o Explorer.",
+                "🛡️ Telemetria & Privacidade", "Explorador & Menu", false,
+                new DwordRule("clsid", Registry.CurrentUser, @"Software\Classes\CLSID\{e88865ea-0e1c-4e20-9aa6-edcd0212c87c}", "System.IsPinnedToNameSpaceTree", 0, 1)),
+
+            MultiDwordTweak(
+                "explorer_hide_onedrive", "Ocultar Pasta do OneDrive no Explorador de Arquivos",
+                "Desafixa o ícone do OneDrive da barra lateral esquerda do Explorer.",
+                "Mantém o painel lateral focado apenas em seus discos locais.",
+                "🛡️ Telemetria & Privacidade", "Explorador & Menu", false,
+                new DwordRule("clsid", Registry.CurrentUser, @"Software\Classes\CLSID\{018D5C66-4533-4307-9B53-224DE2ED1FE6}", "System.IsPinnedToNameSpaceTree", 0, 1)),
+
+            new WindowsTweakItem
+            {
+                Id = "explorer_hide_dup_drives",
+                Title = "Ocultar Unidades Removíveis Duplicadas no Explorador",
+                Description = "Remove a exibição duplicada de pendrives e HDs externos na raiz do painel lateral do Explorer.",
+                Effect = "Exibe unidades removíveis apenas dentro de 'Este Computador'.",
+                Category = "🛡️ Telemetria & Privacidade",
+                SubGroup = "Explorador & Menu",
+                Read = () => !SubKeyExists(Registry.LocalMachine, @"SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\Desktop\NameSpace\DelegateFolders\{F5FB2C77-0E2F-4A16-A381-3E560C68BC83}"),
+                Write = (on, s) =>
+                {
+                    const string path = @"SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\Desktop\NameSpace\DelegateFolders\{F5FB2C77-0E2F-4A16-A381-3E560C68BC83}";
+                    if (on) DeleteSubKeyWithBackup(s, "explorer_hide_dup_drives", Registry.LocalMachine, path);
+                    else RestoreDeletedSubKey(s, "explorer_hide_dup_drives", Registry.LocalMachine, path, "Removable Drives");
+                },
+                Restore = s => RestoreDeletedSubKey(s, "explorer_hide_dup_drives", Registry.LocalMachine, @"SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\Desktop\NameSpace\DelegateFolders\{F5FB2C77-0E2F-4A16-A381-3E560C68BC83}", "Removable Drives")
+            },
+
+            new WindowsTweakItem
+            {
+                Id = "explorer_ctx_give_access",
+                Title = "Remover 'Conceder acesso a' do Menu de Contexto",
+                Description = "Limpa a opção legada de compartilhamento de rede do menu do botão direito em pastas e arquivos.",
+                Effect = "Deixa o menu de contexto mais enxuto.",
+                Category = "🛡️ Telemetria & Privacidade",
+                SubGroup = "Explorador & Menu",
+                Read = () => !SubKeyExists(Registry.ClassesRoot, @"*\shellex\ContextMenuHandlers\Sharing"),
+                Write = (on, s) =>
+                {
+                    string[] paths =
+                    {
+                        @"*\shellex\ContextMenuHandlers\Sharing",
+                        @"Directory\Background\shellex\ContextMenuHandlers\Sharing",
+                        @"Directory\shellex\ContextMenuHandlers\Sharing",
+                        @"Drive\shellex\ContextMenuHandlers\Sharing",
+                        @"LibraryFolder\background\shellex\ContextMenuHandlers\Sharing",
+                        @"UserLibraryFolder\shellex\ContextMenuHandlers\Sharing"
+                    };
+                    for (int i = 0; i < paths.Length; i++)
+                    {
+                        if (on) DeleteSubKeyWithBackup(s, $"explorer_ctx_give_access.{i}", Registry.ClassesRoot, paths[i]);
+                        else RestoreDeletedSubKey(s, $"explorer_ctx_give_access.{i}", Registry.ClassesRoot, paths[i], "{f81e9010-6ea4-11ce-a7ff-00aa003ca9f9}");
+                    }
+                },
+                Restore = s =>
+                {
+                    string[] paths =
+                    {
+                        @"*\shellex\ContextMenuHandlers\Sharing",
+                        @"Directory\Background\shellex\ContextMenuHandlers\Sharing",
+                        @"Directory\shellex\ContextMenuHandlers\Sharing",
+                        @"Drive\shellex\ContextMenuHandlers\Sharing",
+                        @"LibraryFolder\background\shellex\ContextMenuHandlers\Sharing",
+                        @"UserLibraryFolder\shellex\ContextMenuHandlers\Sharing"
+                    };
+                    for (int i = 0; i < paths.Length; i++)
+                        RestoreDeletedSubKey(s, $"explorer_ctx_give_access.{i}", Registry.ClassesRoot, paths[i], "{f81e9010-6ea4-11ce-a7ff-00aa003ca9f9}");
+                }
+            },
+
+            new WindowsTweakItem
+            {
+                Id = "explorer_ctx_library",
+                Title = "Remover 'Incluir na biblioteca' do Menu de Contexto",
+                Description = "Remove a entrada 'Incluir na biblioteca' ao clicar com o botão direito em pastas.",
+                Effect = "Menu de contexto mais rápido e organizado.",
+                Category = "🛡️ Telemetria & Privacidade",
+                SubGroup = "Explorador & Menu",
+                Read = () => !SubKeyExists(Registry.ClassesRoot, @"Folder\ShellEx\ContextMenuHandlers\Library Location"),
+                Write = (on, s) =>
+                {
+                    const string p1 = @"Folder\ShellEx\ContextMenuHandlers\Library Location";
+                    const string p2 = @"SOFTWARE\Classes\Folder\ShellEx\ContextMenuHandlers\Library Location";
+                    if (on)
+                    {
+                        DeleteSubKeyWithBackup(s, "explorer_ctx_library.cr", Registry.ClassesRoot, p1);
+                        DeleteSubKeyWithBackup(s, "explorer_ctx_library.lm", Registry.LocalMachine, p2);
+                    }
+                    else
+                    {
+                        RestoreDeletedSubKey(s, "explorer_ctx_library.cr", Registry.ClassesRoot, p1, "{3dad6c5d-2167-4cae-9914-f99e41c12cfa}");
+                        RestoreDeletedSubKey(s, "explorer_ctx_library.lm", Registry.LocalMachine, p2, "{3dad6c5d-2167-4cae-9914-f99e41c12cfa}");
+                    }
+                },
+                Restore = s =>
+                {
+                    RestoreDeletedSubKey(s, "explorer_ctx_library.cr", Registry.ClassesRoot, @"Folder\ShellEx\ContextMenuHandlers\Library Location", "{3dad6c5d-2167-4cae-9914-f99e41c12cfa}");
+                    RestoreDeletedSubKey(s, "explorer_ctx_library.lm", Registry.LocalMachine, @"SOFTWARE\Classes\Folder\ShellEx\ContextMenuHandlers\Library Location", "{3dad6c5d-2167-4cae-9914-f99e41c12cfa}");
+                }
+            },
+
+            new WindowsTweakItem
+            {
+                Id = "explorer_ctx_share",
+                Title = "Remover 'Compartilhar' (ModernSharing) do Menu de Contexto",
+                Description = "Remove o item Compartilhar do menu clássico de arquivos no Explorador.",
+                Effect = "Simplifica o menu de contexto de arquivos.",
+                Category = "🛡️ Telemetria & Privacidade",
+                SubGroup = "Explorador & Menu",
+                Read = () => !SubKeyExists(Registry.ClassesRoot, @"*\shellex\ContextMenuHandlers\ModernSharing"),
+                Write = (on, s) =>
+                {
+                    const string path = @"*\shellex\ContextMenuHandlers\ModernSharing";
+                    if (on) DeleteSubKeyWithBackup(s, "explorer_ctx_share", Registry.ClassesRoot, path);
+                    else RestoreDeletedSubKey(s, "explorer_ctx_share", Registry.ClassesRoot, path, "{e2bf9676-5f8f-435c-97eb-11607a5bedf7}");
+                },
+                Restore = s => RestoreDeletedSubKey(s, "explorer_ctx_share", Registry.ClassesRoot, @"*\shellex\ContextMenuHandlers\ModernSharing", "{e2bf9676-5f8f-435c-97eb-11607a5bedf7}")
+            },
+
+            MultiDwordTweak(
+                "explorer_drive_letters_first", "Exibir Letras das Unidades Antes do Nome (C: Disco Local)",
+                "Mostra a letra da unidade na frente do rótulo de cada disco no Explorador.",
+                "Facilita a identificação rápida de partições e pendrives.",
+                "🛡️ Telemetria & Privacidade", "Explorador & Menu", false,
+                new DwordRule("dl", Registry.CurrentUser, @"Software\Microsoft\Windows\CurrentVersion\Explorer", "ShowDriveLettersFirst", 4, 0)),
+
+            // ===== BARRA DE TAREFAS, MULTITAREFA & JOGOS (Win11Debloat) =====
+            MultiDwordTweak(
+                "taskbar_end_task", "Ativar 'Finalizar Tarefa' no Clique Direito da Barra de Tarefas",
+                "Habilita o atalho nativo do Windows 11 para encerrar processos travados direto pela barra de tarefas.",
+                "Agiliza fechar jogos ou apps travados sem abrir o Gerenciador de Tarefas.",
+                "🛡️ Telemetria & Privacidade", "Barra & Multitarefa", false,
+                new DwordRule("et", Registry.CurrentUser, @"Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced\TaskbarDeveloperSettings", "TaskbarEndTask", 1, 0)),
+
+            MultiDwordTweak(
+                "taskbar_last_active_click", "Ativar Alternância Rápida ao Clicar na Barra de Tarefas",
+                "Permite alternar diretamente para a última janela ativa do grupo ao clicar no ícone da barra de tarefas.",
+                "Navegação mais rápida entre múltiplas janelas.",
+                "🛡️ Telemetria & Privacidade", "Barra & Multitarefa", false,
+                new DwordRule("lac", Registry.CurrentUser, @"Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced", "LastActiveClick", 1, 0)),
+
+            MultiDwordTweak(
+                "multitask_disable_snap_assist", "Desativar Snap Assist ao Ajustar Janelas",
+                "Desliga as sugestões automáticas de outras janelas ao encaixar uma janela na lateral da tela.",
+                "Evita popups de seleção ao organizar janelas.",
+                "🛡️ Telemetria & Privacidade", "Barra & Multitarefa", false,
+                new DwordRule("sa", Registry.CurrentUser, @"Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced", "SnapAssist", 0, 1)),
+
+            MultiDwordTweak(
+                "multitask_disable_snap_layouts", "Desativar Snap Layouts (Barra Superior e Flyout)",
+                "Remove a barra de encaixe ao arrastar janelas no topo da tela e o menu ao passar o mouse sobre Maximizar.",
+                "Evita acionamento acidental de layouts de janela.",
+                "🛡️ Telemetria & Privacidade", "Barra & Multitarefa", false,
+                new DwordRule("bar", Registry.CurrentUser, @"Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced", "EnableSnapBar", 0, 1),
+                new DwordRule("fly", Registry.CurrentUser, @"Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced", "EnableSnapAssistFlyout", 0, 1)),
+
+            new WindowsTweakItem
+            {
+                Id = "multitask_disable_window_snapping",
+                Title = "Desativar Encaixe Automático de Janelas (Aero Snap)",
+                Description = "Impede que janelas sejam redimensionadas automaticamente ao encostar nas bordas da tela.",
+                Effect = "Útil em monitores múltiplos ao arrastar janelas entre telas.",
+                Category = "🛡️ Telemetria & Privacidade",
+                SubGroup = "Barra & Multitarefa",
+                Read = () => ReadString(Registry.CurrentUser, @"Control Panel\Desktop", "WindowArrangementActive") == "0",
+                Write = (on, s) => SetString(s, "multitask_disable_window_snapping", Registry.CurrentUser, @"Control Panel\Desktop", "WindowArrangementActive", on ? "0" : "1"),
+                Restore = s => RestoreString(s, "multitask_disable_window_snapping", Registry.CurrentUser, @"Control Panel\Desktop", "WindowArrangementActive")
+            },
+
+            MultiDwordTweak(
+                "multitask_hide_alttab_tabs", "Ocultar Abas do Navegador Edge no Alt+Tab",
+                "Mostra apenas janelas abertas no Alt+Tab, sem poluir a troca de tarefas com dezenas de abas do Edge.",
+                "Deixa o Alt+Tab muito mais limpo e previsível.",
+                "🛡️ Telemetria & Privacidade", "Barra & Multitarefa", false,
+                new DwordRule("at", Registry.CurrentUser, @"SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\Advanced", "MultiTaskingAltTabFilter", 3, 0)),
+
+            new WindowsTweakItem
+            {
+                Id = "gpu_disable_animations",
+                Title = "Desativar Animações da Interface do Windows",
+                Description = "Ajusta UserPreferencesMask para remover animações de abertura, minimização e fade de menus.",
+                Effect = "Respostas visuais instantâneas e menor carga no DWM.",
+                Category = "🛡️ Telemetria & Privacidade",
+                SubGroup = "Barra & Multitarefa",
+                Read = () => string.Equals(ReadBinaryHex(Registry.CurrentUser, @"Control Panel\Desktop", "UserPreferencesMask"), "9012078010000000", StringComparison.OrdinalIgnoreCase),
+                Write = (on, s) => SetBinaryHex(s, "gpu_disable_animations", Registry.CurrentUser, @"Control Panel\Desktop", "UserPreferencesMask", on ? "9012078010000000" : "9e3e078012000000"),
+                Restore = s => RestoreBinaryHex(s, "gpu_disable_animations", Registry.CurrentUser, @"Control Panel\Desktop", "UserPreferencesMask")
+            },
+
+            MultiDwordTweak(
+                "gpu_game_bar_integration", "Desativar Integração do Xbox Game Bar (ms-gamebar)",
+                "Desabilita UseNexusForGameBarEnabled para impedir que o Game Bar tente abrir sobre jogos.",
+                "Evita avisos 'Você precisa de um novo aplicativo para abrir este link ms-gamebar'.",
+                "🛡️ Telemetria & Privacidade", "Barra & Multitarefa", false,
+                new DwordRule("gb", Registry.CurrentUser, @"SOFTWARE\Microsoft\GameBar", "UseNexusForGameBarEnabled", 0, 1)),
+
+            // ===== SISTEMA, ENERGIA & WINDOWS UPDATE (Win11Debloat) =====
+            MultiDwordTweak(
+                "sys_fast_startup", "Desativar Inicialização Rápida (Fast Startup)",
+                "Desliga o Hiberboot para que 'Desligar' realmente reinicie o kernel e libere drivers/RAM.",
+                "Resolve acúmulo de uptime e bugs de hardware após desligar o PC.",
+                "🛡️ Telemetria & Privacidade", "Sistema & Updates", true,
+                new DwordRule("fs", Registry.LocalMachine, @"SYSTEM\CurrentControlSet\Control\Session Manager\Power", "HiberbootEnabled", 0, 1)),
+
+            MultiDwordTweak(
+                "sys_modern_standby_net", "Desativar Rede em Modo Espera Moderno (Modern Standby)",
+                "Desliga acesso de rede durante a suspensão em notebooks com Modern Standby (S0).",
+                "Reduz drasticamente o consumo de bateria e aquecimento na mochila.",
+                "🛡️ Telemetria & Privacidade", "Sistema & Updates", false,
+                new DwordRule("ac", Registry.LocalMachine, @"SOFTWARE\Policies\Microsoft\Power\PowerSettings\f15576e8-98b7-4186-b944-eafa664402d9", "ACSettingIndex", 0, 1),
+                new DwordRule("dc", Registry.LocalMachine, @"SOFTWARE\Policies\Microsoft\Power\PowerSettings\f15576e8-98b7-4186-b944-eafa664402d9", "DCSettingIndex", 0, 1)),
+
+            MultiDwordTweak(
+                "sys_bitlocker_auto", "Impedir Criptografia Automática de Dispositivo (BitLocker)",
+                "Impede que o Windows ative criptografia automática BitLocker no disco ao entrar com conta Microsoft.",
+                "Evita perda de desempenho de I/O em SSDs e bloqueio inesperado de disco.",
+                "🛡️ Telemetria & Privacidade", "Sistema & Updates", false,
+                new DwordRule("bl", Registry.LocalMachine, @"SYSTEM\CurrentControlSet\Control\BitLocker", "PreventDeviceEncryption", 1, 0)),
+
+            MultiDwordTweak(
+                "sys_storage_sense", "Desativar Sensor de Armazenamento Automático",
+                "Desliga a limpeza automática em segundo plano do Storage Sense do Windows.",
+                "Evita tarefas automáticas de disco rodando durante uso ou jogos.",
+                "🛡️ Telemetria & Privacidade", "Sistema & Updates", false,
+                new DwordRule("ss", Registry.CurrentUser, @"SOFTWARE\Microsoft\Windows\CurrentVersion\StorageSense\Parameters\StoragePolicy", "01", 0, 1)),
+
+            new WindowsTweakItem
+            {
+                Id = "sys_sticky_keys",
+                Title = "Desativar Atalho das Teclas de Aderência (Shift 5x)",
+                Description = "Impede o popup das Teclas de Aderência ao pressionar Shift 5 vezes seguidas em jogos.",
+                Effect = "Evita perda de foco da janela durante partidas.",
+                Category = "🛡️ Telemetria & Privacidade",
+                SubGroup = "Sistema & Updates",
+                Read = () => ReadString(Registry.CurrentUser, @"Control Panel\Accessibility\StickyKeys", "Flags") == "506",
+                Write = (on, s) => SetString(s, "sys_sticky_keys", Registry.CurrentUser, @"Control Panel\Accessibility\StickyKeys", "Flags", on ? "506" : "510"),
+                Restore = s => RestoreString(s, "sys_sticky_keys", Registry.CurrentUser, @"Control Panel\Accessibility\StickyKeys", "Flags")
+            },
+
+            MultiDwordTweak(
+                "update_delivery_opt", "Desativar Otimização de Entrega P2P do Windows Update",
+                "Impede que seu PC baixe ou envie pacotes de atualização para outros PCs na internet.",
+                "Economiza banda de upload/download e reduz uso de disco.",
+                "🛡️ Telemetria & Privacidade", "Sistema & Updates", false,
+                new DwordRule("do", Registry.Users, @"S-1-5-20\Software\Microsoft\Windows\CurrentVersion\DeliveryOptimization\Settings", "DownloadMode", 0, 1)),
+
+            MultiDwordTweak(
+                "update_device_app_download", "Impedir Download Automático de Apps/Ícones de Dispositivos",
+                "Evita que o Windows baixe metadados e softwares extras automaticamente ao plugar periféricos.",
+                "Previne instalação silenciosa de bloatware ao conectar mouse/impressora.",
+                "🛡️ Telemetria & Privacidade", "Sistema & Updates", false,
+                new DwordRule("dm", Registry.LocalMachine, @"SOFTWARE\Policies\Microsoft\Windows\Device Metadata", "PreventDeviceMetadataFromNetwork", 1, 0)),
+
+            MultiDwordTweak(
+                "update_disable_drivers", "Bloquear Atualizações de Drivers via Windows Update",
+                "Impede que o Windows Update sobrescreva drivers de GPU/áudio instalados manualmente.",
+                "Evita conflitos com drivers Adrenalin/GeForce instalados por você.",
+                "🛡️ Telemetria & Privacidade", "Sistema & Updates", true,
+                new DwordRule("wu", Registry.LocalMachine, @"SOFTWARE\Policies\Microsoft\Windows\WindowsUpdate", "ExcludeWUDriversInQualityUpdate", 1, 0),
+                new DwordRule("ds", Registry.LocalMachine, @"SOFTWARE\Microsoft\Windows\CurrentVersion\DriverSearching", "SearchOrderConfig", 3, 1),
+                new DwordRule("ps", Registry.LocalMachine, @"SOFTWARE\Microsoft\WindowsUpdate\UpdatePolicy\PolicyState", "ExcludeWUDrivers", 1, 0)),
+
+            MultiDwordTweak(
+                "update_prevent_auto_reboot", "Impedir Reinicialização Automática do Windows Update",
+                "Bloqueia reinícios forçados do Windows Update enquanto houver usuário logado.",
+                "Garante que o PC não reinicie sozinho no meio do trabalho ou jogo.",
+                "🛡️ Telemetria & Privacidade", "Sistema & Updates", false,
+                new DwordRule("au", Registry.LocalMachine, @"SOFTWARE\Policies\Microsoft\Windows\WindowsUpdate\AU", "NoAutoRebootWithLoggedOnUsers", 1, 0)),
+
+            MultiDwordTweak(
+                "update_disable_asap", "Desativar 'Obter Atualizações Assim Que Disponíveis'",
+                "Desliga o opt-in de atualizações antecipadas/prévias no Windows Update.",
+                "Receba apenas atualizações estáveis já validadas.",
+                "🛡️ Telemetria & Privacidade", "Sistema & Updates", false,
+                new DwordRule("ci", Registry.LocalMachine, @"SOFTWARE\Microsoft\WindowsUpdate\UX\Settings", "IsContinuousInnovationOptedIn", 0, 1))
         };
     }
 
@@ -1537,7 +2006,8 @@ $count
         // Remove apenas as chaves registradas por WindowsDebloatService, preservando backups de outras telas
         var debloatKeys = s.TweakBackup.Keys
             .Where(k => k.StartsWith("cpu_") || k.StartsWith("gpu_") || k.StartsWith("input_") || k.StartsWith("net_") || k.StartsWith("sys_")
-                     || k.StartsWith("taskbar_") || k.StartsWith("explorer_") || k.StartsWith("search_") || k.StartsWith("privacy_") || k.StartsWith("perf_"))
+                     || k.StartsWith("taskbar_") || k.StartsWith("explorer_") || k.StartsWith("search_") || k.StartsWith("privacy_") || k.StartsWith("perf_")
+                     || k.StartsWith("ai_") || k.StartsWith("browser_") || k.StartsWith("multitask_") || k.StartsWith("update_"))
             .ToList();
         foreach (var k in debloatKeys)
         {
@@ -1783,6 +2253,134 @@ $count
             else
             {
                 Registry.CurrentUser.DeleteSubKeyTree(@"Software\Classes\ms-officeapp", throwOnMissingSubKey: false);
+            }
+        }
+        catch { }
+    }
+
+    private readonly record struct DwordRule(string Suffix, RegistryKey Hive, string Path, string Name, int OnValue, int OffValue);
+
+    private static WindowsTweakItem MultiDwordTweak(
+        string id,
+        string title,
+        string description,
+        string effect,
+        string category,
+        string subGroup,
+        bool needsRestart,
+        params DwordRule[] rules) => new()
+    {
+        Id = id,
+        Title = title,
+        Description = description,
+        Effect = effect,
+        Category = category,
+        SubGroup = subGroup,
+        NeedsRestart = needsRestart,
+        Read = () => rules.All(r => ReadDword(r.Hive, r.Path, r.Name) == r.OnValue),
+        Write = (on, s) =>
+        {
+            foreach (var r in rules)
+                SetDword(s, $"{id}.{r.Suffix}", r.Hive, r.Path, r.Name, on ? r.OnValue : r.OffValue);
+        },
+        Restore = s =>
+        {
+            foreach (var r in rules)
+                RestoreDword(s, $"{id}.{r.Suffix}", r.Hive, r.Path, r.Name);
+        }
+    };
+
+    private static string? ReadBinaryHex(RegistryKey hive, string path, string name)
+    {
+        try
+        {
+            using var k = hive.OpenSubKey(path);
+            if (k?.GetValue(name) is byte[] bytes)
+                return Convert.ToHexString(bytes);
+        }
+        catch { }
+        return null;
+    }
+
+    private static void SetBinaryHex(AppSettings s, string backupKey, RegistryKey hive, string path, string name, string hexValue)
+    {
+        bool hadKey = s.TweakBackup.ContainsKey(backupKey);
+        string? original = hadKey ? null : (ReadBinaryHex(hive, path, name) ?? "<ausente>");
+        if (!hadKey) s.TweakBackup[backupKey] = original;
+
+        try
+        {
+            using var k = hive.CreateSubKey(path);
+            k.SetValue(name, Convert.FromHexString(hexValue), RegistryValueKind.Binary);
+        }
+        catch
+        {
+            if (!hadKey) s.TweakBackup.Remove(backupKey);
+            throw;
+        }
+    }
+
+    private static void RestoreBinaryHex(AppSettings s, string backupKey, RegistryKey hive, string path, string name)
+    {
+        try
+        {
+            if (s.TweakBackup.GetValueOrDefault(backupKey) is not string prev) return;
+            using var k = hive.CreateSubKey(path);
+            if (prev == "<ausente>") k.DeleteValue(name, false);
+            else k.SetValue(name, Convert.FromHexString(prev), RegistryValueKind.Binary);
+        }
+        catch { }
+    }
+
+    private static bool SubKeyExists(RegistryKey hive, string path)
+    {
+        try
+        {
+            using var k = hive.OpenSubKey(path);
+            return k != null;
+        }
+        catch { return false; }
+    }
+
+    private static void DeleteSubKeyWithBackup(AppSettings s, string backupKey, RegistryKey hive, string path)
+    {
+        bool hadKey = s.TweakBackup.ContainsKey(backupKey);
+        if (!hadKey)
+        {
+            string? defVal = SubKeyExists(hive, path) ? (ReadString(hive, path, "") ?? "<vazio>") : "<ausente>";
+            s.TweakBackup[backupKey] = defVal;
+        }
+        try
+        {
+            hive.DeleteSubKeyTree(path, throwOnMissingSubKey: false);
+        }
+        catch
+        {
+            if (!hadKey) s.TweakBackup.Remove(backupKey);
+            throw;
+        }
+    }
+
+    private static void RestoreDeletedSubKey(AppSettings s, string backupKey, RegistryKey hive, string path, string fallbackDefaultValue)
+    {
+        try
+        {
+            if (s.TweakBackup.TryGetValue(backupKey, out var prevObj) && prevObj is string prev)
+            {
+                if (prev == "<ausente>")
+                {
+                    hive.DeleteSubKeyTree(path, throwOnMissingSubKey: false);
+                    return;
+                }
+                using var k = hive.CreateSubKey(path);
+                if (prev != "<vazio>") k.SetValue("", prev, RegistryValueKind.String);
+                return;
+            }
+
+            if (!SubKeyExists(hive, path))
+            {
+                using var k = hive.CreateSubKey(path);
+                k.SetValue("", fallbackDefaultValue, RegistryValueKind.String);
             }
         }
         catch { }

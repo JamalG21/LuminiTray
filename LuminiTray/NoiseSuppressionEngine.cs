@@ -19,6 +19,7 @@ public sealed class NoiseSuppressionEngine : IDisposable
     public const int FrameSamples = 480;
 
     private IntPtr _state = IntPtr.Zero;
+    private IntPtr _rustDsp = IntPtr.Zero;
     private bool _nativeAvailable;
 
     // Buffers pré-alocados para processamento sem alocação de memória no loop de áudio (Zero GC)
@@ -92,6 +93,11 @@ public sealed class NoiseSuppressionEngine : IDisposable
 
     public NoiseSuppressionEngine()
     {
+        if (NativeCoreBridge.IsAvailable)
+        {
+            _rustDsp = NativeCoreBridge.TryCreateDsp();
+        }
+
         try
         {
             _state = RnNoise.rnnoise_create(IntPtr.Zero);
@@ -103,10 +109,85 @@ public sealed class NoiseSuppressionEngine : IDisposable
         catch { _nativeAvailable = false; }
     }
 
+    private NativeDspParams BuildNativeParams() => new()
+    {
+        SuppressionIntensity = SuppressionIntensity,
+        GainDb = GainDb,
+        GateThresholdDb = GateThresholdDb,
+        GateReleaseMs = GateReleaseMs,
+        GateHysteresisDb = GateHysteresisDb,
+        GateHoldMs = GateHoldMs,
+        VadThreshold = VadThreshold,
+        VadHoldMs = VadHoldMs,
+        LowEqDb = LowEqDb,
+        MidEqDb = MidEqDb,
+        HighEqDb = HighEqDb,
+        LimiterEnabled = LimiterEnabled ? (byte)1 : (byte)0,
+        DeesserEnabled = DeesserEnabled ? (byte)1 : (byte)0
+    };
+
     /// <summary>
     /// Processa exatamente 480 amostras mono a 48 kHz (10 ms).
+    /// Usa pipeline DSP em Rust quando disponível, com fallback transparente para C#.
     /// </summary>
     public void Process(Span<float> mono48k)
+    {
+        if (mono48k.Length != FrameSamples)
+            throw new ArgumentException($"RNNoise requer exatamente {FrameSamples} amostras.", nameof(mono48k));
+
+        if (!Enabled)
+        {
+            LastVoiceProbability = 0;
+            return;
+        }
+
+        if (_rustDsp != IntPtr.Zero && NativeCoreBridge.IsEnabled())
+        {
+            var p = BuildNativeParams();
+            if (!NativeCoreBridge.TryDspPreProcess(_rustDsp, mono48k, _frameIn, ref p, out float inPeakDb, out float inRmsDb))
+            {
+                ProcessManaged(mono48k);
+                return;
+            }
+
+            if (_nativeAvailable && _state != IntPtr.Zero)
+            {
+                try
+                {
+                    float vad = RnNoise.rnnoise_process_frame(_state, _frameOut, _frameIn);
+                    LastVoiceProbability = Math.Clamp(vad, 0f, 1f);
+                    if (!NativeCoreBridge.TryDspPostRnnoise(_rustDsp, mono48k, _frameOut, LastVoiceProbability, ref p))
+                    {
+                        FallbackProcess(mono48k, inPeakDb, inRmsDb);
+                        PostProcess(mono48k);
+                    }
+                    return;
+                }
+                catch
+                {
+                    _nativeAvailable = false;
+                }
+            }
+
+            if (NativeCoreBridge.TryDspFallbackProcess(_rustDsp, mono48k, inPeakDb, inRmsDb, ref p, out float outVadProb))
+            {
+                LastVoiceProbability = outVadProb;
+            }
+            else
+            {
+                FallbackProcess(mono48k, inPeakDb, inRmsDb);
+                PostProcess(mono48k);
+            }
+            return;
+        }
+
+        ProcessManaged(mono48k);
+    }
+
+    /// <summary>
+    /// Implementação C# pura do pipeline de voz (usada como fallback e para validação de equivalência).
+    /// </summary>
+    public void ProcessManaged(Span<float> mono48k)
     {
         if (mono48k.Length != FrameSamples)
             throw new ArgumentException($"RNNoise requer exatamente {FrameSamples} amostras.", nameof(mono48k));
@@ -212,6 +293,9 @@ public sealed class NoiseSuppressionEngine : IDisposable
     /// </summary>
     public static float SoftLimit(float x)
     {
+        if (NativeCoreBridge.IsEnabled() && NativeCoreBridge.TrySoftLimit(x, out float nativeResult))
+            return nativeResult;
+
         float a = Math.Abs(x);
         if (a <= LimiterKnee) return x;
         float room = 1f - LimiterKnee;
@@ -348,6 +432,12 @@ public sealed class NoiseSuppressionEngine : IDisposable
         {
             try { RnNoise.rnnoise_destroy(_state); } catch { }
             _state = IntPtr.Zero;
+        }
+
+        if (_rustDsp != IntPtr.Zero)
+        {
+            NativeCoreBridge.DestroyDsp(_rustDsp);
+            _rustDsp = IntPtr.Zero;
         }
     }
 

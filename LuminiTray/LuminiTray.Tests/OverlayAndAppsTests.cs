@@ -1,3 +1,4 @@
+using System.IO;
 using System.Runtime.ExceptionServices;
 using System.Text.Json;
 using System.Windows;
@@ -577,9 +578,479 @@ public class OverlayAndAppsTests
         // Padrão de fábrica e serialização
         var settings = new AppSettings();
         Assert.IsFalse(settings.ShowPeripheralBatteryTrayIcon);
+        Assert.AreEqual(0, settings.PeripheralBatteryTrayKeys.Count);
         Assert.IsTrue(settings.PeripheralBatteryLowAlertEnabled);
         Assert.AreEqual(20, settings.PeripheralBatteryLowThreshold);
         settings.ShowPeripheralBatteryTrayIcon = true;
+        settings.PeripheralBatteryTrayKeys = new List<string> { "logi:C548:1" };
         var restored = JsonSerializer.Deserialize<AppSettings>(JsonSerializer.Serialize(settings))!;
         Assert.IsTrue(restored.ShowPeripheralBatteryTrayIcon);
-    }}
+        CollectionAssert.Contains(restored.PeripheralBatteryTrayKeys, "logi:C548:1");
+
+        // Seleção de dispositivo único na bandeja e troca por duplo clique
+        var list = new List<PeripheralBatteryInfo>
+        {
+            new() { Key = "mouse1", Name = "Mouse", Level = 70, IsOnline = true },
+            new() { Key = "headset1", Name = "Headset", Level = 45, IsOnline = true }
+        };
+        Assert.AreEqual("headset1", SystemTrayManager.GetNextCycledDeviceKey(list, "mouse1"));
+        Assert.AreEqual("mouse1", SystemTrayManager.GetNextCycledDeviceKey(list, "headset1"));
+        Assert.AreEqual("headset1", SystemTrayManager.SelectSingleTrayDevice(list, "headset1", Array.Empty<string>())?.Key);
+    }
+
+    [TestMethod]
+    public void TestPeripheralBattery_WdbmProtocolsAndDongleIdentification()
+    {
+        // Classificação de Dongle 2.4 GHz vs Bluetooth vs Cabo USB
+        Assert.AreEqual(PeripheralConnectionType.Dongle24GHz,
+            PeripheralBatteryService.ClassifyConnectionType(0x046D, 0xC548, "Logi Bolt Receiver", isBluetooth: false));
+        Assert.AreEqual(PeripheralConnectionType.Dongle24GHz,
+            PeripheralBatteryService.ClassifyConnectionType(0x1234, 0x5678, "2.4G Wireless Receiver", isBluetooth: false));
+        Assert.AreEqual(PeripheralConnectionType.Bluetooth,
+            PeripheralBatteryService.ClassifyConnectionType(0x046D, 0xB023, "MX Master 3S", isBluetooth: true));
+        Assert.AreEqual(PeripheralConnectionType.UsbCable,
+            PeripheralBatteryService.ClassifyConnectionType(0x1234, 0x5678, "Wired Gaming Mouse", isBluetooth: false));
+
+        // Escala genérica HID (incluindo Apple 0x05AC quirk)
+        Assert.AreEqual(75, PeripheralHidTransport.ScaleHidBatteryValue(75, 0, 100, 0x1234));
+        Assert.AreEqual(50, PeripheralHidTransport.ScaleHidBatteryValue(128, 0, 255, 0x1234));
+        Assert.AreEqual(64, PeripheralHidTransport.ScaleHidBatteryValue(64, 0, 255, 0x05AC));
+
+        // ASUS ROG (0x0B05) normal e em espera (FF AA)
+        var rogOk = PeripheralBatteryService.ParseAsusRogBatteryResponse(new byte[] { 0x00, 0x12, 0x07, 0x01, 82, 0x00 });
+        Assert.IsNotNull(rogOk);
+        Assert.AreEqual(82, rogOk.Value.Level);
+        Assert.IsTrue(rogOk.Value.Charging);
+        Assert.IsFalse(rogOk.Value.Asleep);
+
+        var rogSleep = PeripheralBatteryService.ParseAsusRogBatteryResponse(new byte[] { 0x00, 0xFF, 0xAA, 0x00, 0x00, 0x00 });
+        Assert.IsNotNull(rogSleep);
+        Assert.IsTrue(rogSleep.Value.Asleep);
+
+        // Kysona / ATK / VXE / Pulsar (17 bytes com checksum 0x55 - sum)
+        var kys = new byte[17];
+        kys[0] = 0x08; kys[1] = 0x04; kys[6] = 68; kys[7] = 1; kys[8] = 0x0F; kys[9] = 0x6E; // 3950 mV
+        kys[16] = PeripheralBatteryService.ComputeKysonaChecksum(kys);
+        var kysParsed = PeripheralBatteryService.ParseKysonaBatteryResponse(kys);
+        Assert.IsNotNull(kysParsed);
+        Assert.AreEqual(68, kysParsed.Value.Level);
+        Assert.IsTrue(kysParsed.Value.Charging);
+        Assert.AreEqual(3950, kysParsed.Value.Millivolts);
+
+        // Rapoo Nordic 54L (0x07) & Legacy VT3 Pro (0xBB 0xB0)
+        var rapoo = new byte[16];
+        rapoo[0] = 0x07; rapoo[1] = 0x00; rapoo[7] = 1; rapoo[8] = 91; rapoo[13] = 0x15; rapoo[14] = 0x46;
+        var rapooParsed = PeripheralBatteryService.ParseRapooBatteryResponse(rapoo, legacyVt3Pro: false);
+        Assert.IsNotNull(rapooParsed);
+        Assert.AreEqual(91, rapooParsed.Value.Level);
+        Assert.AreEqual(PeripheralConnectionType.Dongle24GHz, rapooParsed.Value.Connection);
+        Assert.AreEqual((ushort)0x4615, rapooParsed.Value.MousePid);
+
+        var rapooLegacy = PeripheralBatteryService.ParseRapooBatteryResponse(new byte[] { 0xBB, 0xB0, 0x71, 0x84, 0x03, 0x02, 0x5F }, legacyVt3Pro: true);
+        Assert.IsNotNull(rapooLegacy);
+        Assert.AreEqual(95, rapooLegacy.Value.Level);
+        Assert.IsTrue(rapooLegacy.Value.Charging);
+
+        // Areson / Redragon (25A7:FA07)
+        var areson = new byte[17];
+        areson[0] = 0x09; areson[1] = 0x04; areson[2] = 0x00; areson[6] = 8; areson[7] = 0;
+        areson[16] = PeripheralBatteryService.ComputeKysonaChecksum(areson);
+        var aresonParsed = PeripheralBatteryService.ParseAresonBatteryResponse(areson);
+        Assert.IsNotNull(aresonParsed);
+        Assert.AreEqual(80, aresonParsed.Value.Level);
+        Assert.IsFalse(aresonParsed.Value.Charging);
+
+        // AULA / MCHOSE (0x13 0x4A)
+        var aula = new byte[20];
+        aula[0] = 0x13; aula[1] = 0xCA; aula[5] = 77; aula[6] = 0x10;
+        int sum = 0; for (int i = 0; i < 19; i++) sum += aula[i];
+        aula[19] = (byte)(sum & 0xFF);
+        var aulaParsed = PeripheralBatteryService.ParseAulaBatteryResponse(aula);
+        Assert.IsNotNull(aulaParsed);
+        Assert.AreEqual(77, aulaParsed.Value.Level);
+        Assert.IsTrue(aulaParsed.Value.Charging);
+
+        // Nintendo Switch Pro (0x30)
+        var swPro = new byte[16];
+        swPro[0] = 0x30; swPro[2] = (byte)((3 << 5) | 0x10); // nível 3 (75%) + carregando
+        var swParsed = PeripheralBatteryService.ParseSwitchProBatteryResponse(swPro);
+        Assert.IsNotNull(swParsed);
+        Assert.AreEqual(75, swParsed.Value.Level);
+        Assert.IsTrue(swParsed.Value.Charging);
+
+        // Badge de Dongle no modelo
+        var dongleDev = new PeripheralBatteryInfo { Key = "dongle:1234:5678", Name = "Mouse 2.4G", ConnectionType = PeripheralConnectionType.Dongle24GHz };
+        Assert.IsTrue(dongleDev.IsDongle);
+        Assert.AreEqual("Dongle 2.4 GHz", dongleDev.ConnectionLabel);
+        Assert.AreEqual("Conectado", dongleDev.DisplayLevel);
+    }
+
+    [TestMethod]
+    public void TestPeripheralBattery_ConnectedOnly_GuidTrayAndMultiBrandXInput()
+    {
+        // 1. GUIDs determinísticos e distintos entre ícone principal e ícones individuais
+        var gMain1 = GuidNotifyIcon.CreateDeterministicGuid("peripheral-battery-main");
+        var gMain2 = GuidNotifyIcon.CreateDeterministicGuid("peripheral-battery-main");
+        var gDev1 = GuidNotifyIcon.CreateDeterministicGuid("peripheral-battery-dev:logi:c548:1");
+        var gDev2 = GuidNotifyIcon.CreateDeterministicGuid("peripheral-battery-dev:xinput:1a34:f517:0");
+        Assert.AreEqual(gMain1, gMain2);
+        Assert.AreNotEqual(gMain1, gDev1);
+        Assert.AreNotEqual(gMain1, gDev2);
+        Assert.AreNotEqual(gDev1, gDev2);
+
+        // 2. Filtro estrito: apenas dispositivos atualmente conectados e acordados
+        var mixed = new List<PeripheralBatteryInfo>
+        {
+            new() { Key = "a", Name = "Conectado", IsOnline = true, IsAsleep = false, Level = 80 },
+            new() { Key = "b", Name = "BT Offline", IsOnline = false, IsAsleep = false, Level = 50 },
+            new() { Key = "c", Name = "Mouse Dormindo", IsOnline = true, IsAsleep = true, Level = 60 }
+        };
+        var onlyConnected = PeripheralBatteryService.FilterConnectedOnly(mixed);
+        Assert.AreEqual(1, onlyConnected.Count);
+        Assert.AreEqual("a", onlyConnected[0].Key);
+
+        // 3. Machenike G5 Pro V2 via dongle 2.4 GHz (XInput reporta WIRED=0x01) NÃO deve aparecer como Cabo USB nem 100%
+        var gamepads = new List<UsbGamepadDescriptor>
+        {
+            new(0x1A34, 0xF517, "Dispositivo de Entrada USB", "", "", @"USB\VID_1A34&PID_F517\6&1", IsBluetooth: false)
+        };
+        var mach = PeripheralDeviceCatalog.ResolveXInputDevice(0, batteryType: 0x01, batteryLevel: 0, gamepads, matchedIndex: 0);
+        Assert.AreEqual("Machenike G5 Pro V2", mach.DisplayName);
+        Assert.AreEqual(PeripheralConnectionType.Dongle24GHz, mach.ConnectionType);
+        Assert.IsNull(mach.Level);
+        Assert.IsFalse(mach.IsCharging);
+        Assert.AreEqual("Conectado", mach.ApproxText);
+
+        // 4. Controle Xbox oficial cabeado (045E:0B12) continua sendo identificado como Cabo USB
+        var xboxWiredList = new List<UsbGamepadDescriptor>
+        {
+            new(0x045E, 0x0B12, "Xbox Series X Controller", "Microsoft", "", @"USB\VID_045E&PID_0B12\1", IsBluetooth: false)
+        };
+        var xboxWired = PeripheralDeviceCatalog.ResolveXInputDevice(0, batteryType: 0x01, batteryLevel: 0, xboxWiredList, matchedIndex: 0);
+        Assert.AreEqual(PeripheralConnectionType.UsbCable, xboxWired.ConnectionType);
+        Assert.AreEqual(100, xboxWired.Level);
+        Assert.IsTrue(xboxWired.IsCharging);
+
+        // 5. Catálogo multi-marca & limpeza de nomes genéricos
+        Assert.AreEqual("GameSir Cyclone 2", PeripheralDeviceCatalog.BuildDisplayName(0x3537, 0x1042, "USB Input Device"));
+        Assert.AreEqual("8BitDo Ultimate 2.4G", PeripheralDeviceCatalog.BuildDisplayName(0x2DC8, 0x3106, ""));
+        Assert.AreEqual("Flydigi Vader 4 Pro", PeripheralDeviceCatalog.BuildDisplayName(0x37D7, 0x2412, ""));
+        Assert.AreEqual("Sharkoon 2.4G Wireless Mouse", PeripheralDeviceCatalog.BuildDisplayName(0x1EA7, 0x0067, "2.4G Wireless Receiver"));
+        Assert.AreEqual("Logitech PRO X SUPERLIGHT", PeripheralDeviceCatalog.BuildDisplayName(0x046D, 0x9999, "PRO X SUPERLIGHT Receiver", "Logitech"));
+    }
+
+    [TestMethod]
+    public void TestMonitoringLogService_And_PrivacyModeService_And_ReportBuilder()
+    {
+        // 1. SensorRow Min/Max horários + ResetMinMax
+        var t1 = new DateTime(2026, 11, 18, 21, 0, 0);
+        var t2 = new DateTime(2026, 11, 18, 21, 5, 12);
+        var cpuRow = new SensorRow
+        {
+            Id = "/amdcpu/0/temperature/0",
+            Hardware = "AMD Ryzen 7",
+            Category = "Temperatura",
+            Name = "Core (Tctl/Tdie)",
+            Type = LibreHardwareMonitor.Hardware.SensorType.Temperature,
+            HardwareType = LibreHardwareMonitor.Hardware.HardwareType.Cpu,
+            IsSelectedForMonitoring = true
+        };
+        cpuRow.Update(55.0f, 52.0f, 58.0f, t1);
+        Assert.AreEqual(t1, cpuRow.MinTime);
+        Assert.AreEqual(t1, cpuRow.MaxTime);
+        Assert.IsTrue(cpuRow.MinWithTime.Contains("52,0") || cpuRow.MinWithTime.Contains("52.0"));
+        Assert.IsTrue(cpuRow.MinWithTime.Contains("21:00:00"));
+
+        cpuRow.Update(71.5f, 52.0f, 71.5f, t2);
+        Assert.AreEqual(t1, cpuRow.MinTime);
+        Assert.AreEqual(t2, cpuRow.MaxTime);
+        Assert.IsTrue(cpuRow.MaxWithTime.Contains("21:05:12"));
+
+        // 2. MonitoringLogService: grava arquivo temp apenas durante sessão e apaga ao concluir
+        string tempDir = Path.Combine(Path.GetTempPath(), "LuminiTrayMonTest_" + Guid.NewGuid().ToString("N")[..8]);
+        try
+        {
+            var svc = new MonitoringLogService(tempDir);
+            Assert.IsTrue(svc.Start(new[] { cpuRow }, intervalSeconds: 60, durationSeconds: 120, nowOverride: t1));
+            Assert.IsTrue(svc.IsRunning);
+            Assert.IsTrue(File.Exists(svc.ActiveTempFilePath));
+
+            cpuRow.Update(65.0f, 52.0f, 71.5f, t1.AddSeconds(60));
+            bool done1 = svc.Tick(new[] { cpuRow }, nowOverride: t1.AddSeconds(60));
+            Assert.IsFalse(done1);
+            Assert.IsTrue(File.Exists(svc.ActiveTempFilePath));
+
+            cpuRow.Update(60.0f, 52.0f, 71.5f, t1.AddSeconds(120));
+            bool done2 = svc.Tick(new[] { cpuRow }, nowOverride: t1.AddSeconds(120));
+            Assert.IsTrue(done2);
+            Assert.IsFalse(svc.IsRunning);
+            // Arquivo bruto temporário DEVE ser apagado após concluir
+            Assert.IsFalse(File.Exists(svc.ActiveTempFilePath));
+
+            Assert.IsNotNull(svc.LastResult);
+            Assert.IsTrue(svc.LastResult!.CompletedAutomatically);
+            Assert.AreEqual(1, svc.LastResult.Sensors.Count);
+            var sum = svc.LastResult.Sensors[0];
+            Assert.AreEqual(3, sum.SampleCount);
+            Assert.AreEqual(60.0f, sum.Min);
+            Assert.AreEqual(t1.AddSeconds(120), sum.MinTime);
+            Assert.AreEqual(71.5f, sum.Max);
+            Assert.AreEqual(t1, sum.MaxTime);
+            Assert.AreEqual(3, sum.Points.Count);
+
+            var t3 = t2.AddMinutes(1);
+            cpuRow.ResetMinMax(t3);
+            Assert.AreEqual(60.0f, cpuRow.RawMin);
+            Assert.AreEqual(60.0f, cpuRow.RawMax);
+            Assert.AreEqual(t3, cpuRow.MinTime);
+            Assert.AreEqual(t3, cpuRow.MaxTime);
+
+            // 3. PrivacyModeService e ReportBuilder
+            try
+            {
+                PrivacyModeService.IsEnabled = true;
+                var info = new InfoNode { Header = "Endereço IPv4", Value = "192.168.1.45" };
+                Assert.AreEqual(PrivacyModeService.MaskToken, info.MaskedValue);
+                Assert.IsTrue(info.Display.Contains(PrivacyModeService.MaskToken));
+
+                var normalInfo = new InfoNode { Header = "Adaptador", Value = "Ethernet 10.0.0.15 MAC AA:BB:CC:DD:EE:FF" };
+                Assert.IsFalse(normalInfo.MaskedValue.Contains("10.0.0.15"));
+                Assert.IsFalse(normalInfo.MaskedValue.Contains("AA:BB:CC:DD:EE:FF"));
+
+                var reportData = new ReportData
+                {
+                    Machine = "PC-SECRETO-01",
+                    PrivacyModeActive = true,
+                    System = new List<ReportNode> { new("Rede", null, new List<ReportNode> { new("Gateway", "192.168.1.1", null) }) },
+                    Monitoring = svc.LastResult
+                };
+                string json = ReportBuilder.Json(reportData);
+                string html = ReportBuilder.Html(reportData);
+                Assert.IsTrue(json.Contains("monitoramento_registrado"));
+                Assert.IsFalse(json.Contains("192.168.1.1"));
+                Assert.IsFalse(json.Contains("PC-SECRETO-01"));
+                Assert.IsTrue(html.Contains("Monitoramento registrado"));
+                Assert.IsTrue(html.Contains("<svg"));
+                Assert.IsFalse(html.Contains("192.168.1.1"));
+                Assert.IsFalse(html.Contains("PC-SECRETO-01"));
+            }
+            finally
+            {
+                PrivacyModeService.IsEnabled = false;
+            }
+        }
+        finally
+        {
+            if (Directory.Exists(tempDir))
+                Directory.Delete(tempDir, recursive: true);
+        }
+    }
+
+    [TestMethod]
+    public void TestPhase1_CSharpOptimizations_EquivalenceAndCaching()
+    {
+        // 1. DiskSpaceItem.CategoryBrush retorna a mesma instância congelada por categoria (zero churn WPF)
+        var d1 = new DiskSpaceItem { Name = "a.mp4", Category = "Vídeos", Size = 100 };
+        var d2 = new DiskSpaceItem { Name = "b.mkv", Category = "Vídeos", Size = 200 };
+        Assert.IsTrue(d1.CategoryBrush.IsFrozen);
+        Assert.AreSame(d1.CategoryBrush, d2.CategoryBrush);
+
+        // 2. FrameMonitor.ComputeFrameMetrics calcula FPS, frametime e 1% low sem alocação de LINQ
+        // 61 timestamps espaçados de 10 ms (= 100 FPS exatos em 600 ms)
+        var ts = new double[61];
+        for (int i = 0; i < ts.Length; i++) ts[i] = i * 10.0;
+        var (fps, ftMs, low1) = FrameMonitor.ComputeFrameMetrics(ts);
+        Assert.AreEqual(100.0, fps, 0.01);
+        Assert.AreEqual(10.0, ftMs, 0.01);
+        Assert.AreEqual(100.0, low1, 0.01);
+
+        // 3. SystemTrayManager & GuidNotifyIcon icon cache key
+        Assert.AreEqual("85:0", SystemTrayManager.BuildBatteryIconCacheKey(85, false));
+        Assert.AreEqual("85:1", SystemTrayManager.BuildBatteryIconCacheKey(85, true));
+        Assert.AreEqual("-1:0", SystemTrayManager.BuildBatteryIconCacheKey(null, false));
+
+        // 4. DiskTopologyService.RefId & Invalidate
+        Assert.AreEqual(@"\\.\PHYSICALDRIVE0", DiskTopologyService.RefId("Win32_DiskDrive.DeviceID=\"\\\\\\\\.\\\\PHYSICALDRIVE0\""));
+        DiskTopologyService.Invalidate();
+    }
+
+    [TestMethod]
+    public void TestPhase2_RustNativeCoreBridge_AbiPingAllocAndFallback()
+    {
+        // 1. DLL nativa Rust carregada e ABI compatível
+        Assert.IsTrue(NativeCoreBridge.IsAvailable, $"LuminiTray.NativeCore.dll indisponível: {NativeCoreBridge.FailureReason}");
+        Assert.AreEqual(NativeCoreBridge.ExpectedAbiVersion, NativeCoreBridge.LoadedAbiVersion);
+        Assert.IsTrue(NativeCoreBridge.IsEnabled());
+
+        // 2. FFI ping + relato de erro em thread-local UTF-16
+        Assert.AreEqual(37, NativeCoreBridge.TryPing(10));
+        Assert.AreEqual(-1, NativeCoreBridge.TryPing(int.MinValue));
+        Assert.IsTrue(NativeCoreBridge.GetLastError().Contains("invalid ping sentinel"));
+
+        // 3. Alocação e liberação repetida na memória nativa Rust sem erro (500 ciclos)
+        Assert.IsTrue(NativeCoreBridge.TryAllocAndFreeSmokeTest(4096, iterations: 500));
+
+        // 4. Override / fallback para implementação gerenciada em C#
+        try
+        {
+            NativeCoreBridge.ForceManagedOverride = true;
+            Assert.IsFalse(NativeCoreBridge.IsEnabled());
+        }
+        finally
+        {
+            NativeCoreBridge.ForceManagedOverride = false;
+        }
+        Assert.IsTrue(NativeCoreBridge.IsEnabled());
+
+        // 5. Harness de equivalência
+        bool same = NativeCoreBridge.VerifyEquivalence(
+            () => 10 * 3 + 7,
+            () => NativeCoreBridge.TryPing(10) ?? 0,
+            (a, b) => a == b,
+            out int mVal, out int nVal);
+        Assert.IsTrue(same);
+        Assert.AreEqual(mVal, nVal);
+    }
+
+    [TestMethod]
+    public async Task TestPhase3_RustModules_DiskFramesAndDspEquivalence()
+    {
+        Assert.IsTrue(NativeCoreBridge.IsAvailable, $"NativeCore indisponível: {NativeCoreBridge.FailureReason}");
+        Assert.AreEqual(2u, NativeCoreBridge.LoadedAbiVersion);
+
+        // 1. Disk Scanner equivalence (ScanManagedAsync vs ScanNativeAsync)
+        string tempRoot = System.IO.Path.Combine(System.IO.Path.GetTempPath(), $"lumini_phase3_disk_{Guid.NewGuid():N}");
+        System.IO.Directory.CreateDirectory(tempRoot);
+        try
+        {
+            string subA = System.IO.Path.Combine(tempRoot, "SubA");
+            string subEmpty = System.IO.Path.Combine(tempRoot, "EmptyDir");
+            System.IO.Directory.CreateDirectory(subA);
+            System.IO.Directory.CreateDirectory(subEmpty);
+
+            System.IO.File.WriteAllBytes(System.IO.Path.Combine(tempRoot, "alpha.log"), new byte[1200]);
+            System.IO.File.WriteAllBytes(System.IO.Path.Combine(tempRoot, "noext"), new byte[345]);
+            System.IO.File.WriteAllBytes(System.IO.Path.Combine(subA, "video.mp4"), new byte[4096]);
+            System.IO.File.WriteAllBytes(System.IO.Path.Combine(subA, "notes.txt"), new byte[512]);
+
+            var managedDisk = await DiskSpaceAnalyzer.ScanManagedAsync(tempRoot);
+            var nativeDisk = await DiskSpaceAnalyzer.ScanNativeAsync(tempRoot);
+
+            Assert.AreEqual(managedDisk.Root.Size, nativeDisk.Root.Size);
+            Assert.AreEqual(managedDisk.Root.FileCount, nativeDisk.Root.FileCount);
+            Assert.AreEqual(managedDisk.Root.FolderCount, nativeDisk.Root.FolderCount);
+            Assert.AreEqual(managedDisk.Root.Category, nativeDisk.Root.Category);
+            Assert.AreEqual(managedDisk.AccessDeniedCount, nativeDisk.AccessDeniedCount);
+            Assert.AreEqual(managedDisk.ReparseCount, nativeDisk.ReparseCount);
+            Assert.AreEqual(managedDisk.TopFiles.Count, nativeDisk.TopFiles.Count);
+            Assert.AreEqual(managedDisk.TopFiles[0].Name, nativeDisk.TopFiles[0].Name);
+            Assert.AreEqual(managedDisk.TopFiles[0].Size, nativeDisk.TopFiles[0].Size);
+            Assert.AreEqual(managedDisk.Extensions.Count, nativeDisk.Extensions.Count);
+            Assert.AreEqual(managedDisk.Extensions[0].Extension, nativeDisk.Extensions[0].Extension);
+            Assert.AreEqual(managedDisk.Extensions[0].TotalSize, nativeDisk.Extensions[0].TotalSize);
+        }
+        finally
+        {
+            try { System.IO.Directory.Delete(tempRoot, recursive: true); } catch { }
+        }
+
+        // 2. Frame Monitor metrics & native store equivalence
+        double[] timestamps = new double[150];
+        double curTs = 0.0;
+        for (int i = 0; i < timestamps.Length; i++)
+        {
+            timestamps[i] = curTs;
+            curTs += (i % 15 == 0) ? 16.0 : 8.0;
+        }
+        var (mFps, mFt, mLow1) = FrameMonitor.ComputeFrameMetricsManaged(timestamps);
+        Assert.IsTrue(NativeCoreBridge.TryComputeFrameMetrics(timestamps, out double nFps, out double nFt, out double nLow1));
+        Assert.AreEqual(mFps, nFps, 1e-6);
+        Assert.AreEqual(mFt, nFt, 1e-6);
+        Assert.AreEqual(mLow1, nLow1, 1e-6);
+
+        IntPtr store = NativeCoreBridge.TryCreateFrameStore();
+        Assert.AreNotEqual(IntPtr.Zero, store);
+        try
+        {
+            for (int i = 0; i < timestamps.Length; i++)
+                Assert.IsTrue(NativeCoreBridge.TryRecordFrame(store, 4242, timestamps[i], 10_000.0));
+
+            double[] recent = new double[120];
+            Assert.IsTrue(NativeCoreBridge.TryQueryFrameStats(store, 4242, 10_500.0, out bool hasStats, out double sFps, out double sFt, out double sLow1, recent, out int rCount));
+            Assert.IsTrue(hasStats);
+            Assert.AreEqual(mFps, sFps, 1e-6);
+            Assert.AreEqual(mFt, sFt, 1e-6);
+            Assert.AreEqual(mLow1, sLow1, 1e-6);
+            Assert.AreEqual(120, rCount);
+
+            // Stale check (> 2000 ms elapsed since hostNowMs=10_000.0)
+            Assert.IsTrue(NativeCoreBridge.TryQueryFrameStats(store, 4242, 13_000.0, out bool staleHasStats, out _, out _, out _, recent, out _));
+            Assert.IsFalse(staleHasStats);
+        }
+        finally
+        {
+            NativeCoreBridge.DestroyFrameStore(store);
+        }
+
+        // 3. Voice DSP pipeline & SoftLimit equivalence (ProcessManaged vs Rust Process)
+        float[] probeLimits = { -1.5f, -0.9f, -0.5f, 0f, 0.5f, 0.85f, 0.95f, 2.0f };
+        foreach (float x in probeLimits)
+        {
+            Assert.IsTrue(NativeCoreBridge.TrySoftLimit(x, out float rustLim));
+            try
+            {
+                NativeCoreBridge.ForceManagedOverride = true;
+                float managedLim = NoiseSuppressionEngine.SoftLimit(x);
+                Assert.AreEqual(managedLim, rustLim, 1e-6f);
+            }
+            finally
+            {
+                NativeCoreBridge.ForceManagedOverride = false;
+            }
+        }
+
+        using var engineRust = new NoiseSuppressionEngine
+        {
+            GainDb = 3.0f,
+            LowEqDb = 2.0f,
+            MidEqDb = -1.5f,
+            HighEqDb = 2.5f,
+            GateThresholdDb = -50.0f,
+            LimiterEnabled = true,
+            DeesserEnabled = true
+        };
+        using var engineManaged = new NoiseSuppressionEngine
+        {
+            GainDb = 3.0f,
+            LowEqDb = 2.0f,
+            MidEqDb = -1.5f,
+            HighEqDb = 2.5f,
+            GateThresholdDb = -50.0f,
+            LimiterEnabled = true,
+            DeesserEnabled = true
+        };
+
+        for (int frame = 0; frame < 10; frame++)
+        {
+            float amp = frame < 2 ? 0.0005f : (frame < 7 ? 0.45f : 0.95f);
+            float freq = frame >= 7 ? 7200.0f : 320.0f;
+            float[] bufRust = new float[NoiseSuppressionEngine.FrameSamples];
+            float[] bufManaged = new float[NoiseSuppressionEngine.FrameSamples];
+            for (int i = 0; i < NoiseSuppressionEngine.FrameSamples; i++)
+            {
+                float s = amp * MathF.Sin(2f * MathF.PI * freq * (frame * 480 + i) / 48000f);
+                bufRust[i] = s;
+                bufManaged[i] = s;
+            }
+
+            engineRust.Process(bufRust);
+            engineManaged.ProcessManaged(bufManaged);
+
+            Assert.AreEqual(engineManaged.LastVoiceProbability, engineRust.LastVoiceProbability, 1e-4f, $"VAD divergente no frame {frame}");
+            for (int i = 0; i < NoiseSuppressionEngine.FrameSamples; i++)
+            {
+                Assert.AreEqual(bufManaged[i], bufRust[i], 1e-4f, $"Amostra {i} do frame {frame} divergiu.");
+            }
+        }
+    }
+}
