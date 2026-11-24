@@ -1,10 +1,28 @@
+using System.Collections.Generic;
+using System.Windows;
+using System.Windows.Media;
+
 namespace LuminiTray;
 
 /// <summary>Item que pode aparecer no overlay. Group: "FPS", "GPU", "VRAM", "CPU", "RAM" ou "Outros".</summary>
 public sealed record OverlayMetric(string Key, string Group, string Label, bool Default);
 
+/// <summary>Segmento colorido de uma linha do overlay.</summary>
+public sealed record OverlaySegment(string Text, Brush Foreground, Thickness Margin = default);
+
 /// <summary>Linha do overlay já pronta para mostrar (ex.: "GPU" · "98%  65 °C  2790 MHz").</summary>
-public sealed record OverlayLine(string Label, string Value);
+public sealed record OverlayLine(string Label, string Value, IReadOnlyList<OverlaySegment>? Segments = null)
+{
+    private static readonly Brush DefaultBrush = CreateDefaultBrush();
+    private static Brush CreateDefaultBrush()
+    {
+        var b = new SolidColorBrush(Color.FromRgb(0xF5, 0xF5, 0xF5));
+        b.Freeze();
+        return b;
+    }
+
+    public IReadOnlyList<OverlaySegment> DisplaySegments => Segments ?? new[] { new OverlaySegment(Value, DefaultBrush) };
+}
 
 /// <summary>Catálogo do que o overlay pode mostrar, na ordem em que aparece.</summary>
 public static class OverlayMetrics
@@ -25,8 +43,8 @@ public static class OverlayMetrics
         new("gpu_fan", "GPU", "Ventoinha", false),
         new("gpu_perfcap", "GPU", "Limitador (NVIDIA)", false),
 
-        new("vram_used", "VRAM", "Usada (GB)", true),
         new("vram_pct", "VRAM", "Uso (%)", false),
+        new("vram_used", "VRAM", "Usada (GB)", true),
         new("vram_temp", "VRAM", "Temperatura", false),
         new("gpu_memclock", "VRAM", "Clock da memória", false),
 
@@ -37,8 +55,8 @@ public static class OverlayMetrics
         new("cpu_clockmax", "CPU", "Clock máximo (núcleo)", false),
         new("cpu_power", "CPU", "Consumo", true),
 
-        new("ram_used", "RAM", "Usada (GB)", true),
         new("ram_pct", "RAM", "Uso (%)", false),
+        new("ram_used", "RAM", "Usada (GB)", true),
         new("ram_swap", "RAM", "Swap / Paginação de memória", true),
         new("proc_ram", "RAM", "RAM do jogo em foco", false),
         new("app_ram", "RAM", "RAM do Lumini Tray", false),

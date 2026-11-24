@@ -18,6 +18,11 @@ public partial class MainWindow
     private bool _fanServiceStarted;
     private readonly Dictionary<string, (TextBlock Rpm, TextBlock Pwm)> _fanCardElements = new();
 
+    // Alerta de temperatura multi-nível
+    private ToastWindow? _criticalTempToast;
+    private bool _criticalAlertDismissedUntilCool;
+    private bool _syncingTempAlertUi;
+
     // Estado de arraste com o mouse nos gráficos
     private int _draggedCpuPoint = -1;
     private int _draggedGpuPoint = -1;
@@ -595,14 +600,25 @@ public partial class MainWindow
             FanStatusBadge.Text = active ? "⚡ Controle Inteligente Ativo" : "🛡️ Modo BIOS / Firmware";
 
         if (FanLiveCpuTemp != null)
+        {
             FanLiveCpuTemp.Text = $"{_fanControlService.LastCpuTemp:0.0} °C";
+            FanLiveCpuTemp.Foreground = GetTempBrush(_fanControlService.LastCpuTemp);
+        }
 
         if (FanLiveGpuTemp != null)
+        {
             FanLiveGpuTemp.Text = $"{_fanControlService.LastGpuTemp:0.0} °C";
+            FanLiveGpuTemp.Foreground = GetTempBrush(_fanControlService.LastGpuTemp);
+        }
 
         double mixedTemp = Math.Max(_fanControlService.LastCpuTemp, _fanControlService.LastGpuTemp);
         if (FanLiveMixedTemp != null)
+        {
             FanLiveMixedTemp.Text = $"{mixedTemp:0.0} °C";
+            FanLiveMixedTemp.Foreground = GetTempBrush(mixedTemp);
+        }
+
+        UpdateTempAlertUi();
 
         // Atualiza os valores nos cards em O(1) via dicionário em cache (sem recursão de VisualTree)
         UpdateCardsPanel();
@@ -1627,5 +1643,146 @@ public partial class MainWindow
             SaveFanControlSettings();
             PopulateFanPresets();
         }
+    }
+
+    // =========================================================================
+    // ALERTA DE TEMPERATURA MULTI-NÍVEL
+    // =========================================================================
+
+    private Brush GetTempBrush(double? tempC, Brush? defaultBrush = null)
+    {
+        var fallback = defaultBrush ?? (TryFindResource("Fg") as Brush ?? Brushes.White);
+        bool isDark = !_settings.LightTheme;
+        return TemperatureAlertHelper.GetBrush(tempC, _settings.FanControl, fallback, isDark);
+    }
+
+    private void UpdateTempAlertUi()
+    {
+        if (ChkTempAlertEnabled == null) return;
+        _settings.FanControl ??= new FanControlSaveSettings();
+        var cfg = _settings.FanControl;
+
+        _syncingTempAlertUi = true;
+        try
+        {
+            ChkTempAlertEnabled.IsChecked = cfg.TempAlertEnabled;
+            double crit = Math.Clamp(cfg.TempAlertCriticalC, 45.0, 110.0);
+            if (SliderTempAlertCritical != null && Math.Abs(SliderTempAlertCritical.Value - crit) > 0.01)
+                SliderTempAlertCritical.Value = crit;
+            if (TxtTempAlertCustom != null && !TxtTempAlertCustom.IsKeyboardFocused)
+                TxtTempAlertCustom.Text = $"{crit:0}";
+
+            var (yellowC, orangeC, criticalC) = TemperatureAlertHelper.GetThresholds(cfg);
+            if (TxtTempAlertYellowSummary != null)
+            {
+                TxtTempAlertYellowSummary.Text = $"🟡 Atenção (Amarelo): ≥ {yellowC:0} °C";
+                TxtTempAlertYellowSummary.Foreground = TemperatureAlertHelper.GetBrush(yellowC, cfg, Brushes.Gray, !_settings.LightTheme);
+            }
+            if (TxtTempAlertOrangeSummary != null)
+            {
+                TxtTempAlertOrangeSummary.Text = $"🟠 Elevada (Laranja): ≥ {orangeC:0} °C";
+                TxtTempAlertOrangeSummary.Foreground = TemperatureAlertHelper.GetBrush(orangeC, cfg, Brushes.Gray, !_settings.LightTheme);
+            }
+            if (TxtTempAlertRedSummary != null)
+            {
+                TxtTempAlertRedSummary.Text = $"🔴 Crítico (Vermelho + Notificação): ≥ {criticalC:0} °C";
+                TxtTempAlertRedSummary.Foreground = TemperatureAlertHelper.GetBrush(criticalC, cfg, Brushes.Gray, !_settings.LightTheme);
+            }
+
+            if (BtnTempAlert70 != null) BtnTempAlert70.Style = (Style)FindResource(Math.Abs(crit - 70) < 0.5 ? "PrimaryButton" : "OutlineButton");
+            if (BtnTempAlert80 != null) BtnTempAlert80.Style = (Style)FindResource(Math.Abs(crit - 80) < 0.5 ? "PrimaryButton" : "OutlineButton");
+            if (BtnTempAlert90 != null) BtnTempAlert90.Style = (Style)FindResource(Math.Abs(crit - 90) < 0.5 ? "PrimaryButton" : "OutlineButton");
+        }
+        finally
+        {
+            _syncingTempAlertUi = false;
+        }
+    }
+
+    private void ApplyTempAlertCritical(double value)
+    {
+        _settings.FanControl ??= new FanControlSaveSettings();
+        _settings.FanControl.TempAlertCriticalC = Math.Clamp(Math.Round(value), 45.0, 110.0);
+        _criticalAlertDismissedUntilCool = false;
+        _settings.Save();
+        UpdateTempAlertUi();
+    }
+
+    private void ChkTempAlertEnabled_Changed(object sender, RoutedEventArgs e)
+    {
+        if (_syncingTempAlertUi) return;
+        _settings.FanControl ??= new FanControlSaveSettings();
+        _settings.FanControl.TempAlertEnabled = ChkTempAlertEnabled?.IsChecked == true;
+        _criticalAlertDismissedUntilCool = false;
+        _settings.Save();
+        UpdateTempAlertUi();
+    }
+
+    private void BtnTempAlertPreset_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is Button { Tag: string tag } && double.TryParse(tag, out double val))
+            ApplyTempAlertCritical(val);
+    }
+
+    private void SliderTempAlertCritical_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
+    {
+        if (_syncingTempAlertUi) return;
+        ApplyTempAlertCritical(e.NewValue);
+    }
+
+    private void CommitCustomTempAlertOnLostFocus(object sender, RoutedEventArgs e) => CommitCustomTempAlert();
+
+    private void TxtTempAlertCustom_KeyDown(object sender, KeyEventArgs e)
+    {
+        if (e.Key == Key.Enter)
+        {
+            CommitCustomTempAlert();
+            Keyboard.ClearFocus();
+        }
+    }
+
+    private void CommitCustomTempAlert()
+    {
+        if (_syncingTempAlertUi || TxtTempAlertCustom == null) return;
+        if (double.TryParse(TxtTempAlertCustom.Text.Replace("°C", "").Trim(), out double val))
+            ApplyTempAlertCritical(val);
+        else
+            UpdateTempAlertUi();
+    }
+
+    /// <summary>Avalia temperaturas de CPU e GPU e dispara a notificação persistente apenas no nível Vermelho (Crítico).</summary>
+    private void EvaluateAndNotifyCriticalTemperature(float? cpuTemp, float? gpuTemp)
+    {
+        var cfg = _settings.FanControl;
+        if (cfg == null || !cfg.TempAlertEnabled) return;
+
+        var (_, _, criticalC) = TemperatureAlertHelper.GetThresholds(cfg);
+        var cpuLevel = TemperatureAlertHelper.Evaluate(cpuTemp, cfg);
+        var gpuLevel = TemperatureAlertHelper.Evaluate(gpuTemp, cfg);
+
+        bool anyCritical = cpuLevel == TempAlertLevel.Red || gpuLevel == TempAlertLevel.Red;
+        if (!anyCritical)
+        {
+            double maxT = Math.Max(cpuTemp ?? 0, gpuTemp ?? 0);
+            if (maxT > 0 && maxT <= criticalC - 3.0)
+                _criticalAlertDismissedUntilCool = false;
+            return;
+        }
+
+        if (_criticalAlertDismissedUntilCool) return;
+
+        var alerts = new List<string>();
+        if (cpuLevel == TempAlertLevel.Red && cpuTemp is float ct) alerts.Add($"CPU: {ct:0.0} °C");
+        if (gpuLevel == TempAlertLevel.Red && gpuTemp is float gt) alerts.Add($"GPU: {gt:0.0} °C");
+        string details = $"{string.Join("  |  ", alerts)} (limite crítico: {criticalC:0} °C)";
+
+        if (_criticalTempToast == null)
+        {
+            _criticalTempToast = new ToastWindow();
+            _criticalTempToast.DismissedByUser += () => _criticalAlertDismissedUntilCool = true;
+        }
+
+        // Atualiza texto ao vivo se já estiver aberto ou abre de forma persistente até o usuário fechar
+        _criticalTempToast.NotifyCriticalPersistent("Alerta Crítico de Temperatura", details, "\uE7BA");
     }
 }

@@ -281,6 +281,10 @@ public sealed class AppSettings
 public class FanControlSaveSettings
 {
     public bool IsControlActive { get; set; } = true;
+    public bool TempAlertEnabled { get; set; } = true;
+    public double TempAlertCriticalC { get; set; } = 80.0;
+    public double TempAlertOrangeOffsetC { get; set; } = 7.0;
+    public double TempAlertYellowOffsetC { get; set; } = 15.0;
     public Dictionary<string, FanChannelSaveState> Channels { get; set; } = new();
     public FanCurveSaveConfig? CpuCurve { get; set; }
     public FanCurveSaveConfig? GpuCurve { get; set; }

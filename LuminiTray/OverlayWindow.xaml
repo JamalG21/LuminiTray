@@ -45,8 +45,19 @@
                                     </Grid.ColumnDefinitions>
                                     <controls:OutlinedTextBlock Text="{Binding Label}" Foreground="#8C8C8C"
                                                                 Stroke="{DynamicResource OverlayStrokeBrush}" StrokeThickness="{DynamicResource OverlayStrokeThickness}"/>
-                                    <controls:OutlinedTextBlock Grid.Column="1" Text="{Binding Value}" HorizontalAlignment="Right" TextAlignment="Right"
-                                                                Stroke="{DynamicResource OverlayStrokeBrush}" StrokeThickness="{DynamicResource OverlayStrokeThickness}"/>
+                                    <ItemsControl Grid.Column="1" ItemsSource="{Binding DisplaySegments}" HorizontalAlignment="Right">
+                                        <ItemsControl.ItemsPanel>
+                                            <ItemsPanelTemplate>
+                                                <StackPanel Orientation="Horizontal"/>
+                                            </ItemsPanelTemplate>
+                                        </ItemsControl.ItemsPanel>
+                                        <ItemsControl.ItemTemplate>
+                                            <DataTemplate>
+                                                <controls:OutlinedTextBlock Text="{Binding Text}" Foreground="{Binding Foreground}" Margin="{Binding Margin}"
+                                                                            Stroke="{DynamicResource OverlayStrokeBrush}" StrokeThickness="{DynamicResource OverlayStrokeThickness}"/>
+                                            </DataTemplate>
+                                        </ItemsControl.ItemTemplate>
+                                    </ItemsControl>
                                 </Grid>
                             </DataTemplate>
                         </ItemsControl.ItemTemplate>

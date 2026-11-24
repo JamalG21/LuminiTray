@@ -12,7 +12,7 @@ namespace LuminiTray;
 /// </summary>
 public partial class MainWindow
 {
-    public sealed record DashComponent(string Icon, string Name, string Model, string Temp, string Load, string Clock, string Power, string Target);
+    public sealed record DashComponent(string Icon, string Name, string Model, string Temp, string Load, string Clock, string Power, string Target, Brush TempBrush);
     public sealed record DashEvent(string Icon, string Title, string Detail, string Value, DateTime At)
     {
         public string When => At.Date == DateTime.Today ? $"hoje {At:HH:mm}" : $"{At:dd/MM HH:mm}";
@@ -124,29 +124,31 @@ public partial class MainWindow
 
     private void UpdateDashComponents()
     {
+        var defaultBrush = TryFindResource("Fg") as Brush ?? Brushes.White;
         var rows = new List<DashComponent>
         {
             new("", "Processador", GameCatalog.ShortCpuName(_cpuName),
                 F(_monitor.CpuTemperature, "0.0", " °C"), F(_monitor.CpuLoad, "0", " %"), F(CpuClockAvg(), "0", " MHz"),
-                F(_monitor.CpuPower, "0", " W"), "PageSensors"),
+                F(_monitor.CpuPower, "0", " W"), "PageSensors", GetTempBrush(_monitor.CpuTemperature, defaultBrush)),
         };
         if (_gpus.Count > 0)
         {
+            float? gpuT = MainGpuTemp();
             uint? clk = _gpus[0].NvmlHandle != IntPtr.Zero ? Nvml.Clock(_gpus[0].NvmlHandle, Nvml.ClockGraphics) : null;
             rows.Add(new("", "Placa de vídeo", GameCatalog.ShortGpuName(_gpus[0].Name),
-                         F(MainGpuTemp(), "0.0", " °C"), F(MainGpuLoad(), "0", " %"), clk is uint c ? $"{c} MHz" : "—",
-                         F(MainGpuPower(), "0", " W"), "PageGpu"));
+                         F(gpuT, "0.0", " °C"), F(MainGpuLoad(), "0", " %"), clk is uint c ? $"{c} MHz" : "—",
+                         F(MainGpuPower(), "0", " W"), "PageGpu", GetTempBrush(gpuT, defaultBrush)));
         }
         var (total, avail) = Optimizer.MemoryStatus();
         if (total > 0)
         {
             double used = total - avail;
             rows.Add(new("", "Memória RAM", $"{total / 1073741824.0:0} GB instalados", "—", $"{used / total:P0}", "—",
-                         $"{used / 1073741824.0:0.0} GB", "PageSystem"));
+                         $"{used / 1073741824.0:0.0} GB", "PageSystem", defaultBrush));
         }
         if (_drives.FirstOrDefault(d => d.Letter.StartsWith("C", StringComparison.OrdinalIgnoreCase)) is { } c0)
             rows.Add(new("", $"Disco {c0.Letter}", c0.Disk.Length > 0 ? c0.Disk : c0.Kind, "—", c0.UsedPercent, "—",
-                         $"{DriveCard.Fmt(c0.Free)} livres", "PageDisks"));
+                         $"{DriveCard.Fmt(c0.Free)} livres", "PageDisks", defaultBrush));
         DashComponents.ItemsSource = rows;
     }
 
@@ -200,6 +202,9 @@ public partial class MainWindow
         DashChartLabel.Text = $"CPU · {name}";
         DashChartValue.Text = cNow is float cv ? $"{cv.ToString(valFmt)}{unit}" : "—";
         DashChartValue2.Text = gNow is float gv ? $"{gv.ToString(valFmt)}{unit}" : "—";
+        var defaultFg = TryFindResource("Fg") as Brush ?? Brushes.White;
+        DashChartValue.Foreground = metric == "temp" ? GetTempBrush(cNow, defaultFg) : defaultFg;
+        DashChartValue2.Foreground = metric == "temp" ? GetTempBrush(gNow, TryFindResource("Muted") as Brush ?? defaultFg) : (TryFindResource("Muted") as Brush ?? defaultFg);
         var firstC = data.Select(cpu).FirstOrDefault(v => v != null);
         DashChartDelta.Text = cNow is float a && firstC is float b
             ? $"{(a - b >= 0 ? "+" : "")}{a - b:0.#}{unit} em {(range >= 60 ? $"{range / 60} min" : $"{range} s")}"

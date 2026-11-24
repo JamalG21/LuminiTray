@@ -3,6 +3,21 @@
 Todas as alterações notáveis deste projeto serão documentadas neste arquivo.
 O formato é baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/), e este projeto adere ao [Semantic Versioning](https://semver.org/lang/pt-BR/).
 
+## [0.35.0] - 2026-11-24
+
+### 🚀 Adicionado & Aprimorado
+- **Alerta de Temperatura Multi-Nível (`Controle de Fans` e Visores Globais):**
+  - Adicionado cartão **Alerta de Temperatura** em `Controle de Fans` com ativação/desativação, predefinições rápidas (`70 °C`, `80 °C`, `90 °C`) e ajuste personalizado (`45–110 °C`).
+  - Níveis progressivos aplicados em todos os visores de temperatura do app (Overlay de Jogos, Página Inicial, Barra Lateral, Sensores, Monitoramento, Teste de Estresse e Controle de Fans): **Amarelo** (atenção, `-15 °C` do crítico) e **Laranja** (elevada, `-7 °C` do crítico) alteram apenas a cor sem interromper o usuário; **Vermelho (Crítico)** é o único nível que dispara notificação `ToastWindow` persistente (permanece visível até o usuário fechar manualmente no botão `✕`, com histerese de `-3 °C` para rearme).
+- **Reiniciar para BIOS / UEFI com Contagem de 15s (`Energia`):**
+  - Adicionado o cartão **Reinicialização Avançada (BIOS / UEFI)** executando `shutdown /r /fw /t 0` após contagem regressiva nativa de 15 segundos com barra de progresso, botão **Cancelar** e botão **Reiniciar Agora**.
+- **Atalho Especial — Abrir `.exe` como Admin sem UAC (`Tweaks Exclusivos`):**
+  - Adicionada ferramenta para selecionar qualquer executável (com lista pesquisável de programas do Menu Iniciar/instalados + botão `+ PROCURAR .EXE`), personalizar o nome e criar um atalho `.lnk` na Área de Trabalho apontando para `schtasks.exe /run /tn "AtalhoEspecial_..."` (janela minimizada, ícone original do `.exe` e tarefa elevada no Agendador de Tarefas via PowerShell), além de listagem e remoção (`schtasks /delete /tn "..." /f`).
+
+### 🛠️ Correções
+- **Espaçamento do Overlay de Jogos (`OutlinedTextBlock`):**
+  - Corrigida a colagem de métricas na linha do overlay (`2%34,0 °C330 MHz`) causada por segmentos contendo apenas espaços (`"  "`), substituindo-os por margem explícita (`14 px`) entre cada segmento colorido.
+
 ## [0.34.0] - 2026-11-20
 
 ### 🚀 Adicionado & Aprimorado (Expansão Otimização & Debloat via Win11Debloat 2026.10.30)

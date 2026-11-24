@@ -119,6 +119,7 @@ public partial class MainWindow : Window
         ShowPage("PageDash");
 
         // Sensores: a lista começa vazia e é preenchida quando a detecção do hardware termina (LoadHardwareAsync).
+        SensorRow.ResolveTemperatureBrush = t => GetTempBrush(t);
         _monitor = new SensorMonitor();
         _view = CollectionViewSource.GetDefaultView(_monitor.Rows);
         _view.GroupDescriptions.Add(new PropertyGroupDescription(nameof(SensorRow.Hardware)));
@@ -1314,23 +1315,30 @@ public partial class MainWindow : Window
 
     private void UpdateSidebarPanel()
     {
+        var defaultBrush = TryFindResource("Fg") as Brush ?? Brushes.White;
         float? cpuTemp = _monitor.CpuTemperature;
         float? cpuLoad = _monitor.CpuLoad;
         SideTemp.Text = cpuTemp == null ? "—" : $"{cpuTemp:0.0} °C";
+        SideTemp.Foreground = GetTempBrush(cpuTemp, defaultBrush);
         SideLoad.Text = cpuLoad == null ? "—" : $"{cpuLoad:0} %";
 
+        float? gpuTemp = null;
         if (_gpus.Count > 0)
         {
-            float? gpuTemp = MainGpuTemp();
+            gpuTemp = MainGpuTemp();
             float? gpuLoad = MainGpuLoad();
             SideGpuTemp.Text = gpuTemp is float t ? $"{t:0.0} °C" : "—";
+            SideGpuTemp.Foreground = GetTempBrush(gpuTemp, defaultBrush);
             SideGpuLoad.Text = gpuLoad is float l ? $"{l:0} %" : "—";
         }
         else
         {
             SideGpuTemp.Text = "—";
+            SideGpuTemp.Foreground = defaultBrush;
             SideGpuLoad.Text = "—";
         }
+
+        EvaluateAndNotifyCriticalTemperature(cpuTemp, gpuTemp);
 
         var (total, avail) = Optimizer.MemoryStatus();
         if (total > 0)
@@ -3706,12 +3714,15 @@ public partial class MainWindow : Window
             if (_gpuBurnOn && gt > _gpuMaxTemp) _gpuMaxTemp = gt;
         }
 
+        var defaultBrush = TryFindResource("Fg") as Brush ?? Brushes.White;
         StTemp.Text = temp == null ? "—" : $"{temp:0.0} °C";
+        StTemp.Foreground = GetTempBrush(temp, defaultBrush);
         StTempMax.Text = _stressMaxTemp > 0 ? $"máx. {_stressMaxTemp:0.0} °C" : "máx. —";
         StLoad.Text = load == null ? "carga —" : $"carga {load:0} %";
         StPower.Text = power == null ? "—" : $"{power:0.#} W";
 
         StGpuTemp.Text = gTemp == null ? "—" : $"{gTemp:0.0} °C";
+        StGpuTemp.Foreground = GetTempBrush(gTemp, defaultBrush);
         StGpuTempMax.Text = _gpuMaxTemp > 0 ? $"máx. {_gpuMaxTemp:0.0} °C" : "máx. —";
         StGpuPower.Text = gPower == null ? "—" : $"{gPower:0.#} W";
         string cap = MainGpuPerfCap();

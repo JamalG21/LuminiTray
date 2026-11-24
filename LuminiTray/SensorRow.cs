@@ -1,5 +1,7 @@
 using System;
 using System.ComponentModel;
+using System.Windows;
+using System.Windows.Media;
 using LibreHardwareMonitor.Hardware;
 
 namespace LuminiTray;
@@ -61,6 +63,10 @@ public class SensorRow : INotifyPropertyChanged
     };
 
     public string Value => Format(_value);
+    public Brush ValueBrush => Type == SensorType.Temperature && ResolveTemperatureBrush != null
+        ? ResolveTemperatureBrush(_value)
+        : (Application.Current?.TryFindResource("Fg") as Brush ?? Brushes.White);
+    public static Func<float?, Brush>? ResolveTemperatureBrush { get; set; }
     public string Min => Format(_min);
     public string Max => Format(_max);
     public string MinTimeText => MinTime?.ToString("HH:mm:ss") ?? "—";
@@ -90,7 +96,11 @@ public class SensorRow : INotifyPropertyChanged
         _value = value; _min = min; _max = max;
 
         if (valChanged)
+        {
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(Value)));
+            if (Type == SensorType.Temperature)
+                PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(ValueBrush)));
+        }
         if (minChanged)
         {
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(Min)));

@@ -1,15 +1,33 @@
+using System;
 using System.Runtime.InteropServices;
 using System.Windows;
 using System.Windows.Interop;
+using System.Windows.Media;
 using System.Windows.Media.Animation;
 using System.Windows.Threading;
 
 namespace LuminiTray;
 
-/// <summary>Aviso no canto inferior direito da tela (dispositivo conectado/removido). Não rouba o foco.</summary>
+/// <summary>Aviso no canto inferior direito da tela (dispositivo conectado/removido ou alerta térmico crítico). Não rouba o foco.</summary>
 public partial class ToastWindow : Window
 {
     private readonly DispatcherTimer _hide = new() { Interval = TimeSpan.FromSeconds(5) };
+    private static readonly Brush DefaultBorderBrush = FreezeBrush(Color.FromArgb(0x40, 0xFF, 0xFF, 0xFF));
+    private static readonly Brush DefaultIconBgBrush = FreezeBrush(Color.FromRgb(0xF5, 0xF5, 0xF5));
+    private static readonly Brush DefaultIconFgBrush = FreezeBrush(Color.FromRgb(0x00, 0x00, 0x00));
+    private static readonly Brush CriticalBorderBrush = FreezeBrush(Color.FromRgb(0xEF, 0x44, 0x44));
+    private static readonly Brush CriticalIconBgBrush = FreezeBrush(Color.FromRgb(0xEF, 0x44, 0x44));
+    private static readonly Brush CriticalIconFgBrush = FreezeBrush(Color.FromRgb(0xFF, 0xFF, 0xFF));
+
+    public event Action? DismissedByUser;
+    public bool IsPersistentActive { get; private set; }
+
+    private static SolidColorBrush FreezeBrush(Color c)
+    {
+        var b = new SolidColorBrush(c);
+        b.Freeze();
+        return b;
+    }
 
     public ToastWindow()
     {
@@ -25,14 +43,38 @@ public partial class ToastWindow : Window
 
     /// <summary>Mostra (ou atualiza, se já visível) o aviso por 5 s. icon: glifo Segoe MDL2.</summary>
     public void Notify(string title, string text, string icon)
+        => ShowToast(title, text, icon, persistent: false, isCritical: false);
+
+    /// <summary>Exibe um aviso crítico persistente que só fecha quando o usuário clicar no botão fechar.</summary>
+    public void NotifyCriticalPersistent(string title, string text, string icon = "\uE7BA")
+        => ShowToast(title, text, icon, persistent: true, isCritical: true);
+
+    private void ShowToast(string title, string text, string icon, bool persistent, bool isCritical)
     {
+        IsPersistentActive = persistent;
         TTitle.Text = title;
         TText.Text = text;
         TIcon.Text = icon;
+
+        ToastBorder.BorderBrush = isCritical ? CriticalBorderBrush : DefaultBorderBrush;
+        TIconBox.Background = isCritical ? CriticalIconBgBrush : DefaultIconBgBrush;
+        TIcon.Foreground = isCritical ? CriticalIconFgBrush : DefaultIconFgBrush;
+        BtnClose.Visibility = persistent ? Visibility.Visible : Visibility.Collapsed;
+        TFooter.Text = persistent ? "Lumini Tray · Clique no X para fechar" : "Lumini Tray";
+
         if (!IsVisible) { Show(); Place(); }
         Fade(1, null);
         _hide.Stop();
-        _hide.Start();
+        if (!persistent)
+            _hide.Start();
+    }
+
+    private void BtnClose_Click(object sender, RoutedEventArgs e)
+    {
+        _hide.Stop();
+        IsPersistentActive = false;
+        Fade(0, () => Hide());
+        DismissedByUser?.Invoke();
     }
 
     private void Place()

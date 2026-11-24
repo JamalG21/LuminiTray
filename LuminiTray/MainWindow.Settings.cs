@@ -556,6 +556,8 @@ public partial class MainWindow
                     : "Padrão do Windows (atalhos do Office habilitados).";
             }
             InitTaskbarTrayTweaksUi();
+            RefreshSpecialShortcutsList();
+            _ = LoadSpecialShortcutExeCandidatesAsync();
         }
         finally
         {

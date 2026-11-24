@@ -264,6 +264,12 @@
 
       </Style>
 
+      <Style x:Key="SensorTempValueCell" TargetType="{x:Type TextBlock}" BasedOn="{StaticResource MonoCell}">
+
+        <Setter Property="Foreground" Value="{Binding ValueBrush}" />
+
+      </Style>
+
       <Style x:Key="MutedCell" TargetType="{x:Type TextBlock}">
 
         <Setter Property="Foreground" Value="{DynamicResource Muted}" />
@@ -1222,7 +1228,7 @@
 
                           </StackPanel>
 
-                          <TextBlock Grid.Column="1" FontFamily="{StaticResource Mono}" VerticalAlignment="Center" Text="{Binding Temp}" />
+                          <TextBlock Grid.Column="1" FontFamily="{StaticResource Mono}" Foreground="{Binding TempBrush}" VerticalAlignment="Center" Text="{Binding Temp}" />
 
                           <TextBlock Grid.Column="2" FontFamily="{StaticResource Mono}" VerticalAlignment="Center" Text="{Binding Load}" />
 
@@ -2469,6 +2475,41 @@
 
 
                         <ItemsControl x:Name="EnergyCards" ItemTemplate="{StaticResource CardTemplate}"/>
+
+                        <!-- Reinicialização Avançada para BIOS / UEFI -->
+                        <Border x:Name="BrdBiosRebootCard" Style="{StaticResource CardBorder}" Padding="20,18" Margin="0,16,0,16">
+                            <StackPanel>
+                                <Grid Margin="0,0,0,10">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <StackPanel Grid.Column="0" VerticalAlignment="Center">
+                                        <TextBlock Text="REINICIALIZAÇÃO AVANÇADA (BIOS / UEFI)" Style="{StaticResource Label}" Margin="0,0,0,4" />
+                                        <TextBlock Text="Reinicia o computador diretamente no setup do firmware UEFI/BIOS (shutdown /r /fw /t 0) após uma contagem regressiva segura de 15 segundos." Foreground="{DynamicResource Muted}" FontSize="12" TextWrapping="Wrap" />
+                                    </StackPanel>
+                                    <Button x:Name="BtnBiosRebootStart" Grid.Column="1" Style="{StaticResource OutlineButton}" Content="Reiniciar para BIOS / UEFI (15s)" Padding="16,9" FontWeight="SemiBold" VerticalAlignment="Center" Margin="16,0,0,0" Click="BtnBiosRebootStart_Click" />
+                                </Grid>
+
+                                <Border x:Name="PanelBiosCountdown" Background="{DynamicResource CardSubtleBg}" BorderBrush="{DynamicResource Accent}" BorderThickness="1" CornerRadius="6" Padding="14,12" Visibility="Collapsed">
+                                    <StackPanel>
+                                        <Grid Margin="0,0,0,8">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*" />
+                                                <ColumnDefinition Width="Auto" />
+                                                <ColumnDefinition Width="Auto" />
+                                            </Grid.ColumnDefinitions>
+                                            <TextBlock x:Name="TxtBiosCountdown" Grid.Column="0" Text="Reiniciando para a BIOS/UEFI em 15 s..." Foreground="{DynamicResource Fg}" FontWeight="SemiBold" FontSize="12.5" VerticalAlignment="Center" />
+                                            <Button x:Name="BtnBiosRebootNow" Grid.Column="1" Style="{StaticResource PrimaryButton}" Content="Reiniciar Agora" Padding="12,6" FontSize="11.5" Margin="12,0,8,0" Click="BtnBiosRebootNow_Click" />
+                                            <Button x:Name="BtnBiosRebootCancel" Grid.Column="2" Style="{StaticResource OutlineButton}" Content="Cancelar" Padding="14,6" FontSize="11.5" FontWeight="SemiBold" Click="BtnBiosRebootCancel_Click" />
+                                        </Grid>
+                                        <ProgressBar x:Name="PrgBiosCountdown" Minimum="0" Maximum="15" Value="15" Height="6" Foreground="{DynamicResource Accent}" Background="{DynamicResource Line}" />
+                                    </StackPanel>
+                                </Border>
+
+                                <TextBlock x:Name="TxtBiosRebootStatus" Text="" Foreground="{DynamicResource Muted}" FontSize="11" Margin="0,6,0,0" Visibility="Collapsed" TextWrapping="Wrap" />
+                            </StackPanel>
+                        </Border>
 
             <TextBlock Foreground="{DynamicResource Faint}" FontSize="11" TextWrapping="Wrap">Os dados vêm do Windows (WMI). Alguns notebooks não informam ciclos de carga ou a capacidade de projeto. O consumo mostrado vem dos sensores de CPU e GPU, não da fonte (PSU) do PC.</TextBlock>
 
@@ -5524,7 +5565,7 @@
 
                 <DataGridTextColumn Header="TIPO" Width="130" ElementStyle="{StaticResource MutedCell}" Binding="{Binding Category}" />
 
-                <DataGridTextColumn Header="VALOR" Width="130" ElementStyle="{StaticResource MonoCell}" Binding="{Binding Value}" />
+                <DataGridTextColumn Header="VALOR" Width="130" ElementStyle="{StaticResource SensorTempValueCell}" Binding="{Binding Value}" />
 
                 <DataGridTextColumn Header="MÍN." Width="120" ElementStyle="{StaticResource MutedMonoCell}" Binding="{Binding Min}" />
 
@@ -5681,7 +5722,7 @@
 
                 <DataGridTextColumn Header="TIPO" Width="115" IsReadOnly="True" ElementStyle="{StaticResource MutedCell}" Binding="{Binding Category}" />
 
-                <DataGridTextColumn Header="ATUAL" Width="110" IsReadOnly="True" ElementStyle="{StaticResource MonoCell}" Binding="{Binding Value}" />
+                <DataGridTextColumn Header="ATUAL" Width="110" IsReadOnly="True" ElementStyle="{StaticResource SensorTempValueCell}" Binding="{Binding Value}" />
 
                 <DataGridTextColumn Header="MÍN. (HORÁRIO)" Width="165" IsReadOnly="True" ElementStyle="{StaticResource MutedMonoCell}" Binding="{Binding MinWithTime}" />
 
@@ -14623,6 +14664,54 @@
 
             </Border>
 
+            <!-- Alerta de Temperatura Multi-Nível -->
+            <Border Name="BorderTempAlert" Style="{StaticResource CardBorder}" Margin="0,0,0,16" Padding="16,14">
+              <StackPanel>
+                <Grid Margin="0,0,0,10">
+                  <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                  </Grid.ColumnDefinitions>
+                  <StackPanel Grid.Column="0">
+                    <TextBlock Text="ALERTA DE TEMPERATURA" FontWeight="Bold" FontSize="12" Foreground="{DynamicResource Fg}" Margin="0,0,0,3" />
+                    <TextBlock Text="Os níveis Amarelo e Laranja mudam apenas a cor dos visores de temperatura em todo o app. Apenas o nível Vermelho (Crítico) exibe notificação persistente." Foreground="{DynamicResource Muted}" FontSize="11" TextWrapping="Wrap" />
+                  </StackPanel>
+                  <CheckBox Name="ChkTempAlertEnabled" Grid.Column="1" Content="Ativar Alerta" IsChecked="True" VerticalAlignment="Center" Margin="16,0,0,0" Foreground="{DynamicResource Fg}" FontWeight="SemiBold" FontSize="11.5" Checked="ChkTempAlertEnabled_Changed" Unchecked="ChkTempAlertEnabled_Changed" />
+                </Grid>
+
+                <Grid Margin="0,0,0,10">
+                  <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                  </Grid.ColumnDefinitions>
+                  <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center">
+                    <TextBlock Text="Limite Crítico:" Foreground="{DynamicResource Muted}" FontSize="11.5" VerticalAlignment="Center" Margin="0,0,10,0" />
+                    <Button Name="BtnTempAlert70" Style="{StaticResource OutlineButton}" Content="70 °C" Tag="70" Padding="12,5" Margin="0,0,6,0" FontSize="11" FontWeight="SemiBold" Click="BtnTempAlertPreset_Click" />
+                    <Button Name="BtnTempAlert80" Style="{StaticResource PrimaryButton}" Content="80 °C" Tag="80" Padding="12,5" Margin="0,0,6,0" FontSize="11" FontWeight="SemiBold" Click="BtnTempAlertPreset_Click" />
+                    <Button Name="BtnTempAlert90" Style="{StaticResource OutlineButton}" Content="90 °C" Tag="90" Padding="12,5" Margin="0,0,12,0" FontSize="11" FontWeight="SemiBold" Click="BtnTempAlertPreset_Click" />
+                  </StackPanel>
+                  <Slider Name="SliderTempAlertCritical" Grid.Column="1" Minimum="45" Maximum="110" TickFrequency="1" IsSnapToTickEnabled="True" Value="80" VerticalAlignment="Center" Margin="4,0,12,0" ValueChanged="SliderTempAlertCritical_ValueChanged" />
+                  <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
+                    <TextBox Name="TxtTempAlertCustom" Width="54" Text="80" TextAlignment="Center" Padding="6,4" FontFamily="{StaticResource Mono}" FontSize="12" Foreground="{DynamicResource Fg}" Background="{DynamicResource CardSubtleBg}" BorderBrush="{DynamicResource Line}" BorderThickness="1" LostFocus="CommitCustomTempAlertOnLostFocus" KeyDown="TxtTempAlertCustom_KeyDown" />
+                    <TextBlock Text="°C" Foreground="{DynamicResource Muted}" FontSize="11.5" VerticalAlignment="Center" Margin="6,0,0,0" />
+                  </StackPanel>
+                </Grid>
+
+                <WrapPanel Orientation="Horizontal">
+                  <Border Background="{DynamicResource CardSubtleBg}" BorderBrush="{DynamicResource Line}" BorderThickness="1" CornerRadius="4" Padding="10,5" Margin="0,0,8,4">
+                    <TextBlock Name="TxtTempAlertYellowSummary" Text="🟡 Atenção (Amarelo): ≥ 65 °C" Foreground="{DynamicResource Muted}" FontSize="11" FontFamily="{StaticResource Mono}" />
+                  </Border>
+                  <Border Background="{DynamicResource CardSubtleBg}" BorderBrush="{DynamicResource Line}" BorderThickness="1" CornerRadius="4" Padding="10,5" Margin="0,0,8,4">
+                    <TextBlock Name="TxtTempAlertOrangeSummary" Text="🟠 Elevada (Laranja): ≥ 73 °C" Foreground="{DynamicResource Muted}" FontSize="11" FontFamily="{StaticResource Mono}" />
+                  </Border>
+                  <Border Background="{DynamicResource CardSubtleBg}" BorderBrush="{DynamicResource Line}" BorderThickness="1" CornerRadius="4" Padding="10,5" Margin="0,0,0,4">
+                    <TextBlock Name="TxtTempAlertRedSummary" Text="🔴 Crítico (Vermelho + Notificação): ≥ 80 °C" Foreground="{DynamicResource Muted}" FontSize="11" FontFamily="{StaticResource Mono}" />
+                  </Border>
+                </WrapPanel>
+              </StackPanel>
+            </Border>
+
             <Border Style="{StaticResource CardBorder}" Margin="0,0,0,16" Padding="6">
 
               <Grid>
@@ -15480,6 +15569,98 @@
                 <CheckBox x:Name="ChkTweaksDisableOfficeHotkeys" Content="Desativar Office Hotkeys (Ctrl + Shift + Alt + Win)" FontWeight="SemiBold" FontSize="12.5" Click="TweaksDisableOfficeHotkeys_Click" />
                 <TextBlock Text="Desabilita as combinações Ctrl+Shift+Alt+Win (e atalhos W/X/P/O/N/T/Y/L/D) que abrem o Microsoft Office ou navegador acidentalmente no Windows." Foreground="{DynamicResource Faint}" FontSize="11" Margin="24,2,0,4" TextWrapping="Wrap" />
                 <TextBlock x:Name="TxtTweaksOfficeHotkeysStatus" Text="Padrão do Windows" Foreground="{DynamicResource Muted}" FontSize="11" Margin="24,0,0,0" />
+              </StackPanel>
+            </Border>
+
+            <!-- Card 4: Atalho Especial (Admin sem UAC) -->
+            <Border Style="{StaticResource CardBorder}" Margin="0,16,0,0" Padding="20,18">
+              <StackPanel>
+                <Grid Margin="0,0,0,12">
+                  <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                  </Grid.ColumnDefinitions>
+                  <StackPanel>
+                    <TextBlock Text="ATALHO ESPECIAL (ADMIN SEM UAC)" Style="{StaticResource Label}" Margin="0,0,0,4" />
+                    <TextBlock Text="Cria uma tarefa elevada no Agendador de Tarefas e um atalho na Área de Trabalho para abrir qualquer .exe como Administrador sem exibir confirmação do UAC." Foreground="{DynamicResource Muted}" FontSize="12" TextWrapping="Wrap" />
+                  </StackPanel>
+                  <Button x:Name="BtnSpecialShortcutRefresh" Grid.Column="1" Style="{StaticResource OutlineButton}" Content="Atualizar Lista" Padding="10,5" FontSize="11" VerticalAlignment="Center" Click="BtnSpecialShortcutRefresh_Click" />
+                </Grid>
+
+                <Grid Margin="0,0,0,10">
+                  <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
+                  </Grid.RowDefinitions>
+                  <Grid Grid.Row="0" Margin="0,0,0,8">
+                    <Grid.ColumnDefinitions>
+                      <ColumnDefinition Width="*" />
+                      <ColumnDefinition Width="Auto" />
+                      <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <TextBox x:Name="TxtSpecialShortcutExeSearch" Grid.Column="0" Tag="Buscar programa ou .exe…" TextChanged="TxtSpecialShortcutExeSearch_TextChanged" />
+                    <Button x:Name="BtnSpecialShortcutScanExes" Grid.Column="1" Style="{StaticResource OutlineButton}" Content="ATUALIZAR LISTA" Padding="12,7" Margin="8,0,0,0" Click="BtnSpecialShortcutScanExes_Click" />
+                    <Button x:Name="BtnSpecialShortcutBrowse" Grid.Column="2" Style="{StaticResource OutlineButton}" Content="+ PROCURAR .EXE" Padding="12,7" Margin="8,0,0,0" Click="BtnSpecialShortcutBrowse_Click" />
+                  </Grid>
+                  <ListBox x:Name="LstSpecialShortcutExes" Grid.Row="1" MaxHeight="190" Margin="0,0,0,8" ItemContainerStyle="{StaticResource ListNavItem}" SelectionChanged="LstSpecialShortcutExes_SelectionChanged">
+                    <ItemsControl.ItemTemplate>
+                      <DataTemplate>
+                        <StackPanel>
+                          <TextBlock FontSize="13.5" TextTrimming="CharacterEllipsis" Text="{Binding Name}" Foreground="{DynamicResource Fg}" />
+                          <TextBlock FontSize="11" Opacity="0.6" TextTrimming="CharacterEllipsis" Text="{Binding Subtitle}" Foreground="{DynamicResource Muted}" />
+                        </StackPanel>
+                      </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                  </ListBox>
+                  <TextBox x:Name="TxtSpecialShortcutExe" Grid.Row="2" IsReadOnly="True" Text="" Padding="10,7" FontSize="11.5" FontFamily="{StaticResource Mono}" Foreground="{DynamicResource Muted}" Background="{DynamicResource CardSubtleBg}" BorderBrush="{DynamicResource Line}" BorderThickness="1" VerticalContentAlignment="Center" ToolTip="Caminho completo do executável (.exe) selecionado" />
+                </Grid>
+
+                <Grid Margin="0,0,0,12">
+                  <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="220" />
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                  </Grid.ColumnDefinitions>
+                  <TextBlock Grid.Column="0" Text="Nome do atalho:" Foreground="{DynamicResource Muted}" FontSize="12" VerticalAlignment="Center" Margin="0,0,10,0" />
+                  <TextBox x:Name="TxtSpecialShortcutName" Grid.Column="1" Text="" Padding="8,6" FontSize="12" Foreground="{DynamicResource Fg}" Background="{DynamicResource CardSubtleBg}" BorderBrush="{DynamicResource Line}" BorderThickness="1" TextChanged="TxtSpecialShortcutName_TextChanged" />
+                  <TextBlock x:Name="TxtSpecialShortcutTaskPreview" Grid.Column="2" Text="Tarefa: AtalhoEspecial_App" Foreground="{DynamicResource Faint}" FontFamily="{StaticResource Mono}" FontSize="11" VerticalAlignment="Center" Margin="12,0,12,0" TextTrimming="CharacterEllipsis" />
+                  <Button x:Name="BtnSpecialShortcutCreate" Grid.Column="3" Style="{StaticResource PrimaryButton}" Content="Criar Atalho Especial" Padding="16,7" FontWeight="SemiBold" Click="BtnSpecialShortcutCreate_Click" />
+                </Grid>
+
+                <TextBlock x:Name="TxtSpecialShortcutStatus" Text="" Foreground="{DynamicResource Muted}" FontSize="11.5" Margin="0,0,0,10" Visibility="Collapsed" TextWrapping="Wrap" />
+
+                <TextBlock Text="ATALHOS ESPECIAIS NA ÁREA DE TRABALHO" Style="{StaticResource Label}" Margin="0,4,0,6" />
+                <TextBlock x:Name="TxtSpecialShortcutEmpty" Text="Nenhum Atalho Especial encontrado na Área de Trabalho." Foreground="{DynamicResource Faint}" FontSize="11.5" Margin="0,2,0,0" />
+                <ListView x:Name="LstSpecialShortcuts" Visibility="Collapsed" Background="Transparent" BorderThickness="0" MaxHeight="220" ScrollViewer.HorizontalScrollBarVisibility="Disabled">
+                  <ListView.ItemContainerStyle>
+                    <Style TargetType="ListViewItem">
+                      <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+                      <Setter Property="Padding" Value="0" />
+                      <Setter Property="Margin" Value="0,0,0,6" />
+                      <Setter Property="Background" Value="Transparent" />
+                      <Setter Property="BorderThickness" Value="0" />
+                    </Style>
+                  </ListView.ItemContainerStyle>
+                  <ListView.ItemTemplate>
+                    <DataTemplate>
+                      <Border Background="{DynamicResource CardSubtleBg}" BorderBrush="{DynamicResource Line}" BorderThickness="1" CornerRadius="6" Padding="12,8">
+                        <Grid>
+                          <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                          </Grid.ColumnDefinitions>
+                          <StackPanel Grid.Column="0" VerticalAlignment="Center">
+                            <TextBlock Text="{Binding DisplayName}" Foreground="{DynamicResource Fg}" FontWeight="SemiBold" FontSize="12.5" />
+                            <TextBlock Text="{Binding TaskName}" Foreground="{DynamicResource Muted}" FontFamily="{StaticResource Mono}" FontSize="11" Margin="0,2,0,0" />
+                          </StackPanel>
+                          <Button Grid.Column="1" Style="{StaticResource OutlineButton}" Content="Remover" Padding="12,5" FontSize="11" VerticalAlignment="Center" Tag="{Binding}" Click="BtnSpecialShortcutRemove_Click" />
+                        </Grid>
+                      </Border>
+                    </DataTemplate>
+                  </ListView.ItemTemplate>
+                </ListView>
               </StackPanel>
             </Border>
           </StackPanel>

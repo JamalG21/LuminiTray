@@ -161,6 +161,14 @@ public partial class MainWindow
         return cores.Count > 0 ? (cores.Average(), cores.Max()) : (null, null);
     }
 
+    private static readonly System.Windows.Media.Brush OverlayDefaultBrush = CreateOverlayDefaultBrush();
+    private static System.Windows.Media.Brush CreateOverlayDefaultBrush()
+    {
+        var b = new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(0xF5, 0xF5, 0xF5));
+        b.Freeze();
+        return b;
+    }
+
     /// <summary>Monta as linhas GPU / VRAM / CPU / RAM só com o que foi escolhido; linha vazia não aparece.</summary>
     private List<OverlayLine> BuildOverlayLines(FrameStats? f)
     {
@@ -171,52 +179,70 @@ public partial class MainWindow
         string clockUnit = _settings.OverlayClockUnit;
         string T(float? v) => OverlayMetrics.FormatTemperature(v, tempUnit);
         string P(double? v) => v is double x ? $"{x:0}%" : "—";
-        void Line(string label, List<string> parts) { if (parts.Count > 0) lines.Add(new OverlayLine(label, string.Join("  ", parts))); }
+        System.Windows.Media.Brush TempBrush(float? tempC) =>
+            TemperatureAlertHelper.GetOverlayBrush(tempC, _settings.FanControl) ?? OverlayDefaultBrush;
 
-        var gpu = new List<string>();
-        if (show.Contains("gpu_load")) gpu.Add(P(s.GpuLoad));
-        if (show.Contains("gpu_temp")) gpu.Add(T(s.GpuTemp));
-        if (show.Contains("gpu_hotspot")) gpu.Add("HS " + T(GpuRow(SensorType.Temperature, "GPU Hot Spot")?.RawValue));
-        if (show.Contains("gpu_clock")) gpu.Add(OverlayMetrics.FormatClock(MainGpuClock(Nvml.ClockGraphics, "GPU Core"), clockUnit, defaultGHz: false));
-        if (show.Contains("gpu_power")) gpu.Add(MainGpuPower() is float w ? $"{w:0} W" : "— W");
-        if (show.Contains("gpu_volt")) gpu.Add(GpuRow(SensorType.Voltage, "GPU Core")?.RawValue is float v ? $"{v:0.000} V" : "— V");
+        void Line(string label, List<(string Text, System.Windows.Media.Brush Brush)> parts)
+        {
+            if (parts.Count == 0) return;
+            var segs = new List<OverlaySegment>(parts.Count);
+            for (int i = 0; i < parts.Count; i++)
+                segs.Add(new OverlaySegment(parts[i].Text, parts[i].Brush, new Thickness(i > 0 ? 14 : 0, 0, 0, 0)));
+            lines.Add(new OverlayLine(label, string.Join("  ", parts.Select(p => p.Text)), segs));
+        }
+
+        var gpu = new List<(string Text, System.Windows.Media.Brush Brush)>();
+        if (show.Contains("gpu_load")) gpu.Add((P(s.GpuLoad), OverlayDefaultBrush));
+        if (show.Contains("gpu_temp")) gpu.Add((T(s.GpuTemp), TempBrush(s.GpuTemp)));
+        if (show.Contains("gpu_hotspot"))
+        {
+            float? hs = GpuRow(SensorType.Temperature, "GPU Hot Spot")?.RawValue;
+            gpu.Add(("HS " + T(hs), TempBrush(hs)));
+        }
+        if (show.Contains("gpu_clock")) gpu.Add((OverlayMetrics.FormatClock(MainGpuClock(Nvml.ClockGraphics, "GPU Core"), clockUnit, defaultGHz: false), OverlayDefaultBrush));
+        if (show.Contains("gpu_power")) gpu.Add((MainGpuPower() is float w ? $"{w:0} W" : "— W", OverlayDefaultBrush));
+        if (show.Contains("gpu_volt")) gpu.Add((GpuRow(SensorType.Voltage, "GPU Core")?.RawValue is float v ? $"{v:0.000} V" : "— V", OverlayDefaultBrush));
         if (show.Contains("gpu_fan"))
-            gpu.Add(GpuRow(SensorType.Fan, "GPU Fan", true)?.RawValue is float rpm && rpm > 0 ? $"{rpm:0} RPM"
-                  : GpuRow(SensorType.Control, "GPU Fan", true)?.RawValue is float pct ? $"fan {pct:0}%" : "fan —");
-        if (show.Contains("gpu_perfcap") && MainGpuPerfCap() is { Length: > 0 } cap) gpu.Add(cap);
+            gpu.Add((GpuRow(SensorType.Fan, "GPU Fan", true)?.RawValue is float rpm && rpm > 0 ? $"{rpm:0} RPM"
+                  : GpuRow(SensorType.Control, "GPU Fan", true)?.RawValue is float pct ? $"fan {pct:0}%" : "fan —", OverlayDefaultBrush));
+        if (show.Contains("gpu_perfcap") && MainGpuPerfCap() is { Length: > 0 } cap) gpu.Add((cap, OverlayDefaultBrush));
         Line("GPU", gpu);
 
-        var vram = new List<string>();
+        var vram = new List<(string Text, System.Windows.Media.Brush Brush)>();
         var vr = MainGpuVram();
-        if (show.Contains("vram_used")) vram.Add(vr is { } a ? $"{a.Used:0.0} GB" : "—");
-        if (show.Contains("vram_pct")) vram.Add(P(s.VramPct));
-        if (show.Contains("vram_temp")) vram.Add(T(GpuRow(SensorType.Temperature, "GPU Memory")?.RawValue));
-        if (show.Contains("gpu_memclock")) vram.Add(OverlayMetrics.FormatClock(MainGpuClock(Nvml.ClockMem, "GPU Memory"), clockUnit, defaultGHz: false));
+        if (show.Contains("vram_pct")) vram.Add((P(s.VramPct), OverlayDefaultBrush));
+        if (show.Contains("vram_used")) vram.Add((vr is { } a ? $"{a.Used:0.0} GB" : "—", OverlayDefaultBrush));
+        if (show.Contains("vram_temp"))
+        {
+            float? vt = GpuRow(SensorType.Temperature, "GPU Memory")?.RawValue;
+            vram.Add((T(vt), TempBrush(vt)));
+        }
+        if (show.Contains("gpu_memclock")) vram.Add((OverlayMetrics.FormatClock(MainGpuClock(Nvml.ClockMem, "GPU Memory"), clockUnit, defaultGHz: false), OverlayDefaultBrush));
         Line("VRAM", vram);
 
-        var cpu = new List<string>();
+        var cpu = new List<(string Text, System.Windows.Media.Brush Brush)>();
         var (avg, max) = CpuClocks();
-        if (show.Contains("cpu_load")) cpu.Add(P(s.CpuTotal));
-        if (show.Contains("cpu_maxcore")) cpu.Add(s.CpuMaxCore is float mx ? $"núcleo {mx:0}%" : "núcleo —");
-        if (show.Contains("cpu_temp")) cpu.Add(T(s.CpuTemp));
-        if (show.Contains("cpu_clock")) cpu.Add(OverlayMetrics.FormatClock(avg, clockUnit, defaultGHz: true));
-        if (show.Contains("cpu_clockmax")) cpu.Add("pico " + OverlayMetrics.FormatClock(max, clockUnit, defaultGHz: true));
-        if (show.Contains("cpu_power")) cpu.Add(_monitor.CpuPower is float cw && cw > 0 ? $"{cw:0} W" : "— W"); // 0 = sem leitura (precisa de administrador)
+        if (show.Contains("cpu_load")) cpu.Add((P(s.CpuTotal), OverlayDefaultBrush));
+        if (show.Contains("cpu_maxcore")) cpu.Add((s.CpuMaxCore is float mx ? $"núcleo {mx:0}%" : "núcleo —", OverlayDefaultBrush));
+        if (show.Contains("cpu_temp")) cpu.Add((T(s.CpuTemp), TempBrush(s.CpuTemp)));
+        if (show.Contains("cpu_clock")) cpu.Add((OverlayMetrics.FormatClock(avg, clockUnit, defaultGHz: true), OverlayDefaultBrush));
+        if (show.Contains("cpu_clockmax")) cpu.Add(("pico " + OverlayMetrics.FormatClock(max, clockUnit, defaultGHz: true), OverlayDefaultBrush));
+        if (show.Contains("cpu_power")) cpu.Add((_monitor.CpuPower is float cw && cw > 0 ? $"{cw:0} W" : "— W", OverlayDefaultBrush)); // 0 = sem leitura (precisa de administrador)
         Line("CPU", cpu);
 
-        var ram = new List<string>();
+        var ram = new List<(string Text, System.Windows.Media.Brush Brush)>();
         var (total, availB) = Optimizer.MemoryStatus();
-        if (show.Contains("ram_used")) ram.Add(total > 0 ? $"{(total - availB) / 1073741824.0:0.0} GB" : "—");
-        if (show.Contains("ram_pct")) ram.Add(P(s.RamPct));
+        if (show.Contains("ram_pct")) ram.Add((P(s.RamPct), OverlayDefaultBrush));
+        if (show.Contains("ram_used")) ram.Add((total > 0 ? $"{(total - availB) / 1073741824.0:0.0} GB" : "—", OverlayDefaultBrush));
         if (show.Contains("ram_swap"))
         {
             var (swapUsed, _) = Optimizer.GetSwapUsage();
-            ram.Add(swapUsed > 0 ? $"swap {FormatMemory(swapUsed)}" : "swap 0 MB");
+            ram.Add((swapUsed > 0 ? $"swap {FormatMemory(swapUsed)}" : "swap 0 MB", OverlayDefaultBrush));
         }
         if (show.Contains("proc_ram"))
-            ram.Add(f != null && ProcessMemoryText(f.ProcessId) is { } pm ? $"jogo {pm}" : "jogo —");
+            ram.Add((f != null && ProcessMemoryText(f.ProcessId) is { } pm ? $"jogo {pm}" : "jogo —", OverlayDefaultBrush));
         if (show.Contains("app_ram"))
-            ram.Add($"app {FormatMemory(GetTotalLuminiAppWorkingSet())}");
+            ram.Add(($"app {FormatMemory(GetTotalLuminiAppWorkingSet())}", OverlayDefaultBrush));
         Line("RAM", ram);
         return lines;
     }
